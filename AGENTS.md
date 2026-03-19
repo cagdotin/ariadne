@@ -1,0 +1,20 @@
+# Ariadne
+
+> Ariadne is an observation layer for AI coding agents. Named after the mythological figure who gave Theseus the thread to navigate the Minotaur's labyrinth — Ariadne gives developers the thread to navigate what their agents are actually doing across complex codebases. It sits on top of existing agent infrastructure (currently pi) and provides visibility into agent sessions, tool usage, file activity, and behavioral patterns.
+
+## Coding Styles
+
+- file and folder names - kebab-case only
+- functions and variables - snake_case only
+- types and classes - CamelCase
+
+## Package Manager
+
+- **Always use Bun in this repository.**
+- Use `bun install`, `bun run <script>`, and `bunx <tool>`.
+- Do not use `npm`, `npx`, `yarn`, or `pnpm`.
+
+## Git Rules
+
+- **Never commit or push without explicit user approval.** All code must be reviewed first.
+- Only run `git commit` or `git push` when the user explicitly tells you to.
