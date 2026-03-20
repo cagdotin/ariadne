@@ -21,22 +21,7 @@ pub fn run() {
             get_project_file_stats,
             get_time_breakdown
         ])
-        .setup(|app| {
-            // Enable macOS two-finger swipe back/forward navigation
-            #[cfg(target_os = "macos")]
-            {
-                use tauri::Manager;
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.with_webview(|webview| {
-                        use objc2::msg_send;
-                        use objc2::runtime::AnyObject;
-                        unsafe {
-                            let wk: *mut AnyObject = webview.inner().cast();
-                            let _: () = msg_send![wk, setAllowsBackForwardNavigationGestures: true];
-                        }
-                    });
-                }
-            }
+        .setup(|_app| {
             Ok(())
         })
         .run(tauri::generate_context!())

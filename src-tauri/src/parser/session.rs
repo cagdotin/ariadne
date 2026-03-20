@@ -232,6 +232,10 @@ impl Default for SessionSummary {
             turn_count: 0,
             compaction_count: 0,
             tool_calls: HashMap::new(),
+            bash_commands: HashMap::new(),
+            read_files: HashMap::new(),
+            edit_files: HashMap::new(),
+            write_files: HashMap::new(),
             models_used: Vec::new(),
         }
     }

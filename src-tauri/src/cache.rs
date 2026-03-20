@@ -76,6 +76,7 @@ impl SessionCache {
         let cache_read_cost: f64 = all_sessions.iter().map(|s| s.cache_read_cost).sum();
         let cache_write_cost: f64 = all_sessions.iter().map(|s| s.cache_write_cost).sum();
         let total_tokens: u64 = all_sessions.iter().map(|s| s.total_tokens).sum();
+        let total_file_size_bytes: u64 = all_sessions.iter().map(|s| s.file_size_bytes).sum();
 
         // Group by project
         let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
@@ -239,6 +240,7 @@ impl SessionCache {
             cache_read_cost,
             cache_write_cost,
             total_tokens,
+            total_file_size_bytes,
             sessions_by_date,
             cost_by_date,
             projects,

@@ -53,6 +53,7 @@ export const AnalyticsOverviewSchema = z.object({
   cache_read_cost: z.number(),
   cache_write_cost: z.number(),
   total_tokens: z.number(),
+  total_file_size_bytes: z.number(),
   sessions_by_date: z.array(DayCountSchema),
   cost_by_date: z.array(DayCostSchema),
   projects: z.array(ProjectSummarySchema),

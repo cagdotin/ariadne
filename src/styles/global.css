@@ -226,24 +226,4 @@
   background: transparent;
 }
 
-/* Heatmap */
-.heatmap-cell {
-  width: 12px;
-  height: 12px;
-  background: oklch(0.93 0 0);
-  border-radius: 2px;
-}
 
-.heatmap-cell.level-1 { background: oklch(0.78 0.08 145); }
-.heatmap-cell.level-2 { background: oklch(0.64 0.14 145); }
-.heatmap-cell.level-3 { background: oklch(0.52 0.16 145); }
-.heatmap-cell.level-4 { background: oklch(0.42 0.14 145); }
-
-.dark .heatmap-cell {
-  background: oklch(0.22 0.003 260);
-}
-
-.dark .heatmap-cell.level-1 { background: oklch(0.35 0.06 145); }
-.dark .heatmap-cell.level-2 { background: oklch(0.46 0.10 145); }
-.dark .heatmap-cell.level-3 { background: oklch(0.56 0.14 145); }
-.dark .heatmap-cell.level-4 { background: oklch(0.66 0.16 145); }

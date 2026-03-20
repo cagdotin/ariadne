@@ -46,6 +46,7 @@ pub struct AnalyticsOverview {
     pub cache_read_cost: f64,
     pub cache_write_cost: f64,
     pub total_tokens: u64,
+    pub total_file_size_bytes: u64,
     pub sessions_by_date: Vec<DayCount>,      // for activity heatmap
     pub cost_by_date: Vec<DayCost>,           // for cost trend
     pub projects: Vec<ProjectSummary>,
