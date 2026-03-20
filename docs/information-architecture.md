@@ -13,6 +13,7 @@ Ariadne answers **four distinct questions** for developers observing their AI ag
 | "What's happening in my projects?" | **Projects** | `FolderOpen` |
 | "What did specific sessions do?" | **Sessions** | `List` |
 | "How are tools/models/costs distributed?" | **Usage** | `BarChart3` |
+| "What's in my knowledge base?" | **QMD** | `Search` |
 
 Each question gets its own top-level sidebar entry. No data should require more than 2 clicks to reach. Detail pages use breadcrumbs for navigation — no manual back buttons.
 
@@ -25,13 +26,15 @@ Each question gets its own top-level sidebar entry. No data should require more 
 ├── Overview        /
 ├── Projects        /projects
 ├── Sessions        /sessions
-└── Usage           /usage
+├── Usage           /usage
+└── QMD             /qmd
 ```
 
 ### Detail Routes (breadcrumb-navigated)
 ```
 /projects/:name     →  breadcrumb: Projects / {name}
 /tools/:tool_name   →  breadcrumb: Usage / {tool_name}
+/qmd/:name          →  breadcrumb: QMD / {name}
 ```
 
 ### Top Header Bar
@@ -179,6 +182,35 @@ Uses shadcn `Breadcrumb` component. Shows on all detail pages below the top head
 - `get_tool_details` → Per-tool deep-dive
 - `get_session_detail` → Single session (future: session detail page)
 - `resync_sessions` → Re-parse all sessions
+
+---
+
+### 6. QMD (`/qmd`)
+
+**Purpose**: Manage and monitor QMD knowledge base — collections, contexts, index health.
+
+| Section | Component | Description |
+|---|---|---|
+| Health banner | `QmdHealthBanner` | Warnings: not installed, needs embedding, stale index |
+| Stat cards | `StatCard` × 4 | Total Documents, Embedded Chunks, Collections, DB Size |
+| Global context | `GlobalContextEditor` | Inline editable text field |
+| Collections table | `DataTable` | Name, Path, Pattern, Docs, Embedded, Last Updated, Default. Click → collection detail |
+| Actions | Button group | Add Collection, Re-index All, Embed All, Cleanup |
+
+---
+
+### 7. QMD Collection Detail (`/qmd/:name`)
+
+**Purpose**: Deep-dive into a single QMD collection — settings, contexts, files.
+
+| Section | Component | Description |
+|---|---|---|
+| Breadcrumb | `Breadcrumb` | QMD / {name} |
+| Stat cards | `StatCard` × 3 | Documents, Needing Embedding, Last Updated |
+| Settings card | `CollectionSettings` | Path, Pattern, Ignore, Include By Default, Update Command |
+| Context editor | `ContextEditor` | Key-value list: path prefix → description. Add/edit/remove. |
+| Documents table | `DataTable` | Path, Title, Docid, Modified At. Sortable. |
+| Actions | Button group | Re-index, Embed, Rename, Remove |
 
 ---
 
