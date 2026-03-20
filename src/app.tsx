@@ -1,67 +1,150 @@
-import { Routes, Route, Link, useLocation } from "react-router-dom";
-import { Dashboard } from "./pages/dashboard";
-import { Projects } from "./pages/projects";
-import { ProjectDetail } from "./pages/project-detail";
+import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import { LayoutDashboard, FolderOpen, List, BarChart3, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { resync_sessions } from "./api/analytics";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarProvider,
+  SidebarInset,
+  SidebarRail,
+  SidebarTrigger,
+  SidebarGroup,
+  SidebarGroupContent,
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ModeToggle } from "@/components/mode-toggle";
+import { PageHeader } from "@/components/page-header";
 
-export function App() {
+export function AppLayout() {
   const location = useLocation();
+  const [is_syncing, set_is_syncing] = useState(false);
 
   const is_active = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
+    if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
+  const handle_sync = async () => {
+    try {
+      set_is_syncing(true);
+      await resync_sessions();
+      console.log("Sessions synced successfully");
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to sync sessions:", error);
+      alert("Failed to sync sessions");
+    } finally {
+      set_is_syncing(false);
+    }
+  };
+
+  const get_breadcrumbs = () => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    if (parts[0] === 'projects' && parts[1]) {
+      return [{ label: 'Projects', href: '/projects' }, { label: decodeURIComponent(parts[1]) }];
+    }
+    if (parts[0] === 'tools' && parts[1]) {
+      return [{ label: 'Usage', href: '/usage' }, { label: decodeURIComponent(parts[1]) }];
+    }
+    return null;
+  };
+  const breadcrumbs = get_breadcrumbs();
+
   return (
-    <div className="layout">
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div style={{ 
-          padding: '1rem', 
-          borderBottom: '1px solid var(--bg-highlight)',
-          marginBottom: '1rem'
-        }}>
-          <h2 style={{ 
-            color: 'var(--text)', 
-            fontSize: '1.25rem',
-            fontWeight: '600'
-          }}>
+    <ThemeProvider default_theme="dark" storage_key="ariadne-ui-theme">
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
+          <h2 className="text-foreground text-lg font-semibold group-data-[collapsible=icon]:hidden">
             Ariadne
           </h2>
-          <p style={{ 
-            color: 'var(--comment)', 
-            fontSize: '0.75rem',
-            marginTop: '0.25rem'
-          }}>
+          <p className="text-muted-foreground text-xs mt-0.5 group-data-[collapsible=icon]:hidden">
             AI Agent Analytics
           </p>
-        </div>
-        
-        <nav>
-          <Link 
-            to="/" 
-            className={is_active('/') ? 'active' : ''}
-          >
-            Dashboard
-          </Link>
-          <Link 
-            to="/projects" 
-            className={is_active('/projects') ? 'active' : ''}
-          >
-            Projects
-          </Link>
-        </nav>
-      </aside>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link to="/" />}
+                    isActive={location.pathname === "/"}
+                    tooltip="Overview"
+                  >
+                    <LayoutDashboard />
+                    <span>Overview</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link to="/projects" />}
+                    isActive={is_active("/projects")}
+                    tooltip="Projects"
+                  >
+                    <FolderOpen />
+                    <span>Projects</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link to="/sessions" />}
+                    isActive={is_active("/sessions")}
+                    tooltip="Sessions"
+                  >
+                    <List />
+                    <span>Sessions</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link to="/usage" />}
+                    isActive={location.pathname === "/usage" || is_active("/tools")}
+                    tooltip="Usage"
+                  >
+                    <BarChart3 />
+                    <span>Usage</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarRail />
+      </Sidebar>
 
-      {/* Main Content */}
-      <main className="main-content">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/:name" element={<ProjectDetail />} />
-        </Routes>
-      </main>
-    </div>
+      <SidebarInset>
+        <header className="flex items-center gap-2 px-4 py-2 border-b border-border shrink-0">
+          <SidebarTrigger />
+          {breadcrumbs && (
+            <div className="ml-2">
+              <PageHeader items={breadcrumbs} />
+            </div>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handle_sync}
+              disabled={is_syncing}
+            >
+              <RefreshCw className={`h-4 w-4 ${is_syncing ? 'animate-spin' : ''}`} />
+              <span className="ml-2">Sync</span>
+            </Button>
+            <ModeToggle />
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 p-4 md:p-6 lg:p-8">
+          <Outlet />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+    </ThemeProvider>
   );
 }
