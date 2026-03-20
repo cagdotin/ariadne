@@ -14,6 +14,10 @@
 - Use `bun install`, `bun run <script>`, and `bunx <tool>`.
 - Do not use `npm`, `npx`, `yarn`, or `pnpm`.
 
+## Architecture
+
+- **[Information Architecture](docs/information-architecture.md)** — Frontend page structure, navigation hierarchy, data grouping, and layout rules. All UI changes must align with this document.
+
 ## Git Rules
 
 - **Never commit or push without explicit user approval.** All code must be reviewed first.
