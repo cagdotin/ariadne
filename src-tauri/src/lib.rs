@@ -4,6 +4,7 @@ mod commands;
 mod cache;
 
 use commands::analytics::{get_analytics_overview, get_project_sessions, get_session_detail, get_all_sessions, resync_sessions, get_tool_details, get_project_file_stats, get_time_breakdown};
+use commands::qmd::{qmd_check_availability, qmd_get_status, qmd_list_collections, qmd_get_collection_detail, qmd_get_collection_documents, qmd_add_collection, qmd_remove_collection, qmd_rename_collection, qmd_add_context, qmd_remove_context, qmd_set_global_context, qmd_reindex, qmd_embed, qmd_cleanup};
 use cache::SessionCache;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,7 +20,21 @@ pub fn run() {
             resync_sessions,
             get_tool_details,
             get_project_file_stats,
-            get_time_breakdown
+            get_time_breakdown,
+            qmd_check_availability,
+            qmd_get_status,
+            qmd_list_collections,
+            qmd_get_collection_detail,
+            qmd_get_collection_documents,
+            qmd_add_collection,
+            qmd_remove_collection,
+            qmd_rename_collection,
+            qmd_add_context,
+            qmd_remove_context,
+            qmd_set_global_context,
+            qmd_reindex,
+            qmd_embed,
+            qmd_cleanup
         ])
         .setup(|_app| {
             Ok(())
