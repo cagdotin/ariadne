@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import type { ProjectSummary } from "../schemas/analytics";
 import { get_analytics_overview } from "../api/analytics";
-import { format_cost, format_tokens, format_number, format_date_relative } from "../lib/format";
+import { DataTable } from "@/components/data-table";
+import { project_columns } from "@/components/columns/project-columns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function Projects() {
   const [projects, set_projects] = useState<ProjectSummary[]>([]);
@@ -23,72 +25,49 @@ export function Projects() {
         set_loading(false);
       }
     };
-
     fetch_data();
   }, []);
 
   const handle_project_click = (project: ProjectSummary) => {
-    navigate(`/projects/${encodeURIComponent(project.name)}`);
+    navigate({ to: `/projects/${encodeURIComponent(project.name)}` });
   };
 
   if (loading) {
-    return <div className="loading">Loading projects...</div>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-64" />
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error">Error: {error}</div>;
+    return (
+      <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
+        Error: {error}
+      </div>
+    );
   }
 
   if (projects.length === 0) {
     return (
       <div>
-        <h1 className="section-title">Projects</h1>
-        <p style={{ color: 'var(--subtext1)' }}>No projects found.</p>
+        <h1 className="text-xl font-semibold text-foreground mb-6">Projects</h1>
+        <p className="text-muted-foreground">No projects found.</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <h1 className="section-title" style={{ marginBottom: '2rem' }}>Projects</h1>
-      
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Sessions</th>
-            <th>Cost</th>
-            <th>Tokens</th>
-            <th>Last Active</th>
-          </tr>
-        </thead>
-        <tbody>
-          {projects.map((project) => (
-            <tr 
-              key={project.path} 
-              onClick={() => handle_project_click(project)}
-              className="clickable"
-            >
-              <td>
-                <div>
-                  <div style={{ color: 'var(--text)', fontWeight: '500' }}>
-                    {project.name}
-                  </div>
-                  <div style={{ color: 'var(--comment)', fontSize: '0.75rem' }}>
-                    {project.path}
-                  </div>
-                </div>
-              </td>
-              <td>{format_number(project.session_count)}</td>
-              <td>{format_cost(project.total_cost)}</td>
-              <td>{format_tokens(project.total_tokens)}</td>
-              <td style={{ color: 'var(--subtext1)' }}>
-                {format_date_relative(project.last_active)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="min-w-0 w-full space-y-6">
+      <h1 className="text-xl font-semibold text-foreground">Projects</h1>
+      <DataTable
+        columns={project_columns}
+        data={projects}
+        filter_column="name"
+        filter_placeholder="Search projects..."
+        on_row_click={handle_project_click}
+      />
     </div>
   );
 }
