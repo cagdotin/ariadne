@@ -6,6 +6,8 @@ import { ProjectDetail } from './pages/project-detail';
 import { Sessions } from './pages/sessions';
 import { Usage } from './pages/usage';
 import { ToolDetail } from './pages/tool-detail';
+import { Qmd } from './pages/qmd';
+import { QmdCollection } from './pages/qmd-collection';
 
 const root_route = createRootRoute({
   component: AppLayout,
@@ -47,6 +49,18 @@ const tool_detail_route = createRoute({
   component: ToolDetail,
 });
 
+const qmd_route = createRoute({
+  getParentRoute: () => root_route,
+  path: '/qmd',
+  component: Qmd,
+});
+
+const qmd_collection_route = createRoute({
+  getParentRoute: () => root_route,
+  path: '/qmd/$name',
+  component: QmdCollection,
+});
+
 const route_tree = root_route.addChildren([
   index_route,
   projects_route,
@@ -54,6 +68,8 @@ const route_tree = root_route.addChildren([
   sessions_route,
   usage_route,
   tool_detail_route,
+  qmd_route,
+  qmd_collection_route,
 ]);
 
 export const router = createRouter({ routeTree: route_tree });

@@ -5,6 +5,7 @@ import {
   List,
   BarChart3,
   RefreshCw,
+  LibraryBig,
 } from "lucide-react";
 import { useState } from "react";
 import { resync_sessions } from "./api/analytics";
@@ -62,6 +63,12 @@ export function AppLayout() {
     if (parts[0] === "tools" && parts[1]) {
       return [
         { label: "Usage", href: "/usage" },
+        { label: decodeURIComponent(parts[1]) },
+      ];
+    }
+    if (parts[0] === "qmd" && parts[1]) {
+      return [
+        { label: "QMD", href: "/qmd" },
         { label: decodeURIComponent(parts[1]) },
       ];
     }
@@ -127,6 +134,16 @@ export function AppLayout() {
                     >
                       <BarChart3 />
                       <span>Usage</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      render={<Link to="/qmd" />}
+                      isActive={is_active("/qmd")}
+                      tooltip="QMD"
+                    >
+                      <LibraryBig />
+                      <span>QMD</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
