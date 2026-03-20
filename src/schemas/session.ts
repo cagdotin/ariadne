@@ -41,6 +41,10 @@ export const SessionSummarySchema = z.object({
   turn_count: z.number(),
   compaction_count: z.number(),
   tool_calls: z.record(z.string(), ToolCallSummarySchema),
+  bash_commands: z.record(z.string(), z.number()),
+  read_files: z.record(z.string(), z.number()),
+  edit_files: z.record(z.string(), z.number()),
+  write_files: z.record(z.string(), z.number()),
   models_used: z.array(ModelUsageSchema),
 });
 export type SessionSummary = z.infer<typeof SessionSummarySchema>;
