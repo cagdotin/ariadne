@@ -3,16 +3,58 @@ use super::session::SessionSummary;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
+pub struct WeekdayStat {
+    pub day: String,
+    pub sessions: u32,
+    pub cost: f64,
+    pub share: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct TimeOfDayStat {
+    pub label: String,
+    pub hour_start: u32,
+    pub hour_end: u32,
+    pub sessions: u32,
+    pub cost: f64,
+    pub share: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct TimeBreakdown {
+    pub range_days: u32,
+    pub total_sessions: u32,
+    pub total_cost: f64,
+    pub avg_cost_per_session: f64,
+    pub total_tokens: u64,
+    pub by_weekday: Vec<WeekdayStat>,
+    pub by_time_of_day: Vec<TimeOfDayStat>,
+    pub daily_sessions: Vec<DayCount>,
+    pub daily_cost: Vec<DayCost>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct AnalyticsOverview {
     pub total_sessions: u32,
     pub total_projects: u32,
     pub total_cost: f64,
+    pub input_cost: f64,
+    pub output_cost: f64,
+    pub cache_read_cost: f64,
+    pub cache_write_cost: f64,
     pub total_tokens: u64,
     pub sessions_by_date: Vec<DayCount>,      // for activity heatmap
     pub cost_by_date: Vec<DayCost>,           // for cost trend
     pub projects: Vec<ProjectSummary>,
     pub models: Vec<ModelAggregate>,
     pub tools: Vec<ToolAggregate>,
+    pub top_bash_commands: Vec<NameCount>,   // top 20 most used bash programs
+    pub top_read_files: Vec<NameCount>,      // top 20 most read files  
+    pub top_edit_files: Vec<NameCount>,      // top 20 most edited files
+    pub top_write_files: Vec<NameCount>,     // top 20 most written files
     pub recent_sessions: Vec<SessionSummary>, // last 20
 }
 
@@ -56,4 +98,54 @@ pub struct ToolAggregate {
     pub name: String,
     pub total_calls: u32,
     pub total_errors: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct NameCount {
+    pub name: String,
+    pub count: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ToolDetailResponse {
+    pub tool_name: String,
+    pub total_calls: u32,
+    pub total_errors: u32,
+    pub items: Vec<NameCount>,
+    pub by_project: Vec<ProjectToolSummary>,
+    pub by_date: Vec<DayCount>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct DirectoryStat {
+    pub path: String,
+    pub read_count: u32,
+    pub edit_count: u32,
+    pub write_count: u32,
+    pub total: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ProjectFileStats {
+    pub project_name: String,
+    pub total_sessions: u32,
+    pub tool_distribution: Vec<NameCount>,
+    pub read_files: Vec<NameCount>,
+    pub edit_files: Vec<NameCount>,
+    pub write_files: Vec<NameCount>,
+    pub bash_commands: Vec<NameCount>,
+    pub directory_stats: Vec<DirectoryStat>,
+    pub activity_by_date: Vec<DayCount>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ProjectToolSummary {
+    pub project_name: String,
+    pub total_calls: u32,
+    pub items: Vec<NameCount>,
 }

@@ -39,6 +39,12 @@ pub struct SessionSummary {
     // Tool breakdown
     pub tool_calls: HashMap<String, ToolCallSummary>,
 
+    // Tool call details
+    pub bash_commands: HashMap<String, u32>,  // program name → call count
+    pub read_files: HashMap<String, u32>,     // file path → read count
+    pub edit_files: HashMap<String, u32>,     // file path → edit count
+    pub write_files: HashMap<String, u32>,    // file path → write count
+
     // Models used
     pub models_used: Vec<ModelUsage>,
 }
