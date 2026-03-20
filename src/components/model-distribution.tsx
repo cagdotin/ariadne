@@ -1,68 +1,77 @@
 import type { ModelAggregate } from "../schemas/analytics";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis } from "recharts";
 
 interface ModelDistributionProps {
   models: ModelAggregate[];
 }
 
-export function ModelDistribution({ models }: ModelDistributionProps) {
-  const sorted_models = [...models].sort((a, b) => b.message_count - a.message_count);
-  const max_count = sorted_models[0]?.message_count || 1;
-  
-  // Colors cycle through different Tokyo Night colors
-  const colors = [
-    'var(--blue)',
-    'var(--magenta)', 
-    'var(--teal)',
-    'var(--orange)',
-    'var(--purple)',
-    'var(--cyan)',
-    'var(--green)',
-    'var(--yellow)'
-  ];
+const COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--ring)",
+  "var(--primary)",
+  "var(--muted-foreground)",
+];
 
-  const format_cost = (cost: number) => {
-    return `$${cost.toFixed(4)}`;
-  };
+export function ModelDistribution({ models }: ModelDistributionProps) {
+  const sorted_models = [...models]
+    .sort((a, b) => b.message_count - a.message_count)
+    .slice(0, 8);
+
+  const chart_config: ChartConfig = Object.fromEntries(
+    sorted_models.map((m, i) => [
+      m.model_id,
+      { label: m.model_id, color: COLORS[i % COLORS.length] },
+    ])
+  );
+
+  const chart_data = sorted_models.map((m, i) => ({
+    name: m.model_id,
+    messages: m.message_count,
+    fill: COLORS[i % COLORS.length],
+  }));
 
   return (
-    <div style={{ padding: '1rem', background: 'var(--bg-float)', borderRadius: '4px' }}>
-      <h3 className="section-title">Model Distribution</h3>
-      <div className="bar-chart">
-        {sorted_models.map((model, index) => {
-          const width = (model.message_count / max_count) * 100;
-          const color = colors[index % colors.length];
-          
-          return (
-            <div key={`${model.model_id}-${model.provider}`} className="bar-item">
-              <div className="bar-label" style={{ minWidth: '150px' }}>
-                <div style={{ color: 'var(--text)', fontSize: '0.8rem' }}>
-                  {model.model_id}
-                </div>
-                <div style={{ color: 'var(--comment)', fontSize: '0.65rem' }}>
-                  {model.provider}
-                </div>
-              </div>
-              <div className="bar-visual">
-                <div 
-                  className="bar-fill"
-                  style={{ 
-                    width: `${width}%`,
-                    background: color
-                  }}
-                />
-              </div>
-              <div className="bar-count" style={{ minWidth: '100px', textAlign: 'right' }}>
-                <div style={{ color: 'var(--text)', fontSize: '0.75rem' }}>
-                  {model.message_count} msgs
-                </div>
-                <div style={{ color: 'var(--comment)', fontSize: '0.65rem' }}>
-                  {format_cost(model.total_cost)}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <Card className="min-w-0 overflow-hidden">
+      <CardHeader>
+        <CardTitle className="text-base">Model Distribution</CardTitle>
+      </CardHeader>
+      <CardContent className="min-w-0">
+        <ChartContainer config={chart_config} className="h-[300px] w-full">
+          <BarChart
+            data={chart_data}
+            layout="vertical"
+            margin={{ left: 8, right: 8 }}
+          >
+            <XAxis type="number" hide />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={130}
+              interval={0}
+              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="messages" radius={[0, 2, 2, 0]}>
+              {chart_data.map((entry, i) => (
+                <rect key={i} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
   );
 }

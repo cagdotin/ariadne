@@ -1,3 +1,12 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { PieChart, Pie, Cell } from "recharts";
+
 interface CostBreakdownProps {
   input_cost: number;
   output_cost: number;
@@ -5,114 +14,85 @@ interface CostBreakdownProps {
   cache_write_cost: number;
 }
 
-export function CostBreakdown({ 
-  input_cost, 
-  output_cost, 
-  cache_read_cost, 
-  cache_write_cost 
+const chart_config = {
+  input: { label: "Input", color: "var(--chart-1)" },
+  output: { label: "Output", color: "var(--chart-3)" },
+  cache_read: { label: "Cache Read", color: "var(--chart-5)" },
+  cache_write: { label: "Cache Write", color: "var(--chart-4)" },
+} satisfies ChartConfig;
+
+export function CostBreakdown({
+  input_cost,
+  output_cost,
+  cache_read_cost,
+  cache_write_cost,
 }: CostBreakdownProps) {
   const total_cost = input_cost + output_cost + cache_read_cost + cache_write_cost;
-  
-  const categories = [
-    { name: 'Input', cost: input_cost, color: 'var(--blue)' },
-    { name: 'Output', cost: output_cost, color: 'var(--green)' },
-    { name: 'Cache Read', cost: cache_read_cost, color: 'var(--teal)' },
-    { name: 'Cache Write', cost: cache_write_cost, color: 'var(--orange)' }
-  ].filter(cat => cat.cost > 0);
 
-  const format_cost = (cost: number) => {
-    return `$${cost.toFixed(4)}`;
-  };
+  const raw_categories = [
+    { key: "input", name: "Input", cost: input_cost, color: "var(--chart-1)" },
+    { key: "output", name: "Output", cost: output_cost, color: "var(--chart-3)" },
+    { key: "cache_read", name: "Cache Read", cost: cache_read_cost, color: "var(--chart-5)" },
+    { key: "cache_write", name: "Cache Write", cost: cache_write_cost, color: "var(--chart-4)" },
+  ].filter((c) => c.cost > 0);
 
-  const get_percentage = (cost: number) => {
-    if (total_cost === 0) return 0;
-    return (cost / total_cost) * 100;
-  };
+  const format_cost = (cost: number) => `$${cost.toFixed(4)}`;
+  const get_pct = (cost: number) =>
+    total_cost === 0 ? 0 : (cost / total_cost) * 100;
 
   return (
-    <div style={{ padding: '1rem', background: 'var(--bg-float)', borderRadius: '4px' }}>
-      <h3 className="section-title">Cost Breakdown</h3>
-      
-      {/* Stacked bar */}
-      <div style={{ 
-        marginBottom: '1rem',
-        height: '20px',
-        background: 'var(--bg-highlight)',
-        borderRadius: '4px',
-        display: 'flex',
-        overflow: 'hidden'
-      }}>
-        {categories.map((category) => {
-          const width = get_percentage(category.cost);
-          return (
-            <div
-              key={category.name}
-              style={{
-                width: `${width}%`,
-                background: category.color,
-                height: '100%'
-              }}
-              title={`${category.name}: ${format_cost(category.cost)} (${width.toFixed(1)}%)`}
-            />
-          );
-        })}
-      </div>
+    <Card className="min-w-0 overflow-hidden">
+      <CardHeader>
+        <CardTitle className="text-base">LLM API Cost Breakdown</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Token costs across all sessions
+        </p>
+      </CardHeader>
+      <CardContent className="min-w-0">
+        <div className="flex flex-col sm:flex-row gap-6 items-center">
+          <ChartContainer config={chart_config} className="h-[180px] w-[180px] shrink-0">
+            <PieChart>
+              <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+              <Pie
+                data={raw_categories}
+                dataKey="cost"
+                nameKey="name"
+                innerRadius={50}
+                outerRadius={80}
+                strokeWidth={2}
+              >
+                {raw_categories.map((cat, i) => (
+                  <Cell key={i} fill={cat.color} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ChartContainer>
 
-      {/* Legend */}
-      <div className="bar-chart">
-        {categories.map((category) => {
-          const percentage = get_percentage(category.cost);
-          
-          return (
-            <div key={category.name} className="bar-item">
-              <div className="bar-label" style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                minWidth: '120px'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  background: category.color,
-                  borderRadius: '2px'
-                }} />
-                {category.name}
+          <div className="flex flex-col gap-2 flex-1">
+            {raw_categories.map((cat) => (
+              <div key={cat.key} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-sm"
+                    style={{ background: cat.color }}
+                  />
+                  <span className="text-muted-foreground">{cat.name}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-foreground">{format_cost(cat.cost)}</span>
+                  <span className="text-muted-foreground ml-2 text-xs">
+                    {get_pct(cat.cost).toFixed(1)}%
+                  </span>
+                </div>
               </div>
-              <div className="bar-visual">
-                <div 
-                  className="bar-fill"
-                  style={{ 
-                    width: `${percentage}%`,
-                    background: category.color
-                  }}
-                />
-              </div>
-              <div className="bar-count">
-                {format_cost(category.cost)}
-                <span style={{ color: 'var(--comment)', marginLeft: '4px' }}>
-                  ({percentage.toFixed(1)}%)
-                </span>
-              </div>
+            ))}
+            <div className="flex items-center justify-between text-sm font-semibold border-t border-border pt-2 mt-1">
+              <span>Total</span>
+              <span>{format_cost(total_cost)}</span>
             </div>
-          );
-        })}
-      </div>
-      
-      {/* Total */}
-      <div style={{ 
-        marginTop: '1rem', 
-        paddingTop: '1rem', 
-        borderTop: '1px solid var(--bg-highlight)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <span style={{ color: 'var(--text)', fontWeight: '600' }}>Total</span>
-        <span style={{ color: 'var(--text)', fontWeight: '600' }}>
-          {format_cost(total_cost)}
-        </span>
-      </div>
-    </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
