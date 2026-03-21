@@ -16,10 +16,11 @@ export function create_tool_item_columns(max_count: number): ColumnDef<ToolItem>
     {
       id: "bar",
       header: "",
+      size: 120,
       cell: ({ row }) => {
         const pct = max_count > 0 ? (row.original.count / max_count) * 100 : 0;
         return (
-          <div className="w-full h-3 rounded-sm bg-muted min-w-[80px]">
+          <div className="w-full h-3 rounded-sm bg-muted">
             <div
               className="h-full rounded-sm bg-primary opacity-70"
               style={{ width: `${pct}%` }}
@@ -31,6 +32,7 @@ export function create_tool_item_columns(max_count: number): ColumnDef<ToolItem>
     {
       accessorKey: "count",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Count" />,
+      size: 80,
       cell: ({ row }) => (
         <span className="text-right tabular-nums block">{format_number(row.original.count)}</span>
       ),

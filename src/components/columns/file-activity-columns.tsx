@@ -15,6 +15,7 @@ export const file_activity_columns: ColumnDef<NameCount>[] = [
   {
     accessorKey: "count",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Count" />,
+    size: 80,
     cell: ({ row }) => (
       <span className="text-right text-muted-foreground block">{row.original.count}</span>
     ),

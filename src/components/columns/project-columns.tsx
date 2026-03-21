@@ -17,21 +17,25 @@ export const project_columns: ColumnDef<ProjectSummary>[] = [
   {
     accessorKey: "session_count",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Sessions" />,
+    size: 90,
     cell: ({ row }) => <span>{format_number(row.original.session_count)}</span>,
   },
   {
     accessorKey: "total_cost",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Cost" />,
+    size: 80,
     cell: ({ row }) => <span>{format_cost(row.original.total_cost)}</span>,
   },
   {
     accessorKey: "total_tokens",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Tokens" />,
+    size: 90,
     cell: ({ row }) => <span>{format_tokens(row.original.total_tokens)}</span>,
   },
   {
     accessorKey: "last_active",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Last Active" />,
+    size: 110,
     cell: ({ row }) => (
       <span className="text-muted-foreground">{format_date_relative(row.original.last_active)}</span>
     ),
