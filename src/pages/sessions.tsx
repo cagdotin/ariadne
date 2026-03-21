@@ -5,6 +5,7 @@ import { get_all_sessions, get_analytics_overview } from "@/api/analytics";
 import { DataTable } from "@/components/data-table";
 import { session_columns, session_columns_with_project } from "@/components/columns/session-columns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { error_message } from "@/lib/utils";
 
 export function Sessions() {
   const [sessions, set_sessions] = useState<SessionSummary[]>([]);
@@ -25,7 +26,7 @@ export function Sessions() {
         const data = await get_all_sessions(selected_project || undefined);
         set_sessions(data);
       } catch (err) {
-        set_error(err instanceof Error ? err.message : "Failed to load sessions");
+        set_error(error_message(err, "Failed to load sessions"));
       } finally {
         set_loading(false);
       }
@@ -42,9 +43,8 @@ export function Sessions() {
   }
 
   return (
-    <div className="min-w-0 w-full space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">Sessions</h1>
+    <div className="min-w-0 w-full space-y-4">
+      <div className="flex items-center justify-end gap-4">
         <select
           value={selected_project}
           onChange={(e) => set_selected_project(e.target.value)}

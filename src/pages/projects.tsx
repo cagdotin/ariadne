@@ -5,6 +5,7 @@ import { get_analytics_overview } from "../api/analytics";
 import { DataTable } from "@/components/data-table";
 import { project_columns } from "@/components/columns/project-columns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { error_message } from "@/lib/utils";
 
 export function Projects() {
   const [projects, set_projects] = useState<ProjectSummary[]>([]);
@@ -20,7 +21,7 @@ export function Projects() {
         const overview = await get_analytics_overview();
         set_projects(overview.projects);
       } catch (err) {
-        set_error(err instanceof Error ? err.message : 'Failed to load projects');
+        set_error(error_message(err, "Failed to load projects"));
       } finally {
         set_loading(false);
       }
@@ -52,15 +53,13 @@ export function Projects() {
   if (projects.length === 0) {
     return (
       <div>
-        <h1 className="text-xl font-semibold text-foreground mb-6">Projects</h1>
         <p className="text-muted-foreground">No projects found.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-w-0 w-full space-y-6">
-      <h1 className="text-xl font-semibold text-foreground">Projects</h1>
+    <div className="min-w-0 w-full space-y-4">
       <DataTable
         columns={project_columns}
         data={projects}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "@tanstack/react-router";
+import { useParams, useNavigate } from "@tanstack/react-router";
 import type { QmdCollectionDetail } from "@/schemas/qmd";
 import {
   qmd_get_collection_detail,
@@ -8,25 +8,27 @@ import {
   qmd_reindex,
   qmd_embed,
   qmd_remove_collection,
+  qmd_scan_filesystem,
+  qmd_get_indexed_paths,
+  qmd_toggle_files,
 } from "@/api/qmd";
+import { resolve_indexed_paths } from "@/lib/qmd-tree";
 import { StatCard } from "@/components/stat-card";
-import { DataTable } from "@/components/data-table";
-import { qmd_document_columns } from "@/components/columns/qmd-document-columns";
 import { ContextEditor } from "@/components/context-editor";
+import { CollectionFileTree } from "@/components/collection-file-tree";
+import { QmdProgress } from "@/components/qmd-progress";
+import { InfoTip } from "@/components/info-tip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format_number, format_date_relative } from "@/lib/format";
-import { RefreshCw, Zap, Trash2 } from "lucide-react";
+import { error_message } from "@/lib/utils";
+import { RefreshCw, Zap, Trash2, FolderTree, Settings, MessageSquare } from "lucide-react";
+import { use_qmd_operation } from "@/hooks/use-qmd-operation";
+import { cn } from "@/lib/utils";
+
+type TabId = "files" | "settings" | "contexts";
 
 export function QmdCollection() {
   const { name } = useParams({ strict: false }) as { name: string };
@@ -36,6 +38,14 @@ export function QmdCollection() {
   const [error, set_error] = useState<string | null>(null);
   const [action_loading, set_action_loading] = useState<string | null>(null);
   const [confirm_remove, set_confirm_remove] = useState(false);
+  const [active_tab, set_active_tab] = useState<TabId>("files");
+  const { state: op_state, start_operation, clear_operation } = use_qmd_operation();
+
+  // File tree data (loaded separately, can be slow)
+  const [fs_paths, set_fs_paths] = useState<string[] | null>(null);
+  const [indexed_paths, set_indexed_paths] = useState<string[] | null>(null);
+  const [tree_loading, set_tree_loading] = useState(false);
+  const [tree_error, set_tree_error] = useState<string | null>(null);
 
   const fetch_data = async () => {
     if (!name) return;
@@ -45,37 +55,70 @@ export function QmdCollection() {
       const d = await qmd_get_collection_detail(name);
       set_detail(d);
     } catch (err) {
-      set_error(err instanceof Error ? err.message : "Failed to load collection");
+      set_error(error_message(err, "Failed to load collection"));
     } finally {
       set_loading(false);
     }
   };
 
+  const fetch_tree_data = async () => {
+    if (!name) return;
+    try {
+      set_tree_loading(true);
+      set_tree_error(null);
+      const [fs, db_idx] = await Promise.all([
+        qmd_scan_filesystem(name),
+        qmd_get_indexed_paths(name),
+      ]);
+      // DB stores handleized paths (lowercased, normalized). Resolve them
+      // back to filesystem paths so the tree comparison works correctly.
+      const resolved = resolve_indexed_paths(fs, db_idx);
+      set_fs_paths(fs);
+      set_indexed_paths([...resolved]);
+    } catch (err) {
+      set_tree_error(error_message(err, "Failed to scan files"));
+    } finally {
+      set_tree_loading(false);
+    }
+  };
+
   useEffect(() => { fetch_data(); }, [name]);
+
+  // Load tree data when switching to files tab or on mount
+  useEffect(() => {
+    if (active_tab === "files" && fs_paths === null && !tree_loading) {
+      fetch_tree_data();
+    }
+  }, [active_tab, name]);
 
   const handle_reindex = async () => {
     try {
       set_action_loading("reindex");
+      start_operation("update");
       const result = await qmd_reindex();
       if (!result.success) set_error(result.output || "Re-index failed");
       await fetch_data();
+      await fetch_tree_data();
     } catch (err) {
-      set_error(err instanceof Error ? err.message : "Re-index failed");
+      set_error(error_message(err, "Re-index failed"));
     } finally {
       set_action_loading(null);
+      clear_operation();
     }
   };
 
   const handle_embed = async () => {
     try {
       set_action_loading("embed");
+      start_operation("embed");
       const result = await qmd_embed();
       if (!result.success) set_error(result.output || "Embed failed");
       await fetch_data();
     } catch (err) {
-      set_error(err instanceof Error ? err.message : "Embed failed");
+      set_error(error_message(err, "Embed failed"));
     } finally {
       set_action_loading(null);
+      clear_operation();
     }
   };
 
@@ -89,7 +132,7 @@ export function QmdCollection() {
         set_error(result.output || "Failed to remove collection");
       }
     } catch (err) {
-      set_error(err instanceof Error ? err.message : "Failed to remove collection");
+      set_error(error_message(err, "Failed to remove collection"));
     } finally {
       set_action_loading(null);
     }
@@ -105,6 +148,13 @@ export function QmdCollection() {
     await fetch_data();
   };
 
+  const handle_apply_toggle = async (adds: string[], removes: string[]) => {
+    if (!detail) return;
+    await qmd_toggle_files(name, detail.collection.path, adds, removes);
+    await fetch_data();
+    await fetch_tree_data();
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -113,13 +163,13 @@ export function QmdCollection() {
         <div className="flex flex-wrap gap-3">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[88px] flex-1 min-w-[140px]" />)}
         </div>
-        <Skeleton className="h-40" />
+        <Skeleton className="h-10 w-72" />
         <Skeleton className="h-64" />
       </div>
     );
   }
 
-  if (error) {
+  if (error && !detail) {
     return (
       <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
         Error: {error}
@@ -129,35 +179,24 @@ export function QmdCollection() {
 
   if (!detail) return null;
 
-  const { collection, documents } = detail;
+  const { collection } = detail;
   const needs_embedding = collection.active_doc_count - collection.embedded_count;
 
-  return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to="/qmd" />}>
-              QMD
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{collection.name}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+  const tabs: { id: TabId; label: string; icon: typeof FolderTree }[] = [
+    { id: "files", label: "Files", icon: FolderTree },
+    { id: "settings", label: "Settings", icon: Settings },
+    { id: "contexts", label: "Contexts", icon: MessageSquare },
+  ];
 
-      {/* Header + Actions */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">{collection.name}</h1>
-        <div className="flex items-center gap-2">
+  return (
+    <div className="space-y-4">
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-2 flex-wrap">
           <Button
             size="sm"
             variant="outline"
             onClick={handle_reindex}
-            disabled={action_loading !== null}
+            disabled={op_state.is_busy}
           >
             <RefreshCw className={`h-3.5 w-3.5 mr-1 ${action_loading === "reindex" ? "animate-spin" : ""}`} />
             Re-index
@@ -166,7 +205,7 @@ export function QmdCollection() {
             size="sm"
             variant="outline"
             onClick={handle_embed}
-            disabled={action_loading !== null}
+            disabled={op_state.is_busy}
           >
             <Zap className="h-3.5 w-3.5 mr-1" />
             Embed
@@ -178,7 +217,7 @@ export function QmdCollection() {
                 size="sm"
                 variant="destructive"
                 onClick={handle_remove}
-                disabled={action_loading !== null}
+                disabled={op_state.is_busy}
               >
                 Confirm
               </Button>
@@ -192,23 +231,48 @@ export function QmdCollection() {
               variant="outline"
               onClick={() => set_confirm_remove(true)}
               className="text-destructive hover:text-destructive"
+              disabled={op_state.is_busy}
             >
               <Trash2 className="h-3.5 w-3.5 mr-1" />
               Remove
             </Button>
           )}
-        </div>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="rounded-md bg-destructive/20 border border-destructive p-3 text-destructive text-sm">
+          {error}
+          <Button size="sm" variant="ghost" className="ml-2 h-6 text-xs" onClick={() => set_error(null)}>
+            Dismiss
+          </Button>
+        </div>
+      )}
+
+      {/* Progress */}
+      {op_state.is_busy && op_state.operation && (
+        <QmdProgress operation={op_state.operation} progress={op_state.progress} />
+      )}
 
       {/* Stat Cards */}
       <div className="flex flex-wrap gap-3">
         <StatCard
           label="Documents"
           value={format_number(collection.active_doc_count)}
+          info_tip={
+            <InfoTip title="Documents" side="bottom" align="center">
+              <p>The number of active files in this collection that have been indexed by QMD. Only files matching the collection's glob pattern and that are toggled on in the Files tab are counted.</p>
+            </InfoTip>
+          }
         />
         <StatCard
           label="Needing Embedding"
           value={format_number(Math.max(0, needs_embedding))}
+          info_tip={
+            <InfoTip title="Needing Embedding" side="bottom" align="center">
+              <p>Documents that have been indexed but not yet converted into vector embeddings. Embeddings enable semantic search — finding documents by meaning rather than exact keywords. Click <strong>Embed</strong> to process these.</p>
+            </InfoTip>
+          }
         />
         <StatCard
           label="Last Updated"
@@ -216,64 +280,143 @@ export function QmdCollection() {
         />
       </div>
 
-      {/* Settings Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Settings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Path</p>
-              <p className="text-foreground font-mono text-xs break-all">{collection.path}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Glob Pattern</p>
-              <p className="text-foreground font-mono text-xs">{collection.pattern}</p>
-            </div>
-            {collection.ignore_patterns.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Ignore Patterns</p>
-                <div className="flex flex-wrap gap-1">
-                  {collection.ignore_patterns.map((p) => (
-                    <Badge key={p} variant="secondary" className="text-xs font-mono">{p}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Include by Default</p>
-              <Badge variant={collection.include_by_default ? "default" : "secondary"}>
-                {collection.include_by_default ? "Yes" : "No"}
-              </Badge>
-            </div>
-            {collection.update_command && (
-              <div className="sm:col-span-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Update Command</p>
-                <p className="text-foreground font-mono text-xs">{collection.update_command}</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Context Editor */}
-      <ContextEditor
-        contexts={collection.contexts}
-        onAdd={handle_add_context}
-        onRemove={handle_remove_context}
-      />
-
-      {/* Documents Table */}
-      <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4">Documents</h2>
-        <DataTable
-          columns={qmd_document_columns}
-          data={documents}
-          filter_column="path"
-          filter_placeholder="Search documents..."
-        />
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-border">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => set_active_tab(tab.id)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors",
+                "border-b-2 -mb-px",
+                active_tab === tab.id
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+              {tab.id === "contexts" && collection.contexts.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] h-4 px-1 ml-1">
+                  {collection.contexts.length}
+                </Badge>
+              )}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Tab Content */}
+      {active_tab === "files" && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <InfoTip title="File Tree" side="bottom" align="start">
+              <div className="space-y-2">
+                <p>This tree shows all files matching the collection's glob pattern. Click files or folders to toggle them in or out of the index.</p>
+                <p className="font-medium text-foreground">Status indicators:</p>
+                <ul className="space-y-1 ml-1">
+                  <li><span className="font-mono text-foreground">●</span> — Fully indexed</li>
+                  <li><span className="font-mono text-foreground">◐</span> — Partially indexed (some children)</li>
+                  <li><span className="font-mono text-foreground">○</span> — Not indexed</li>
+                  <li><span className="font-mono text-yellow-500">◉</span> — Pending add (will be indexed)</li>
+                  <li><span className="font-mono text-yellow-500">◎</span> — Pending remove (will be unindexed)</li>
+                </ul>
+                <p>Changes are staged until you click <strong>Apply Changes</strong>.</p>
+              </div>
+            </InfoTip>
+          </div>
+          {tree_loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-[400px]" />
+            </div>
+          ) : tree_error ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                {tree_error}
+              </CardContent>
+            </Card>
+          ) : fs_paths && indexed_paths ? (
+            <CollectionFileTree
+              filesystem_paths={fs_paths}
+              indexed_paths={indexed_paths}
+              collection_name={name}
+              repo_root={collection.path}
+              on_apply={handle_apply_toggle}
+            />
+          ) : null}
+        </div>
+      )}
+
+      {active_tab === "settings" && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Collection Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Path</p>
+                <p className="text-foreground font-mono text-xs break-all">{collection.path}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+                  Glob Pattern
+                  <InfoTip title="Glob Pattern" side="bottom" align="start">
+                    <div className="space-y-1.5">
+                      <p>A pattern that determines which files QMD will discover in this collection's directory.</p>
+                      <p className="font-medium text-foreground">Common patterns:</p>
+                      <ul className="space-y-0.5 ml-1">
+                        <li><code className="bg-muted px-1 rounded text-[11px]">**/*.md</code> — All markdown files, any depth</li>
+                        <li><code className="bg-muted px-1 rounded text-[11px]">docs/**/*.md</code> — Only in the docs folder</li>
+                        <li><code className="bg-muted px-1 rounded text-[11px]">*.md</code> — Only top-level markdown files</li>
+                      </ul>
+                    </div>
+                  </InfoTip>
+                </p>
+                <p className="text-foreground font-mono text-xs">{collection.pattern}</p>
+              </div>
+              {collection.ignore_patterns.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Ignore Patterns</p>
+                  <div className="flex flex-wrap gap-1">
+                    {collection.ignore_patterns.map((p) => (
+                      <Badge key={p} variant="secondary" className="text-xs font-mono">{p}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+                  Include by Default
+                  <InfoTip title="Include by Default" side="bottom" align="start">
+                    <p>When enabled, all files matching the glob pattern are automatically included in the index. When disabled, you must manually toggle individual files on in the Files tab. Useful for large repos where you only want to index specific documents.</p>
+                  </InfoTip>
+                </p>
+                <Badge variant={collection.include_by_default ? "default" : "secondary"}>
+                  {collection.include_by_default ? "Yes" : "No"}
+                </Badge>
+              </div>
+              {collection.update_command && (
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Update Command</p>
+                  <p className="text-foreground font-mono text-xs">{collection.update_command}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {active_tab === "contexts" && (
+        <ContextEditor
+          contexts={collection.contexts}
+          onAdd={handle_add_context}
+          onRemove={handle_remove_context}
+        />
+      )}
     </div>
   );
 }

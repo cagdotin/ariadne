@@ -7,6 +7,7 @@ import { ActivityHeatmap } from "../components/activity-heatmap";
 import { DailyTrend } from "@/components/daily-trend";
 import { TopProjects } from "@/components/top-projects";
 import { Skeleton } from "@/components/ui/skeleton";
+import { error_message } from "@/lib/utils";
 
 const RANGE_OPTIONS = [
   { label: "Today", value: 1 },
@@ -37,7 +38,7 @@ export function Dashboard() {
         set_time_data(tb);
       } catch (err) {
         set_error(
-          err instanceof Error ? err.message : "Failed to load analytics",
+          error_message(err, "Failed to load analytics"),
         );
       } finally {
         set_loading(false);
@@ -112,10 +113,9 @@ export function Dashboard() {
         : ` last ${range_days}d`;
 
   return (
-    <div className="container mx-auto flex flex-col gap-4">
-      {/* Header with range picker */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">Overview</h1>
+    <div className="flex flex-col gap-4 min-w-0">
+      {/* Range picker */}
+      <div className="flex items-center justify-end gap-4">
         <div className="flex items-center gap-1 shrink-0">
           {RANGE_OPTIONS.map((opt) => (
             <button

@@ -52,27 +52,32 @@ export function AppLayout() {
     }
   };
 
-  const get_breadcrumbs = () => {
+  const get_breadcrumbs = (): { label: string; href?: string }[] => {
     const parts = location.pathname.split("/").filter(Boolean);
+    if (parts.length === 0) return [{ label: "Overview" }];
     if (parts[0] === "projects" && parts[1]) {
       return [
         { label: "Projects", href: "/projects" },
         { label: decodeURIComponent(parts[1]) },
       ];
     }
+    if (parts[0] === "projects") return [{ label: "Projects" }];
+    if (parts[0] === "sessions") return [{ label: "Sessions" }];
     if (parts[0] === "tools" && parts[1]) {
       return [
         { label: "Usage", href: "/usage" },
         { label: decodeURIComponent(parts[1]) },
       ];
     }
+    if (parts[0] === "usage") return [{ label: "Usage" }];
     if (parts[0] === "qmd" && parts[1]) {
       return [
         { label: "QMD", href: "/qmd" },
         { label: decodeURIComponent(parts[1]) },
       ];
     }
-    return null;
+    if (parts[0] === "qmd") return [{ label: "QMD" }];
+    return [{ label: parts[0] }];
   };
   const breadcrumbs = get_breadcrumbs();
 
@@ -156,11 +161,9 @@ export function AppLayout() {
         <SidebarInset>
           <header className="flex items-center gap-2 px-4 py-2 border-b border-border shrink-0">
             <SidebarTrigger />
-            {breadcrumbs && (
-              <div className="ml-2">
-                <PageHeader items={breadcrumbs} />
-              </div>
-            )}
+            <div className="ml-2">
+              <PageHeader items={breadcrumbs} />
+            </div>
             <div className="ml-auto flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -177,7 +180,9 @@ export function AppLayout() {
             </div>
           </header>
           <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 p-4 md:p-6 lg:p-8">
-            <Outlet />
+            <div className="flex flex-col gap-4 min-w-0 max-w-full">
+              <Outlet />
+            </div>
           </div>
         </SidebarInset>
       </SidebarProvider>

@@ -7,16 +7,19 @@ export const session_columns: ColumnDef<SessionSummary>[] = [
   {
     accessorKey: "title",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
+    size: undefined,
+    meta: { className: "w-auto" },
     cell: ({ row }) => {
       const title = row.original.title;
       const id = row.original.id;
       const display = title || id.slice(0, 50) + "...";
-      return <span className="truncate max-w-xs block">{display}</span>;
+      return <span className="truncate block">{display}</span>;
     },
   },
   {
     accessorKey: "duration_seconds",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Duration" />,
+    size: 90,
     cell: ({ row }) => {
       const val = row.original.duration_seconds;
       return <span>{val === null ? "-" : format_duration(val)}</span>;
@@ -25,16 +28,19 @@ export const session_columns: ColumnDef<SessionSummary>[] = [
   {
     accessorKey: "total_cost",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Cost" />,
+    size: 80,
     cell: ({ row }) => <span>{format_cost(row.original.total_cost)}</span>,
   },
   {
     accessorKey: "total_tokens",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Tokens" />,
+    size: 90,
     cell: ({ row }) => <span>{format_tokens(row.original.total_tokens)}</span>,
   },
   {
     id: "tools",
     header: "Tools",
+    size: 120,
     accessorFn: (row) => {
       const tool_calls = row.tool_calls;
       const sorted = Object.values(tool_calls).sort((a, b) => b.calls - a.calls);
@@ -44,12 +50,13 @@ export const session_columns: ColumnDef<SessionSummary>[] = [
         .join(", ");
     },
     cell: ({ getValue }) => (
-      <span className="text-xs text-muted-foreground">{getValue() as string}</span>
+      <span className="text-xs text-muted-foreground truncate block">{getValue() as string}</span>
     ),
   },
   {
     id: "model",
     header: "Model",
+    size: 140,
     accessorFn: (row) => {
       const models = row.models_used;
       if (!models.length) return "";
@@ -57,7 +64,7 @@ export const session_columns: ColumnDef<SessionSummary>[] = [
       return primary.model_id;
     },
     cell: ({ getValue }) => (
-      <span className="text-xs text-muted-foreground truncate max-w-[160px] block">
+      <span className="text-xs text-muted-foreground truncate block">
         {getValue() as string}
       </span>
     ),
@@ -67,7 +74,8 @@ export const session_columns: ColumnDef<SessionSummary>[] = [
 export const project_column: ColumnDef<SessionSummary> = {
   accessorKey: "project_name",
   header: ({ column }) => <DataTableColumnHeader column={column} title="Project" />,
-  cell: ({ row }) => <span>{row.original.project_name}</span>,
+  size: 140,
+  cell: ({ row }) => <span className="truncate block">{row.original.project_name}</span>,
 };
 
 export const session_columns_with_project: ColumnDef<SessionSummary>[] = [

@@ -49,7 +49,7 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full min-w-0 space-y-2">
       {filter_column && (
         <Input
           placeholder={filter_placeholder}
@@ -58,13 +58,16 @@ export function DataTable<TData, TValue>({
           className="max-w-sm"
         />
       )}
-      <div className="w-full overflow-x-auto">
-        <Table className="w-full">
+      <div className="w-full min-w-0 overflow-x-auto">
+        <Table className="w-full table-fixed">
           <TableHeader>
             {table.getHeaderGroups().map((header_group) => (
               <TableRow key={header_group.id}>
                 {header_group.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    style={header.column.columnDef.size ? { width: `${header.column.columnDef.size}px` } : undefined}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}

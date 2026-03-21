@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import type { ToolDetailResponse, AnalyticsOverview } from "../schemas/analytics";
 import { get_tool_details, get_analytics_overview } from "../api/analytics";
 import { format_number } from "../lib/format";
+import { error_message } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "../components/stat-card";
 import {
@@ -23,13 +24,6 @@ import {
 import { AreaChart, Area, XAxis, YAxis, BarChart, Bar } from "recharts";
 import { DataTable } from "@/components/data-table";
 import { create_tool_item_columns } from "@/components/columns/tool-item-columns";
-
-const TOOL_LABELS: Record<string, string> = {
-  bash: "Bash Commands",
-  read: "Read Files",
-  edit: "Edit Files",
-  write: "Write Files",
-};
 
 const ITEM_LABEL: Record<string, string> = {
   bash: "Program",
@@ -71,7 +65,7 @@ export function ToolDetail() {
         set_data(result);
       } catch (err) {
         set_error(
-          err instanceof Error ? err.message : "Failed to load tool details",
+          error_message(err, "Failed to load tool details"),
         );
       } finally {
         set_loading(false);
@@ -105,7 +99,6 @@ export function ToolDetail() {
 
   if (!data) return null;
 
-  const label = TOOL_LABELS[tool_name ?? ""] ?? tool_name;
   const item_label = ITEM_LABEL[tool_name ?? ""] ?? "Item";
 
   const max_item_count = data.items.length > 0
@@ -121,12 +114,9 @@ export function ToolDetail() {
   };
 
   return (
-    <div className="min-w-0 w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <h1 className="text-xl font-semibold text-foreground">{label}</h1>
-
-        {/* Project filter */}
+    <div className="min-w-0 w-full space-y-4">
+      {/* Project filter */}
+      <div className="flex items-center justify-end gap-4">
         <select
           value={selected_project}
           onChange={(e) => set_selected_project(e.target.value)}
@@ -142,7 +132,7 @@ export function ToolDetail() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <StatCard label="Total Calls" value={format_number(data.total_calls)} />
         <StatCard label="Errors" value={format_number(data.total_errors)} />
         <StatCard
@@ -153,7 +143,7 @@ export function ToolDetail() {
 
       {/* Usage over time */}
       {data.by_date.length > 0 && (
-        <Card className="mb-6 min-w-0 overflow-hidden">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Usage Over Time</CardTitle>
           </CardHeader>
@@ -184,7 +174,7 @@ export function ToolDetail() {
       )}
 
       {/* Top items table */}
-      <Card className="mb-6 min-w-0 overflow-hidden">
+      <Card className="min-w-0 overflow-hidden">
         <CardHeader>
           <CardTitle className="text-base">
             {tool_name === "bash" ? "Programs" : "Files"} ({data.items.length})
@@ -204,7 +194,7 @@ export function ToolDetail() {
 
       {/* By project */}
       {data.by_project.length > 0 && (
-        <Card className="mb-6 min-w-0 overflow-hidden">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">By Project</CardTitle>
           </CardHeader>

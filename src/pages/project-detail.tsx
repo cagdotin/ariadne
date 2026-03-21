@@ -12,6 +12,7 @@ import { session_columns } from "@/components/columns/session-columns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { error_message } from "@/lib/utils";
 
 type FileTab = "read" | "edit" | "write";
 
@@ -96,7 +97,7 @@ export function ProjectDetail() {
         set_sessions(project_sessions);
         set_file_stats(stats);
       } catch (err) {
-        set_error(err instanceof Error ? err.message : "Failed to load project data");
+        set_error(error_message(err, "Failed to load project data"));
       } finally {
         set_loading(false);
       }
@@ -184,9 +185,7 @@ export function ProjectDetail() {
     active_tab === "read" ? filtered_read : active_tab === "edit" ? filtered_edit : filtered_write;
 
   return (
-    <div className="space-y-6 min-w-0">
-      <h1 className="text-xl font-semibold text-foreground">{decodeURIComponent(name)}</h1>
-
+    <div className="space-y-4 min-w-0">
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 min-w-0">
         <StatCard label="Sessions" value={format_number(session_count)} />

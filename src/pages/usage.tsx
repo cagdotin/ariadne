@@ -8,6 +8,7 @@ import { CostBreakdown } from "@/components/cost-breakdown";
 import { ToolDetailBreakdown } from "@/components/tool-detail-breakdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { error_message } from "@/lib/utils";
 
 export function Usage() {
   const [data, set_data] = useState<AnalyticsOverview | null>(null);
@@ -28,7 +29,7 @@ export function Usage() {
         set_data(overview);
         set_time_data(breakdown);
       } catch (err) {
-        set_error(err instanceof Error ? err.message : "Failed to load usage data");
+        set_error(error_message(err, "Failed to load usage data"));
       } finally {
         set_loading(false);
       }
@@ -64,9 +65,7 @@ export function Usage() {
   }
 
   return (
-    <div className="min-w-0 w-full space-y-6">
-      <h1 className="text-xl font-semibold text-foreground">Usage</h1>
-
+    <div className="min-w-0 w-full space-y-4">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 min-w-0">
         <ToolUsageBar tools={data.tools} />
         <ModelDistribution models={data.models} />
