@@ -1,7 +1,23 @@
 import { ColumnDef } from "@tanstack/react-table";
+import { useNavigate } from "@tanstack/react-router";
 import { SessionSummary } from "@/schemas/session";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { format_duration, format_cost, format_tokens } from "@/lib/format";
+
+function SessionTitleCell({ row }: { row: { original: SessionSummary } }) {
+  const navigate = useNavigate();
+  const title = row.original.title;
+  const id = row.original.id;
+  const display = title || id.slice(0, 50) + "...";
+  return (
+    <button
+      className="truncate block text-left hover:underline hover:text-primary transition-colors"
+      onClick={() => navigate({ to: "/sessions/$id", params: { id } })}
+    >
+      {display}
+    </button>
+  );
+}
 
 export const session_columns: ColumnDef<SessionSummary>[] = [
   {
@@ -9,12 +25,7 @@ export const session_columns: ColumnDef<SessionSummary>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
     size: undefined,
     meta: { className: "w-auto" },
-    cell: ({ row }) => {
-      const title = row.original.title;
-      const id = row.original.id;
-      const display = title || id.slice(0, 50) + "...";
-      return <span className="truncate block">{display}</span>;
-    },
+    cell: ({ row }) => <SessionTitleCell row={row} />,
   },
   {
     accessorKey: "duration_seconds",

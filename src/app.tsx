@@ -62,6 +62,12 @@ export function AppLayout() {
       ];
     }
     if (parts[0] === "projects") return [{ label: "Projects" }];
+    if (parts[0] === "sessions" && parts[1]) {
+      return [
+        { label: "Sessions", href: "/sessions" },
+        { label: parts[1].slice(0, 12) + "…" },
+      ];
+    }
     if (parts[0] === "sessions") return [{ label: "Sessions" }];
     if (parts[0] === "tools" && parts[1]) {
       return [

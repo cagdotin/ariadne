@@ -1,0 +1,53 @@
+import { useState, useEffect } from "react";
+import { useParams } from "@tanstack/react-router";
+import { get_session_entries } from "@/api/analytics";
+import { SessionViewer } from "@/components/session-viewer";
+import type { SessionEntriesResponse } from "@/components/session-viewer";
+import { Skeleton } from "@/components/ui/skeleton";
+import { error_message } from "@/lib/utils";
+
+export function SessionDetail() {
+  const { id } = useParams({ strict: false }) as { id: string };
+  const [data, set_data] = useState<SessionEntriesResponse | null>(null);
+  const [loading, set_loading] = useState(true);
+  const [error, set_error] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    set_loading(true);
+    set_error(null);
+    get_session_entries(id)
+      .then(set_data)
+      .catch((err) => set_error(error_message(err, "Failed to load session")))
+      .finally(() => set_loading(false));
+  }, [id]);
+
+  if (error) {
+    return (
+      <div className="min-w-0 w-full">
+        <p className="text-destructive text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  if (loading || !data) {
+    return (
+      <div className="min-w-0 w-full space-y-3">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <SessionViewer
+      header={data.header as import("@/components/session-viewer/types").SessionHeader | null}
+      entries={data.entries as import("@/components/session-viewer/types").SessionEntry[]}
+      initial_leaf_id={data.leaf_id}
+    />
+  );
+}

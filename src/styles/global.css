@@ -203,6 +203,59 @@
   }
 }
 
+/* Session viewer markdown prose */
+.prose-session {
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: var(--foreground);
+}
+.prose-session h1,
+.prose-session h2,
+.prose-session h3,
+.prose-session h4,
+.prose-session h5,
+.prose-session h6 {
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.25em;
+  color: var(--foreground);
+}
+.prose-session h1 { font-size: 1em; }
+.prose-session h2 { font-size: 1em; }
+.prose-session h3 { font-size: 0.95em; }
+.prose-session p { margin: 0; }
+.prose-session p + p { margin-top: 0.75em; }
+.prose-session ul,
+.prose-session ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+.prose-session li { margin: 0.1em 0; }
+.prose-session li::marker { color: var(--muted-foreground); }
+.prose-session blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.75em;
+  margin: 0.75em 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.prose-session hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
+.prose-session pre {
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+.prose-session img {
+  max-width: 100%;
+  border-radius: var(--radius);
+}
+.prose-session strong {
+  font-weight: 600;
+}
+
 /* Slim scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

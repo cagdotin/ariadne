@@ -4,6 +4,7 @@ import { Dashboard } from './pages/dashboard';
 import { Projects } from './pages/projects';
 import { ProjectDetail } from './pages/project-detail';
 import { Sessions } from './pages/sessions';
+import { SessionDetail } from './pages/session-detail';
 import { Usage } from './pages/usage';
 import { ToolDetail } from './pages/tool-detail';
 import { QmdRedirect } from './pages/qmd-redirect';
@@ -36,6 +37,12 @@ const sessions_route = createRoute({
   getParentRoute: () => root_route,
   path: '/sessions',
   component: Sessions,
+});
+
+const session_detail_route = createRoute({
+  getParentRoute: () => root_route,
+  path: '/sessions/$id',
+  component: SessionDetail,
 });
 
 const usage_route = createRoute({
@@ -73,6 +80,7 @@ const route_tree = root_route.addChildren([
   projects_route,
   project_detail_route,
   sessions_route,
+  session_detail_route,
   usage_route,
   tool_detail_route,
   qmd_redirect_route,
