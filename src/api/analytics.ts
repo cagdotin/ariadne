@@ -4,6 +4,7 @@ import { SessionSummarySchema } from "../schemas/session";
 import { AnalyticsOverviewSchema, ToolDetailResponseSchema, ProjectFileStatsSchema, TimeBreakdownSchema } from "../schemas/analytics";
 import type { SessionSummary } from "../schemas/session";
 import type { AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown } from "../schemas/analytics";
+import type { SessionEntriesResponse } from "../components/session-viewer/types";
 
 export async function get_analytics_overview(): Promise<AnalyticsOverview> {
   const raw = await invoke("get_analytics_overview");
@@ -38,6 +39,11 @@ export async function get_project_file_stats(project_name: string): Promise<Proj
 export async function get_time_breakdown(range_days: number): Promise<TimeBreakdown> {
   const raw = await invoke("get_time_breakdown", { rangeDays: range_days });
   return TimeBreakdownSchema.parse(raw);
+}
+
+export async function get_session_entries(session_id: string): Promise<SessionEntriesResponse> {
+  const raw = await invoke("get_session_entries", { sessionId: session_id });
+  return raw as SessionEntriesResponse;
 }
 
 export async function get_tool_details(

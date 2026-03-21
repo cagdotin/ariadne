@@ -49,6 +49,16 @@ pub struct SessionSummary {
     pub models_used: Vec<ModelUsage>,
 }
 
+/// Raw session entries response for the session detail viewer.
+/// Returns the header + all entries as raw JSON values so the
+/// frontend can render the full conversation tree.
+#[derive(Debug, Clone, Serialize)]
+pub struct SessionEntriesResponse {
+    pub header: Option<serde_json::Value>,
+    pub entries: Vec<serde_json::Value>,
+    pub leaf_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ToolCallSummary {

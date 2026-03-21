@@ -1,7 +1,7 @@
 use tauri::State;
 
 use crate::models::analytics::{AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown};
-use crate::models::session::SessionSummary;
+use crate::models::session::{SessionSummary, SessionEntriesResponse};
 use crate::cache::SessionCache;
 
 #[tauri::command]
@@ -55,4 +55,12 @@ pub async fn get_tool_details(
     project_name: Option<String>,
 ) -> Result<ToolDetailResponse, String> {
     cache.get_tool_details(&tool_name, project_name.as_deref()).await
+}
+
+#[tauri::command]
+pub async fn get_session_entries(
+    cache: State<'_, SessionCache>,
+    session_id: String,
+) -> Result<SessionEntriesResponse, String> {
+    cache.get_session_entries(&session_id).await
 }

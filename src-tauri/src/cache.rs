@@ -3,7 +3,7 @@ use tokio::sync::RwLock;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
-use crate::models::session::SessionSummary;
+use crate::models::session::{SessionSummary, SessionEntriesResponse};
 use crate::models::analytics::{AnalyticsOverview, ProjectSummary, DayCount, DayCost, ModelAggregate, ToolAggregate, NameCount, ToolDetailResponse, ProjectToolSummary, ProjectFileStats, DirectoryStat, TimeBreakdown, WeekdayStat, TimeOfDayStat};
 use crate::parser::discovery::discover_session_files;
 use crate::parser::session::parse_session_file;
@@ -657,6 +657,76 @@ impl SessionCache {
             by_time_of_day,
             daily_sessions,
             daily_cost,
+        })
+    }
+
+    /// Read raw session entries from the JSONL file for the session detail viewer.
+    /// Locates the file via session_dir + file_name stored in the SessionSummary,
+    /// then reads every line as raw serde_json::Value.
+    pub async fn get_session_entries(&self, session_id: &str) -> Result<SessionEntriesResponse, String> {
+        let all_sessions = self.get_or_init().await?;
+
+        let session = all_sessions
+            .iter()
+            .find(|s| s.id == session_id)
+            .ok_or_else(|| format!("Session with id {} not found", session_id))?;
+
+        // Reconstruct the file path from session_dir + file_name
+        let home_dir = dirs::home_dir()
+            .ok_or_else(|| "Could not determine home directory".to_string())?;
+        let file_path = home_dir
+            .join(".pi")
+            .join("agent")
+            .join("sessions")
+            .join(&session.session_dir)
+            .join(&session.file_name);
+
+        if !file_path.exists() {
+            return Err(format!(
+                "Session file not found: {}",
+                file_path.display()
+            ));
+        }
+
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+
+        let file = File::open(&file_path)
+            .map_err(|e| format!("Failed to open session file: {}", e))?;
+        let reader = BufReader::new(file);
+
+        let mut header: Option<serde_json::Value> = None;
+        let mut entries: Vec<serde_json::Value> = Vec::new();
+        let mut leaf_id: Option<String> = None;
+
+        for line in reader.lines() {
+            let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let value: serde_json::Value = serde_json::from_str(trimmed)
+                .map_err(|_| "Malformed JSON line".to_string())?;
+
+            // First line with type "session" is the header
+            if value.get("type").and_then(|t| t.as_str()) == Some("session") {
+                header = Some(value);
+                continue;
+            }
+
+            // Track leaf_id as the id of the last entry
+            if let Some(id) = value.get("id").and_then(|i| i.as_str()) {
+                leaf_id = Some(id.to_string());
+            }
+
+            entries.push(value);
+        }
+
+        Ok(SessionEntriesResponse {
+            header,
+            entries,
+            leaf_id,
         })
     }
 }
