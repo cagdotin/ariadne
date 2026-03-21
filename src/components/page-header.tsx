@@ -16,22 +16,23 @@ export function PageHeader({ items }: PageHeaderProps) {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {items.map((item, index) => {
+        {items.flatMap((item, index) => {
           const is_last = index === items.length - 1;
-          return (
-            <BreadcrumbItem key={index}>
+          const elements = [
+            <BreadcrumbItem key={`item-${index}`}>
               {is_last ? (
                 <BreadcrumbPage>{item.label}</BreadcrumbPage>
               ) : (
-                <>
-                  <BreadcrumbLink render={<Link to={item.href ?? "#"} />}>
-                    {item.label}
-                  </BreadcrumbLink>
-                  <BreadcrumbSeparator />
-                </>
+                <BreadcrumbLink render={<Link to={item.href ?? "#"} />}>
+                  {item.label}
+                </BreadcrumbLink>
               )}
-            </BreadcrumbItem>
-          );
+            </BreadcrumbItem>,
+          ];
+          if (!is_last) {
+            elements.push(<BreadcrumbSeparator key={`sep-${index}`} />);
+          }
+          return elements;
         })}
       </BreadcrumbList>
     </Breadcrumb>

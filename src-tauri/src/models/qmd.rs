@@ -9,6 +9,17 @@ pub struct QmdAvailability {
 }
 
 #[derive(Serialize)]
+pub struct QmdIndex {
+    pub name: String,
+    pub file_stem: String,
+    pub db_path: String,
+    pub db_size_bytes: u64,
+    pub collection_count: u32,
+    pub document_count: u32,
+    pub last_modified: Option<String>,
+}
+
+#[derive(Serialize)]
 pub struct QmdStatus {
     pub total_documents: u32,
     pub active_documents: u32,

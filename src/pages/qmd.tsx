@@ -1,18 +1,26 @@
-import { useState, useEffect } from "react";
-import type { QmdStatus, QmdCollection, QmdAvailability } from "@/schemas/qmd";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useParams, useNavigate } from "@tanstack/react-router";
+import type { QmdStatus, QmdCollection, QmdAvailability, QmdIndex } from "@/schemas/qmd";
 import {
   qmd_check_availability,
   qmd_get_status,
   qmd_list_collections,
+  qmd_list_indexes,
+  qmd_create_index,
+  qmd_delete_index,
+  qmd_rename_index,
   qmd_add_collection,
   qmd_set_global_context,
   qmd_reindex,
   qmd_embed,
   qmd_cleanup,
 } from "@/api/qmd";
+import { IndexSelector } from "@/components/index-selector";
+import { CreateIndexDialog } from "@/components/create-index-dialog";
+import { DeleteIndexDialog } from "@/components/delete-index-dialog";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
-import { qmd_collection_columns } from "@/components/columns/qmd-collection-columns";
+import { create_qmd_collection_columns } from "@/components/columns/qmd-collection-columns";
 import { QmdHealthBanner } from "@/components/qmd-health-banner";
 import { GlobalContextEditor } from "@/components/global-context-editor";
 import { AddCollectionDialog } from "@/components/add-collection-dialog";
@@ -25,40 +33,90 @@ import { error_message } from "@/lib/utils";
 import { RefreshCw, Plus, Zap, Trash2 } from "lucide-react";
 import { use_qmd_operation } from "@/hooks/use-qmd-operation";
 
+const LAST_INDEX_KEY = "ariadne:qmd:last-index";
+
 export function Qmd() {
+  const { index: index_name } = useParams({ strict: false }) as { index: string };
+  const navigate = useNavigate();
+
   const [availability, set_availability] = useState<QmdAvailability | null>(null);
+  const [indexes, set_indexes] = useState<QmdIndex[]>([]);
   const [status, set_status] = useState<QmdStatus | null>(null);
   const [collections, set_collections] = useState<QmdCollection[]>([]);
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
   const [show_add_dialog, set_show_add_dialog] = useState(false);
+  const [show_create_index_dialog, set_show_create_index_dialog] = useState(false);
+  const [delete_target, set_delete_target] = useState<QmdIndex | null>(null);
   const [action_loading, set_action_loading] = useState<string | null>(null);
   const { state: op_state, start_operation, clear_operation } = use_qmd_operation();
+  const collection_columns = useMemo(() => create_qmd_collection_columns(index_name), [index_name]);
 
-  const fetch_data = async () => {
+  // Save last-visited index
+  useEffect(() => {
+    if (index_name) {
+      localStorage.setItem(LAST_INDEX_KEY, index_name);
+    }
+  }, [index_name]);
+
+  const fetch_indexes = useCallback(async () => {
     try {
-      set_loading(true);
+      const idxs = await qmd_list_indexes();
+      set_indexes(idxs);
+      return idxs;
+    } catch {
+      set_indexes([]);
+      return [];
+    }
+  }, []);
+
+  const fetch_data = useCallback(async (show_loading = false) => {
+    try {
+      if (show_loading) set_loading(true);
       set_error(null);
       const avail = await qmd_check_availability();
       set_availability(avail);
       if (!avail.installed) return;
-      const [s, cols] = await Promise.all([qmd_get_status(), qmd_list_collections()]);
-      set_status(s);
-      set_collections(cols);
+
+      const idxs = await fetch_indexes();
+
+      // Auto-create default index if visiting /qmd/default and no index.sqlite exists
+      const index_exists = idxs.some((idx) => idx.name === index_name);
+      if (!index_exists && index_name === "default") {
+        try {
+          await qmd_create_index("default");
+          await fetch_indexes();
+        } catch {
+          // The sidecar's createStore will create it on first use, that's fine
+        }
+      }
+
+      try {
+        const [s, cols] = await Promise.all([
+          qmd_get_status(index_name),
+          qmd_list_collections(index_name),
+        ]);
+        set_status(s);
+        set_collections(cols);
+      } catch (err) {
+        // Index may not exist yet (first visit to a newly created index)
+        set_status(null);
+        set_collections([]);
+      }
     } catch (err) {
       set_error(error_message(err, "Failed to load QMD data"));
     } finally {
       set_loading(false);
     }
-  };
+  }, [index_name, fetch_indexes]);
 
-  useEffect(() => { fetch_data(); }, []);
+  useEffect(() => { fetch_data(true); }, [fetch_data]);
 
   const handle_reindex = async () => {
     try {
       set_action_loading("reindex");
       start_operation("update");
-      const result = await qmd_reindex();
+      const result = await qmd_reindex(index_name);
       if (!result.success) set_error(result.output || "Re-index failed");
       await fetch_data();
     } catch (err) {
@@ -73,7 +131,7 @@ export function Qmd() {
     try {
       set_action_loading("embed");
       start_operation("embed");
-      const result = await qmd_embed();
+      const result = await qmd_embed(index_name);
       if (!result.success) set_error(result.output || "Embed failed");
       await fetch_data();
     } catch (err) {
@@ -88,7 +146,7 @@ export function Qmd() {
     try {
       set_action_loading("cleanup");
       start_operation("cleanup");
-      const result = await qmd_cleanup();
+      const result = await qmd_cleanup(index_name);
       if (!result.success) set_error(result.output || "Cleanup failed");
       await fetch_data();
     } catch (err) {
@@ -101,7 +159,7 @@ export function Qmd() {
 
   const handle_add_collection = async (name: string, path: string, pattern?: string) => {
     try {
-      const result = await qmd_add_collection(name, path, pattern);
+      const result = await qmd_add_collection(index_name, name, path, pattern);
       if (!result.success) set_error(result.output || "Failed to add collection");
       await fetch_data();
     } catch (err) {
@@ -111,7 +169,7 @@ export function Qmd() {
 
   const handle_save_global_context = async (text: string) => {
     try {
-      const result = await qmd_set_global_context(text);
+      const result = await qmd_set_global_context(index_name, text);
       if (!result.success) set_error(result.output || "Failed to save global context");
       await fetch_data();
     } catch (err) {
@@ -119,11 +177,40 @@ export function Qmd() {
     }
   };
 
+  const handle_navigate_index = (name: string) => {
+    navigate({ to: "/qmd/$index", params: { index: name } });
+  };
+
+  const handle_create_index = async (name: string, description?: string) => {
+    await qmd_create_index(name);
+    if (description) {
+      await qmd_set_global_context(name, description);
+    }
+    await fetch_indexes();
+    navigate({ to: "/qmd/$index", params: { index: name } });
+  };
+
+  const handle_delete_index = async (name: string) => {
+    await qmd_delete_index(name);
+    await fetch_indexes();
+    if (name === index_name) {
+      navigate({ to: "/qmd/$index", params: { index: "default" } });
+    }
+  };
+
+  const handle_rename_index = async (old_name: string, new_name: string) => {
+    await qmd_rename_index(old_name, new_name);
+    await fetch_indexes();
+    if (old_name === index_name) {
+      navigate({ to: "/qmd/$index", params: { index: new_name } });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-7 w-24" />
         <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-7 w-24" />
         <div className="flex flex-wrap gap-3">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[88px] flex-1 min-w-[140px]" />)}
         </div>
@@ -133,7 +220,7 @@ export function Qmd() {
     );
   }
 
-  if (error) {
+  if (error && !availability) {
     return (
       <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
         Error: {error}
@@ -161,30 +248,27 @@ export function Qmd() {
     if (status.needs_embedding > 0) {
       return { kind: "needs_embedding" as const, count: status.needs_embedding, onEmbed: handle_embed };
     }
-    if (status.days_since_update !== null && status.days_since_update > 7) {
-      return { kind: "stale" as const, days: status.days_since_update, onReindex: handle_reindex };
-    }
     return null;
   })();
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <InfoTip title="What is QMD?" side="bottom" align="start">
-            <div className="space-y-2">
-              <p>QMD (Query Markdown) is a hybrid search engine for markdown files. It indexes your documents and creates vector embeddings so you can search by meaning, not just keywords.</p>
-              <p className="font-medium text-foreground">Workflow:</p>
-              <ol className="space-y-0.5 ml-1 list-decimal list-inside">
-                <li>Create a <strong>collection</strong> pointing to a folder</li>
-                <li><strong>Re-index</strong> to scan and register files</li>
-                <li><strong>Embed</strong> to generate vector embeddings</li>
-                <li>Query your documents with semantic search</li>
-              </ol>
-            </div>
-          </InfoTip>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Index Selector */}
+      <IndexSelector
+        indexes={indexes}
+        active_index={index_name}
+        on_navigate={handle_navigate_index}
+        on_create={() => set_show_create_index_dialog(true)}
+        on_delete={(name) => {
+          const idx = indexes.find((i) => i.name === name);
+          if (idx) set_delete_target(idx);
+        }}
+        on_rename={handle_rename_index}
+        disabled={op_state.is_busy}
+      />
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-2 flex-wrap">
           <Button
             size="sm"
             variant="outline"
@@ -228,11 +312,19 @@ export function Qmd() {
               <p><strong>Cleanup</strong> — Removes orphaned data from the database (deleted files, stale entries) and reclaims disk space.</p>
             </div>
           </InfoTip>
-        </div>
       </div>
 
       {op_state.is_busy && op_state.operation && (
         <QmdProgress operation={op_state.operation} progress={op_state.progress} />
+      )}
+
+      {error && (
+        <div className="rounded-md bg-destructive/20 border border-destructive p-3 text-destructive text-sm">
+          {error}
+          <Button size="sm" variant="ghost" className="ml-2 h-6 text-xs" onClick={() => set_error(null)}>
+            Dismiss
+          </Button>
+        </div>
       )}
 
       {banner_state && <QmdHealthBanner state={banner_state} />}
@@ -275,6 +367,21 @@ export function Qmd() {
             label="DB Size"
             value={format_file_size(status.db_size_bytes)}
           />
+          <StatCard
+            label="Last Indexed"
+            value={
+              status.days_since_update === null
+                ? "—"
+                : status.days_since_update === 0
+                  ? "today"
+                  : `${status.days_since_update}d ago`
+            }
+            info_tip={
+              <InfoTip title="Last Indexed" side="bottom" align="end">
+                <p>Based on the most recent file modification date across all indexed documents. This reflects when the content was last changed on disk, not when you last ran re-index.</p>
+              </InfoTip>
+            }
+          />
         </div>
       )}
 
@@ -305,7 +412,7 @@ export function Qmd() {
           </div>
         ) : (
           <DataTable
-            columns={qmd_collection_columns}
+            columns={collection_columns}
             data={collections}
             filter_column="name"
             filter_placeholder="Search collections..."
@@ -317,6 +424,22 @@ export function Qmd() {
         <AddCollectionDialog
           onAdd={handle_add_collection}
           onClose={() => set_show_add_dialog(false)}
+        />
+      )}
+
+      {show_create_index_dialog && (
+        <CreateIndexDialog
+          existing_names={indexes.map((i) => i.name)}
+          on_create={handle_create_index}
+          on_close={() => set_show_create_index_dialog(false)}
+        />
+      )}
+
+      {delete_target && (
+        <DeleteIndexDialog
+          index={delete_target}
+          on_delete={handle_delete_index}
+          on_close={() => set_delete_target(null)}
         />
       )}
     </div>

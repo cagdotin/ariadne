@@ -8,6 +8,17 @@ export const QmdAvailabilitySchema = z.object({
 });
 export type QmdAvailability = z.infer<typeof QmdAvailabilitySchema>;
 
+export const QmdIndexSchema = z.object({
+  name: z.string(),
+  file_stem: z.string(),
+  db_path: z.string(),
+  db_size_bytes: z.number(),
+  collection_count: z.number(),
+  document_count: z.number(),
+  last_modified: z.string().nullable(),
+});
+export type QmdIndex = z.infer<typeof QmdIndexSchema>;
+
 export const QmdContextSchema = z.object({
   path: z.string(),
   context: z.string(),

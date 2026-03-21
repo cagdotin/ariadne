@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X } from "lucide-react";
+import { InfoTip } from "@/components/info-tip";
+import { error_message } from "@/lib/utils";
+import { X, FolderOpen } from "lucide-react";
 
 interface AddCollectionDialogProps {
   onAdd: (name: string, path: string, pattern?: string) => Promise<void>;
@@ -16,6 +19,26 @@ export function AddCollectionDialog({ onAdd, onClose }: AddCollectionDialogProps
   const [submitting, set_submitting] = useState(false);
   const [error, set_error] = useState<string | null>(null);
 
+  const handle_browse = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Select folder to index",
+      });
+      if (selected) {
+        set_path(selected);
+        // Auto-derive name from folder name if name is empty
+        if (!name.trim()) {
+          const folder_name = selected.split("/").filter(Boolean).pop();
+          if (folder_name) set_name(folder_name);
+        }
+      }
+    } catch {
+      // User cancelled — ignore
+    }
+  };
+
   const handle_submit = async () => {
     if (!name.trim()) { set_error("Name is required"); return; }
     if (!path.trim()) { set_error("Path is required"); return; }
@@ -25,7 +48,7 @@ export function AddCollectionDialog({ onAdd, onClose }: AddCollectionDialogProps
       await onAdd(name.trim(), path.trim(), pattern.trim() || undefined);
       onClose();
     } catch (err) {
-      set_error(err instanceof Error ? err.message : "Failed to add collection");
+      set_error(error_message(err, "Failed to add collection"));
     } finally {
       set_submitting(false);
     }
@@ -52,15 +75,40 @@ export function AddCollectionDialog({ onAdd, onClose }: AddCollectionDialogProps
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Path</label>
-            <Input
-              placeholder="/path/to/docs"
-              value={path}
-              onChange={(e) => set_path(e.target.value)}
-            />
+            <label className="text-sm font-medium text-foreground">Path to docs</label>
+            <div className="flex gap-2">
+              <Input
+                className="flex-1"
+                placeholder="/path/to/docs"
+                value={path}
+                onChange={(e) => set_path(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handle_browse}
+                title="Browse for folder"
+              >
+                <FolderOpen className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Glob Pattern</label>
+            <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              Glob Pattern
+              <InfoTip title="Glob Pattern" side="right" align="center" className="w-64">
+                <div className="space-y-1.5">
+                  <p>A pattern that determines which files to include from the selected folder.</p>
+                  <p className="font-medium text-foreground">Examples:</p>
+                  <ul className="space-y-0.5 ml-1">
+                    <li><code className="bg-muted px-1 rounded text-[11px]">**/*.md</code> — All markdown files</li>
+                    <li><code className="bg-muted px-1 rounded text-[11px]">{"**/*.{md,mdx}"}</code> — Markdown + MDX</li>
+                    <li><code className="bg-muted px-1 rounded text-[11px]">docs/**/*.md</code> — Only in docs/</li>
+                  </ul>
+                </div>
+              </InfoTip>
+            </label>
             <Input
               placeholder="**/*.md"
               value={pattern}

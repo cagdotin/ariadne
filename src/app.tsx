@@ -70,10 +70,17 @@ export function AppLayout() {
       ];
     }
     if (parts[0] === "usage") return [{ label: "Usage" }];
+    if (parts[0] === "qmd" && parts[1] && parts[2]) {
+      return [
+        { label: "QMD", href: "/qmd" },
+        { label: parts[1], href: `/qmd/${parts[1]}` },
+        { label: decodeURIComponent(parts[2]) },
+      ];
+    }
     if (parts[0] === "qmd" && parts[1]) {
       return [
         { label: "QMD", href: "/qmd" },
-        { label: decodeURIComponent(parts[1]) },
+        { label: parts[1] },
       ];
     }
     if (parts[0] === "qmd") return [{ label: "QMD" }];

@@ -32,9 +32,10 @@ Each question gets its own top-level sidebar entry. No data should require more 
 
 ### Detail Routes (breadcrumb-navigated)
 ```
-/projects/:name     →  breadcrumb: Projects / {name}
-/tools/:tool_name   →  breadcrumb: Usage / {tool_name}
-/qmd/:name          →  breadcrumb: QMD / {name}
+/projects/:name              →  breadcrumb: Projects / {name}
+/tools/:tool_name            →  breadcrumb: Usage / {tool_name}
+/qmd/:index                  →  breadcrumb: QMD / {index}
+/qmd/:index/:collection      →  breadcrumb: QMD / {index} / {collection}
 ```
 
 ### Top Header Bar
@@ -185,12 +186,23 @@ Uses shadcn `Breadcrumb` component. Shows on all detail pages below the top head
 
 ---
 
-### 6. QMD (`/qmd`)
+### 6. QMD Root (`/qmd`)
 
-**Purpose**: Manage and monitor QMD knowledge base — collections, contexts, index health.
+**Purpose**: Redirect to the last-visited index or the default index.
+
+Reads `localStorage` key `ariadne:qmd:last-index`. Redirects to `/qmd/{last_index}` if it exists, otherwise `/qmd/default`.
+
+---
+
+### 7. QMD Index Overview (`/qmd/:index`)
+
+**Purpose**: Manage and monitor a single QMD index — its collections, contexts, index health.
+
+An **index** is a named, independent knowledge base. Each index has its own collections, documents, embeddings, and global context. The existing default index (`index.sqlite`) is displayed as `default`.
 
 | Section | Component | Description |
 |---|---|---|
+| Index selector | `IndexSelector` | Horizontal bar showing all indexes. Active index highlighted with solid primary-color border (`ring-1 ring-primary`). "+ New Index" button with adjacent info tip at end. Hover `⋯` on non-default indexes for rename/delete. |
 | Health banner | `QmdHealthBanner` | Warnings: not installed, needs embedding, stale index |
 | Stat cards | `StatCard` × 4 | Total Documents, Embedded Chunks, Collections, DB Size |
 | Global context | `GlobalContextEditor` | Inline editable text field |
@@ -199,17 +211,18 @@ Uses shadcn `Breadcrumb` component. Shows on all detail pages below the top head
 
 ---
 
-### 7. QMD Collection Detail (`/qmd/:name`)
+### 8. QMD Collection Detail (`/qmd/:index/:collection`)
 
 **Purpose**: Deep-dive into a single QMD collection — settings, contexts, files.
 
 | Section | Component | Description |
 |---|---|---|
-| Breadcrumb | `Breadcrumb` | QMD / {name} |
+| Index selector | `IndexSelector` | Same bar as index overview, active index highlighted |
+| Breadcrumb | `Breadcrumb` | QMD / {index} / {collection} |
 | Stat cards | `StatCard` × 3 | Documents, Needing Embedding, Last Updated |
 | Settings card | `CollectionSettings` | Path, Pattern, Ignore, Include By Default, Update Command |
 | Context editor | `ContextEditor` | Key-value list: path prefix → description. Add/edit/remove. |
-| Documents table | `DataTable` | Path, Title, Docid, Modified At. Sortable. |
+| File tree | `CollectionFileTree` | Tree view with inclusion indicators and toggle |
 | Actions | Button group | Re-index, Embed, Rename, Remove |
 
 ---

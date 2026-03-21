@@ -3,6 +3,7 @@ import type { QmdContext } from "@/schemas/qmd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InfoTip } from "@/components/info-tip";
 import { Plus, Trash2 } from "lucide-react";
 
 interface ContextEditorProps {
@@ -46,7 +47,20 @@ export function ContextEditor({ contexts, onAdd, onRemove }: ContextEditorProps)
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Contexts</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">Contexts</CardTitle>
+            <InfoTip title="Collection Contexts" side="right" align="start">
+              <div className="space-y-1.5">
+                <p>Contexts are descriptions attached to <strong>path prefixes</strong> within this collection. They tell QMD what different sections of your documents are about.</p>
+                <p className="font-medium text-foreground">Example:</p>
+                <ul className="space-y-0.5 ml-1">
+                  <li><code className="bg-muted px-1 rounded text-[11px]">docs/api</code> → <em>"REST API reference documentation"</em></li>
+                  <li><code className="bg-muted px-1 rounded text-[11px]">guides/</code> → <em>"Step-by-step tutorials for beginners"</em></li>
+                </ul>
+                <p>This metadata improves search relevance by giving QMD extra understanding of your file structure.</p>
+              </div>
+            </InfoTip>
+          </div>
           <Button
             size="sm"
             variant="outline"

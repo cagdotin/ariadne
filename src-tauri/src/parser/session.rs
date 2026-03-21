@@ -96,6 +96,46 @@ pub fn parse_session_file(file_path: &Path, dir_name: String) -> Result<SessionS
                                 session_summary.turn_count += 1;
                             }
 
+                            // Extract tool call parameters from content blocks
+                            if let Some(content) = message.get("content").and_then(|c| c.as_array()) {
+                                for block in content {
+                                    if block.get("type").and_then(|t| t.as_str()) == Some("toolCall") {
+                                        let tool_name = block.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                                        let arguments = block.get("arguments");
+
+                                        match tool_name {
+                                            "bash" => {
+                                                if let Some(cmd) = arguments.and_then(|a| a.get("command")).and_then(|c| c.as_str()) {
+                                                    // Extract the program name (first token of the command)
+                                                    let program = cmd.trim()
+                                                        .split_whitespace()
+                                                        .next()
+                                                        .unwrap_or(cmd)
+                                                        .to_string();
+                                                    *session_summary.bash_commands.entry(program).or_insert(0) += 1;
+                                                }
+                                            },
+                                            "read" | "Read" => {
+                                                if let Some(path) = arguments.and_then(|a| a.get("path")).and_then(|p| p.as_str()) {
+                                                    *session_summary.read_files.entry(path.to_string()).or_insert(0) += 1;
+                                                }
+                                            },
+                                            "edit" | "Edit" => {
+                                                if let Some(path) = arguments.and_then(|a| a.get("path")).and_then(|p| p.as_str()) {
+                                                    *session_summary.edit_files.entry(path.to_string()).or_insert(0) += 1;
+                                                }
+                                            },
+                                            "write" | "Write" => {
+                                                if let Some(path) = arguments.and_then(|a| a.get("path")).and_then(|p| p.as_str()) {
+                                                    *session_summary.write_files.entry(path.to_string()).or_insert(0) += 1;
+                                                }
+                                            },
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                            }
+
                             // Extract usage information (camelCase in JSON)
                             if let Some(usage) = message.get("usage") {
                                 if let Some(input) = usage.get("input").and_then(|i| i.as_u64()) {

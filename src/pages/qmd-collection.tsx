@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import type { QmdCollectionDetail } from "@/schemas/qmd";
+import type { QmdCollectionDetail, QmdIndex } from "@/schemas/qmd";
 import {
   qmd_get_collection_detail,
   qmd_add_context,
@@ -11,8 +11,10 @@ import {
   qmd_scan_filesystem,
   qmd_get_indexed_paths,
   qmd_toggle_files,
+  qmd_list_indexes,
 } from "@/api/qmd";
 import { resolve_indexed_paths } from "@/lib/qmd-tree";
+import { IndexSelector } from "@/components/index-selector";
 import { StatCard } from "@/components/stat-card";
 import { ContextEditor } from "@/components/context-editor";
 import { CollectionFileTree } from "@/components/collection-file-tree";
@@ -28,11 +30,17 @@ import { RefreshCw, Zap, Trash2, FolderTree, Settings, MessageSquare } from "luc
 import { use_qmd_operation } from "@/hooks/use-qmd-operation";
 import { cn } from "@/lib/utils";
 
+const LAST_INDEX_KEY = "ariadne:qmd:last-index";
+
 type TabId = "files" | "settings" | "contexts";
 
 export function QmdCollection() {
-  const { name } = useParams({ strict: false }) as { name: string };
+  const { index: index_name, collection: collection_name } = useParams({ strict: false }) as {
+    index: string;
+    collection: string;
+  };
   const navigate = useNavigate();
+  const [indexes, set_indexes] = useState<QmdIndex[]>([]);
   const [detail, set_detail] = useState<QmdCollectionDetail | null>(null);
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
@@ -47,12 +55,29 @@ export function QmdCollection() {
   const [tree_loading, set_tree_loading] = useState(false);
   const [tree_error, set_tree_error] = useState<string | null>(null);
 
-  const fetch_data = async () => {
-    if (!name) return;
+  // Save last-visited index
+  useEffect(() => {
+    if (index_name) {
+      localStorage.setItem(LAST_INDEX_KEY, index_name);
+    }
+  }, [index_name]);
+
+  const fetch_indexes = async () => {
     try {
-      set_loading(true);
+      const idxs = await qmd_list_indexes();
+      set_indexes(idxs);
+    } catch {
+      set_indexes([]);
+    }
+  };
+
+  const fetch_data = async (show_loading = false) => {
+    if (!collection_name) return;
+    try {
+      if (show_loading) set_loading(true);
       set_error(null);
-      const d = await qmd_get_collection_detail(name);
+      await fetch_indexes();
+      const d = await qmd_get_collection_detail(index_name, collection_name);
       set_detail(d);
     } catch (err) {
       set_error(error_message(err, "Failed to load collection"));
@@ -62,16 +87,14 @@ export function QmdCollection() {
   };
 
   const fetch_tree_data = async () => {
-    if (!name) return;
+    if (!collection_name) return;
     try {
       set_tree_loading(true);
       set_tree_error(null);
       const [fs, db_idx] = await Promise.all([
-        qmd_scan_filesystem(name),
-        qmd_get_indexed_paths(name),
+        qmd_scan_filesystem(index_name, collection_name),
+        qmd_get_indexed_paths(index_name, collection_name),
       ]);
-      // DB stores handleized paths (lowercased, normalized). Resolve them
-      // back to filesystem paths so the tree comparison works correctly.
       const resolved = resolve_indexed_paths(fs, db_idx);
       set_fs_paths(fs);
       set_indexed_paths([...resolved]);
@@ -82,20 +105,19 @@ export function QmdCollection() {
     }
   };
 
-  useEffect(() => { fetch_data(); }, [name]);
+  useEffect(() => { fetch_data(true); }, [index_name, collection_name]);
 
-  // Load tree data when switching to files tab or on mount
   useEffect(() => {
     if (active_tab === "files" && fs_paths === null && !tree_loading) {
       fetch_tree_data();
     }
-  }, [active_tab, name]);
+  }, [active_tab, collection_name]);
 
   const handle_reindex = async () => {
     try {
       set_action_loading("reindex");
       start_operation("update");
-      const result = await qmd_reindex();
+      const result = await qmd_reindex(index_name);
       if (!result.success) set_error(result.output || "Re-index failed");
       await fetch_data();
       await fetch_tree_data();
@@ -111,7 +133,7 @@ export function QmdCollection() {
     try {
       set_action_loading("embed");
       start_operation("embed");
-      const result = await qmd_embed();
+      const result = await qmd_embed(index_name);
       if (!result.success) set_error(result.output || "Embed failed");
       await fetch_data();
     } catch (err) {
@@ -125,9 +147,9 @@ export function QmdCollection() {
   const handle_remove = async () => {
     try {
       set_action_loading("remove");
-      const result = await qmd_remove_collection(name);
+      const result = await qmd_remove_collection(index_name, collection_name);
       if (result.success) {
-        navigate({ to: "/qmd" });
+        navigate({ to: "/qmd/$index", params: { index: index_name } });
       } else {
         set_error(result.output || "Failed to remove collection");
       }
@@ -139,25 +161,30 @@ export function QmdCollection() {
   };
 
   const handle_add_context = async (path: string, description: string) => {
-    await qmd_add_context(name, path, description);
+    await qmd_add_context(index_name, collection_name, path, description);
     await fetch_data();
   };
 
   const handle_remove_context = async (path: string) => {
-    await qmd_remove_context(name, path);
+    await qmd_remove_context(index_name, collection_name, path);
     await fetch_data();
   };
 
   const handle_apply_toggle = async (adds: string[], removes: string[]) => {
     if (!detail) return;
-    await qmd_toggle_files(name, detail.collection.path, adds, removes);
+    await qmd_toggle_files(index_name, collection_name, detail.collection.path, adds, removes);
     await fetch_data();
     await fetch_tree_data();
+  };
+
+  const handle_navigate_index = (name: string) => {
+    navigate({ to: "/qmd/$index", params: { index: name } });
   };
 
   if (loading) {
     return (
       <div className="space-y-6">
+        <Skeleton className="h-14 w-full" />
         <Skeleton className="h-5 w-40" />
         <Skeleton className="h-7 w-32" />
         <div className="flex flex-wrap gap-3">
@@ -171,8 +198,19 @@ export function QmdCollection() {
 
   if (error && !detail) {
     return (
-      <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
-        Error: {error}
+      <div className="space-y-4">
+        <IndexSelector
+          indexes={indexes}
+          active_index={index_name}
+          on_navigate={handle_navigate_index}
+          on_create={() => {}}
+          on_delete={() => {}}
+          on_rename={() => {}}
+          disabled={op_state.is_busy}
+        />
+        <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
+          Error: {error}
+        </div>
       </div>
     );
   }
@@ -190,6 +228,17 @@ export function QmdCollection() {
 
   return (
     <div className="space-y-4">
+      {/* Index Selector */}
+      <IndexSelector
+        indexes={indexes}
+        active_index={index_name}
+        on_navigate={handle_navigate_index}
+        on_create={() => {}}
+        on_delete={() => {}}
+        on_rename={() => {}}
+        disabled={op_state.is_busy}
+      />
+
       {/* Actions */}
       <div className="flex items-center justify-end gap-2 flex-wrap">
           <Button
@@ -342,7 +391,7 @@ export function QmdCollection() {
             <CollectionFileTree
               filesystem_paths={fs_paths}
               indexed_paths={indexed_paths}
-              collection_name={name}
+              collection_name={collection_name}
               repo_root={collection.path}
               on_apply={handle_apply_toggle}
             />

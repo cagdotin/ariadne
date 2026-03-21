@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -6,9 +7,10 @@ interface StatCardProps {
   value: string;
   sub_label?: string;
   href?: string;
+  info_tip?: ReactNode;
 }
 
-export function StatCard({ label, value, sub_label, href }: StatCardProps) {
+export function StatCard({ label, value, sub_label, href, info_tip }: StatCardProps) {
   const navigate = useNavigate();
 
   return (
@@ -17,8 +19,9 @@ export function StatCard({ label, value, sub_label, href }: StatCardProps) {
       onClick={href ? () => navigate({ to: href }) : undefined}
     >
       <CardContent className="pt-5 pb-4 px-4">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 truncate">
-          {label}
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+          <span className="truncate">{label}</span>
+          {info_tip}
         </p>
         <p className="text-xl font-semibold text-foreground truncate">{value}</p>
         {sub_label && (

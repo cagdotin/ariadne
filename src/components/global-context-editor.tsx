@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/info-tip";
 
 interface GlobalContextEditorProps {
   value: string | null;
@@ -27,7 +28,15 @@ export function GlobalContextEditor({ value, onSave }: GlobalContextEditorProps)
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Global Context</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base">Global Context</CardTitle>
+          <InfoTip title="Global Context" side="right" align="start">
+            <div className="space-y-1.5">
+              <p>A free-text description that applies to <strong>all collections</strong>. Use it to describe your overall project, domain, or any context that's relevant across all your documents.</p>
+              <p>This helps QMD understand the broader context when searching, improving the relevance of results. For example: <em>"This is a medical research project focused on oncology clinical trials."</em></p>
+            </div>
+          </InfoTip>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <textarea
