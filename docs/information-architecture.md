@@ -59,10 +59,11 @@ When no project is selected (all-projects mode), Usage shows global analytics on
 
 | Section | Component | Description |
 |---|---|---|
-| Stat cards | `StatCard` × 4 | Total Sessions, Total Cost, Total Tokens, Projects |
-| Activity heatmap | `ActivityHeatmap` | 52-week GitHub-style contribution graph |
-| Daily trend | `DailyTrend` | Area chart with 7d/30d/90d/All toggle. Simplified from `TimeBreakdown` — chart only, no tables |
-| Top projects | `TopProjects` | 3–5 most active projects as compact clickable cards (name, sessions, cost, last active) |
+| Range picker | Button group | Today / 7d / 30d / 90d / All — controls stat card and trend time range |
+| Stat cards | `StatCard` × 7 | Sessions, Total Cost, Total Tokens, Avg/Session, Projects, Tool Calls, Disk Usage. Time-filtered values show all-time totals as sub-labels. |
+| Daily trend | `DailyTrend` | Area chart showing sessions and cost over selected range |
+| Top projects | `TopProjects` | 3–5 most active projects as compact clickable cards. Click sets global scope. Hidden when a project is selected. |
+| Activity heatmap | `ActivityHeatmap` | 52-week GitHub-style contribution graph (always all-time) |
 
 **What is NOT here**: Tool usage, model distribution, cost breakdown, session tables, file breakdowns. Those live on Usage and Sessions.
 
@@ -215,8 +216,8 @@ An **index** is a named, independent knowledge base. Each index has its own coll
 
 ## Future Considerations
 
-- **Session Detail Page** (`/sessions/:id`): Full session timeline, conversation flow, tool call visualization
 - **Cost Trends**: Cost over time chart (daily/weekly), cost by project trend
 - **Live Updates**: File watcher for new sessions, real-time dashboard updates
 - **Search**: Global search across sessions, projects, files
 - **Export**: Export analytics data as CSV/JSON
+- **Usage page reorganization**: Refine the scoped vs. global section layout after the Phase 2 migration stabilizes

@@ -294,11 +294,11 @@ When a project is selected, additional scoped-only sections appear:
 
 ### Tool Detail (`/tools/:tool_name`)
 
-Per-tool deep-dive with project filter:
+Per-tool deep-dive, scoped by the global project selector:
 - Stat cards (total calls, errors, unique items)
 - Usage over time area chart
 - Items table (all files/programs with count bars)
-- By-project breakdown
+- By-project breakdown (all-projects mode only)
 
 ### QMD (`/qmd/:index`)
 
