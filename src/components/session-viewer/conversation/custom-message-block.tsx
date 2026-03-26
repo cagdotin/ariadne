@@ -1,7 +1,7 @@
-import type { CustomMessageEntry } from "./types";
-import { MarkdownContent } from "./markdown-content";
+import type { CustomMessageEntry } from "../types";
+import { MarkdownContent } from "../primitives/markdown-content";
 import { RawEntryInspector } from "./raw-entry-inspector";
-import { format_timestamp, extract_text } from "./utils";
+import { format_timestamp, extract_text } from "../utils";
 import { Puzzle } from "lucide-react";
 
 interface CustomMessageBlockProps {

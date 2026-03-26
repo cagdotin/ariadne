@@ -1,7 +1,7 @@
-import type { BranchSummaryEntry } from "./types";
-import { MarkdownContent } from "./markdown-content";
+import type { BranchSummaryEntry } from "../types";
+import { MarkdownContent } from "../primitives/markdown-content";
 import { RawEntryInspector } from "./raw-entry-inspector";
-import { format_timestamp } from "./utils";
+import { format_timestamp } from "../utils";
 import { GitBranch } from "lucide-react";
 
 interface BranchSummaryBlockProps {

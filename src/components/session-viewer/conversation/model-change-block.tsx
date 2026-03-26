@@ -1,6 +1,6 @@
-import type { ModelChangeEntry } from "./types";
+import type { ModelChangeEntry } from "../types";
 import { RawEntryInspector } from "./raw-entry-inspector";
-import { format_timestamp } from "./utils";
+import { format_timestamp } from "../utils";
 import { Cpu } from "lucide-react";
 
 interface ModelChangeBlockProps {

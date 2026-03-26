@@ -1,7 +1,7 @@
-import type { MessageEntry, ContentBlock } from "./types";
-import { MarkdownContent } from "./markdown-content";
+import type { MessageEntry, ContentBlock } from "../types";
+import { MarkdownContent } from "../primitives/markdown-content";
 import { RawEntryInspector } from "./raw-entry-inspector";
-import { format_timestamp, extract_text } from "./utils";
+import { format_timestamp, extract_text } from "../utils";
 import { User } from "lucide-react";
 
 interface UserMessageProps {

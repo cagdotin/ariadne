@@ -1,6 +1,7 @@
-import type { SessionHeader, SessionEntry } from "./types";
-import { compute_stats } from "./utils";
+import type { SessionHeader, SessionEntry } from "../types";
+import { compute_stats } from "../utils";
 import { format_cost, format_tokens, format_duration } from "@/lib/format";
+import { SectionLabel, MetricCell, BreakdownRow } from "./sidebar-primitives";
 import {
   MessageSquare,
   Wrench,
@@ -99,34 +100,10 @@ export function SessionSidebarDetails({ header, entries }: SessionSidebarDetails
       <div className="px-5 py-4 border-b border-border/50">
         <SectionLabel>Tokens</SectionLabel>
         <div className="mt-3 space-y-2.5">
-          <BreakdownRow
-            icon={<ArrowUp className="size-2.5" />}
-            label="Input"
-            value={format_tokens(stats.tokens.input)}
-            bar_pct={total_tokens > 0 ? (stats.tokens.input / total_tokens) * 100 : 0}
-            color="var(--chart-1)"
-          />
-          <BreakdownRow
-            icon={<ArrowDown className="size-2.5" />}
-            label="Output"
-            value={format_tokens(stats.tokens.output)}
-            bar_pct={total_tokens > 0 ? (stats.tokens.output / total_tokens) * 100 : 0}
-            color="var(--chart-3)"
-          />
-          <BreakdownRow
-            icon={<GitBranch className="size-2.5" />}
-            label="Cache Read"
-            value={format_tokens(stats.tokens.cache_read)}
-            bar_pct={total_tokens > 0 ? (stats.tokens.cache_read / total_tokens) * 100 : 0}
-            color="var(--chart-5)"
-          />
-          <BreakdownRow
-            icon={<GitBranch className="size-2.5" />}
-            label="Cache Write"
-            value={format_tokens(stats.tokens.cache_write)}
-            bar_pct={total_tokens > 0 ? (stats.tokens.cache_write / total_tokens) * 100 : 0}
-            color="var(--chart-4)"
-          />
+          <BreakdownRow icon={<ArrowUp className="size-2.5" />} label="Input" value={format_tokens(stats.tokens.input)} bar_pct={total_tokens > 0 ? (stats.tokens.input / total_tokens) * 100 : 0} color="var(--chart-1)" />
+          <BreakdownRow icon={<ArrowDown className="size-2.5" />} label="Output" value={format_tokens(stats.tokens.output)} bar_pct={total_tokens > 0 ? (stats.tokens.output / total_tokens) * 100 : 0} color="var(--chart-3)" />
+          <BreakdownRow icon={<GitBranch className="size-2.5" />} label="Cache Read" value={format_tokens(stats.tokens.cache_read)} bar_pct={total_tokens > 0 ? (stats.tokens.cache_read / total_tokens) * 100 : 0} color="var(--chart-5)" />
+          <BreakdownRow icon={<GitBranch className="size-2.5" />} label="Cache Write" value={format_tokens(stats.tokens.cache_write)} bar_pct={total_tokens > 0 ? (stats.tokens.cache_write / total_tokens) * 100 : 0} color="var(--chart-4)" />
         </div>
       </div>
 
@@ -134,34 +111,10 @@ export function SessionSidebarDetails({ header, entries }: SessionSidebarDetails
       <div className="px-5 py-4 border-b border-border/50">
         <SectionLabel>Cost</SectionLabel>
         <div className="mt-3 space-y-2.5">
-          <BreakdownRow
-            icon={<ArrowUp className="size-2.5" />}
-            label="Input"
-            value={format_cost(stats.cost.input)}
-            bar_pct={total_cost > 0 ? (stats.cost.input / total_cost) * 100 : 0}
-            color="var(--chart-1)"
-          />
-          <BreakdownRow
-            icon={<ArrowDown className="size-2.5" />}
-            label="Output"
-            value={format_cost(stats.cost.output)}
-            bar_pct={total_cost > 0 ? (stats.cost.output / total_cost) * 100 : 0}
-            color="var(--chart-3)"
-          />
-          <BreakdownRow
-            icon={<GitBranch className="size-2.5" />}
-            label="Cache Read"
-            value={format_cost(stats.cost.cache_read)}
-            bar_pct={total_cost > 0 ? (stats.cost.cache_read / total_cost) * 100 : 0}
-            color="var(--chart-5)"
-          />
-          <BreakdownRow
-            icon={<GitBranch className="size-2.5" />}
-            label="Cache Write"
-            value={format_cost(stats.cost.cache_write)}
-            bar_pct={total_cost > 0 ? (stats.cost.cache_write / total_cost) * 100 : 0}
-            color="var(--chart-4)"
-          />
+          <BreakdownRow icon={<ArrowUp className="size-2.5" />} label="Input" value={format_cost(stats.cost.input)} bar_pct={total_cost > 0 ? (stats.cost.input / total_cost) * 100 : 0} color="var(--chart-1)" />
+          <BreakdownRow icon={<ArrowDown className="size-2.5" />} label="Output" value={format_cost(stats.cost.output)} bar_pct={total_cost > 0 ? (stats.cost.output / total_cost) * 100 : 0} color="var(--chart-3)" />
+          <BreakdownRow icon={<GitBranch className="size-2.5" />} label="Cache Read" value={format_cost(stats.cost.cache_read)} bar_pct={total_cost > 0 ? (stats.cost.cache_read / total_cost) * 100 : 0} color="var(--chart-5)" />
+          <BreakdownRow icon={<GitBranch className="size-2.5" />} label="Cache Write" value={format_cost(stats.cost.cache_write)} bar_pct={total_cost > 0 ? (stats.cost.cache_write / total_cost) * 100 : 0} color="var(--chart-4)" />
         </div>
       </div>
 
@@ -183,66 +136,6 @@ export function SessionSidebarDetails({ header, entries }: SessionSidebarDetails
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-      {children}
-    </h3>
-  );
-}
-
-function MetricCell({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
-      <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground mb-1">
-        {icon}
-        {label}
-      </div>
-      <div className="text-xs font-semibold text-foreground tabular-nums">{value}</div>
-    </div>
-  );
-}
-
-function BreakdownRow({
-  icon,
-  label,
-  value,
-  bar_pct,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  bar_pct: number;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1.5 w-[5.5rem] shrink-0">
-        <span className="text-muted-foreground">{icon}</span>
-        <span className="text-[10px] text-muted-foreground">{label}</span>
-      </div>
-      <div className="flex-1 min-w-0 bg-muted/40 rounded-sm h-2 overflow-hidden">
-        <div
-          className="h-full rounded-sm transition-all duration-500"
-          style={{ width: `${Math.max(bar_pct, 0.5)}%`, backgroundColor: color }}
-        />
-      </div>
-      <span className="text-[10px] tabular-nums text-foreground font-medium w-14 text-right shrink-0">
-        {value}
-      </span>
     </div>
   );
 }

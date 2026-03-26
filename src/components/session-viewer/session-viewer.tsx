@@ -2,10 +2,10 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { SessionHeader, SessionEntry, ToolResultMessage } from "./types";
 import type { SessionSummary } from "@/schemas/session";
 import { get_path, build_tool_result_map } from "./utils";
-import { SessionTree } from "./session-tree";
-import { SessionSidebarDetails } from "./session-sidebar-details";
-import { SessionSidebarAnalytics } from "./session-sidebar-analytics";
-import { MessageRenderer } from "./message-renderer";
+import { SessionTree } from "./tree/session-tree";
+import { SessionSidebarDetails } from "./sidebar/session-sidebar-details";
+import { SessionSidebarAnalytics } from "./sidebar/session-sidebar-analytics";
+import { MessageRenderer } from "./conversation/message-renderer";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {

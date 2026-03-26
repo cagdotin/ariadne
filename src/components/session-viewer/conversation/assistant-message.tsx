@@ -3,12 +3,12 @@ import type {
   AssistantMessageData,
   ToolResultMessage,
   ResolvedToolCall,
-} from "./types";
-import { MarkdownContent } from "./markdown-content";
+} from "../types";
+import { MarkdownContent } from "../primitives/markdown-content";
 import { ThinkingBlock } from "./thinking-block";
-import { ToolCallRenderer } from "./tool-call-renderer";
+import { ToolCallRenderer } from "../tool-calls/tool-call-renderer";
 import { RawEntryInspector } from "./raw-entry-inspector";
-import { format_timestamp } from "./utils";
+import { format_timestamp } from "../utils";
 import { AlertCircle, XCircle } from "lucide-react";
 
 interface AssistantMessageProps {

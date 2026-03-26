@@ -6,7 +6,7 @@ import type {
   ModelChangeEntry,
   CustomMessageEntry,
   ToolResultMessage,
-} from "./types";
+} from "../types";
 import { UserMessage } from "./user-message";
 import { AssistantMessage } from "./assistant-message";
 import { BashExecutionBlock } from "./bash-execution-block";

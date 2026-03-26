@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { CompactionEntry } from "./types";
+import type { CompactionEntry } from "../types";
 import { RawEntryInspector } from "./raw-entry-inspector";
-import { format_timestamp } from "./utils";
+import { format_timestamp } from "../utils";
 import { Minimize2, ChevronRight, ChevronDown } from "lucide-react";
 
 interface CompactionBlockProps {

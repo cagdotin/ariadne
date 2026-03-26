@@ -1,7 +1,7 @@
-import type { MessageEntry, BashExecutionMessage } from "./types";
-import { ExpandableOutput } from "./expandable-output";
+import type { MessageEntry, BashExecutionMessage } from "../types";
+import { ExpandableOutput } from "../primitives/expandable-output";
 import { RawEntryInspector } from "./raw-entry-inspector";
-import { format_timestamp } from "./utils";
+import { format_timestamp } from "../utils";
 import { Terminal } from "lucide-react";
 
 interface BashExecutionBlockProps {

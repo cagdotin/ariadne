@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle, Copy, Check, X } from "lucide-react";
-import type { SessionEntry } from "./types";
-import { get_unrendered_properties } from "./utils";
+import type { SessionEntry } from "../types";
+import { get_unrendered_properties } from "../utils";
 
 interface RawEntryInspectorProps {
   entry: SessionEntry;

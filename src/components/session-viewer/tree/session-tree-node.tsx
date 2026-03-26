@@ -1,6 +1,6 @@
-import type { FlatTreeNode, MessageEntry } from "./types";
-import { build_tree_prefix, extract_text, format_tool_call_label } from "./utils";
-import type { SessionEntry } from "./types";
+import type { FlatTreeNode, MessageEntry } from "../types";
+import { build_tree_prefix, extract_text, format_tool_call_label } from "../utils";
+import type { SessionEntry } from "../types";
 
 interface SessionTreeNodeProps {
   flat_node: FlatTreeNode;

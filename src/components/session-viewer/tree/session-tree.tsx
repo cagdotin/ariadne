@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import type { SessionEntry, MessageEntry } from "./types";
+import type { SessionEntry, MessageEntry } from "../types";
 import { SessionTreeNode } from "./session-tree-node";
 import {
   build_tree,
@@ -9,7 +9,7 @@ import {
   build_tool_call_map,
   has_text_content,
   extract_text,
-} from "./utils";
+} from "../utils";
 import { Search, X } from "lucide-react";
 
 type FilterMode = "default" | "no-tools" | "user-only" | "labeled-only" | "all";
@@ -97,7 +97,7 @@ export function SessionTree({ entries, leaf_id, on_navigate }: SessionTreeProps)
         if (entry.type === "message") {
           const msg = (entry as MessageEntry).message;
           parts.push(msg.role);
-          if ("content" in msg) parts.push(extract_text(msg.content as unknown as string | import("./types").ContentBlock[]));
+          if ("content" in msg) parts.push(extract_text(msg.content as unknown as string | import("../types").ContentBlock[]));
           if (msg.role === "bashExecution" && "command" in msg) parts.push(String(msg.command));
         }
         const text = parts.join(" ").toLowerCase();
