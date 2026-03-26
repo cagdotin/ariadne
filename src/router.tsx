@@ -2,7 +2,7 @@ import { createRouter, createRootRoute, createRoute } from '@tanstack/react-rout
 import { AppLayout } from './app';
 import { Dashboard } from './pages/dashboard';
 import { Sessions } from './pages/sessions';
-import { SessionDetail } from './pages/session-detail';
+import { ScopedSessionDetail } from './pages/scoped-session-detail';
 import { Usage } from './pages/usage';
 import { ToolDetail } from './pages/tool-detail';
 import { QmdRedirect } from './pages/qmd-redirect';
@@ -28,7 +28,7 @@ const sessions_route = createRoute({
 const session_detail_route = createRoute({
   getParentRoute: () => root_route,
   path: '/sessions/$id',
-  component: SessionDetail,
+  component: ScopedSessionDetail,
 });
 
 const usage_route = createRoute({
