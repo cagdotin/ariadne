@@ -30,8 +30,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format_number, format_file_size } from "@/lib/format";
 import { error_message } from "@/lib/utils";
-import { RefreshCw, Plus, Zap, Trash2 } from "lucide-react";
+import { RefreshCw, Plus, Zap, Trash2, Search } from "lucide-react";
 import { use_qmd_operation } from "@/hooks/use-qmd-operation";
+import { QmdSearchModal } from "@/components/qmd-search-modal";
 
 const LAST_INDEX_KEY = "ariadne:qmd:last-index";
 
@@ -48,6 +49,7 @@ export function Qmd() {
   const [show_add_dialog, set_show_add_dialog] = useState(false);
   const [show_create_index_dialog, set_show_create_index_dialog] = useState(false);
   const [delete_target, set_delete_target] = useState<QmdIndex | null>(null);
+  const [show_search, set_show_search] = useState(false);
   const [action_loading, set_action_loading] = useState<string | null>(null);
   const { state: op_state, start_operation, clear_operation } = use_qmd_operation();
   const collection_columns = useMemo(() => create_qmd_collection_columns(index_name), [index_name]);
@@ -269,6 +271,17 @@ export function Qmd() {
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-2 flex-wrap">
+          <div
+            className={`flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1 text-sm text-muted-foreground transition-colors ${
+              op_state.is_busy || (status && status.embedded_chunks === 0)
+                ? "opacity-50 pointer-events-none"
+                : "cursor-pointer hover:bg-accent hover:text-accent-foreground"
+            }`}
+            onClick={() => set_show_search(true)}
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>Search...</span>
+          </div>
           <Button
             size="sm"
             variant="outline"
@@ -442,6 +455,13 @@ export function Qmd() {
           on_close={() => set_delete_target(null)}
         />
       )}
+
+      <QmdSearchModal
+        open={show_search}
+        on_close={() => set_show_search(false)}
+        index_name={index_name}
+        collections={collections}
+      />
     </div>
   );
 }

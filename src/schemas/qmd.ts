@@ -73,3 +73,68 @@ export const QmdCommandResultSchema = z.object({
   output: z.string(),
 });
 export type QmdCommandResult = z.infer<typeof QmdCommandResultSchema>;
+
+// ─── Search Types ───────────────────────────────────────────────────────────
+
+export const QmdExpandedQuerySchema = z.object({
+  type: z.enum(["lex", "vec", "hyde"]),
+  query: z.string(),
+});
+export type QmdExpandedQuery = z.infer<typeof QmdExpandedQuerySchema>;
+
+export const QmdRrfContributionSchema = z.object({
+  listIndex: z.number(),
+  source: z.enum(["fts", "vec"]),
+  queryType: z.enum(["original", "lex", "vec", "hyde"]),
+  query: z.string(),
+  rank: z.number(),
+  weight: z.number(),
+  backendScore: z.number(),
+  rrfContribution: z.number(),
+});
+export type QmdRrfContribution = z.infer<typeof QmdRrfContributionSchema>;
+
+export const QmdSearchExplainSchema = z.object({
+  ftsScores: z.array(z.number()),
+  vectorScores: z.array(z.number()),
+  rrf: z.object({
+    rank: z.number(),
+    positionScore: z.number(),
+    weight: z.number(),
+    baseScore: z.number(),
+    topRankBonus: z.number(),
+    totalScore: z.number(),
+    contributions: z.array(QmdRrfContributionSchema),
+  }),
+  rerankScore: z.number(),
+  blendedScore: z.number(),
+});
+export type QmdSearchExplain = z.infer<typeof QmdSearchExplainSchema>;
+
+export const QmdSearchHitSchema = z.object({
+  file: z.string(),
+  displayPath: z.string(),
+  title: z.string(),
+  body: z.string(),
+  bestChunk: z.string(),
+  bestChunkPos: z.number(),
+  score: z.number(),
+  context: z.string().nullable(),
+  docid: z.string(),
+  explain: QmdSearchExplainSchema.optional(),
+});
+export type QmdSearchHit = z.infer<typeof QmdSearchHitSchema>;
+
+export const QmdSearchTimingSchema = z.object({
+  expand_ms: z.number(),
+  search_ms: z.number(),
+  total_ms: z.number(),
+});
+export type QmdSearchTiming = z.infer<typeof QmdSearchTimingSchema>;
+
+export const QmdSearchResultSchema = z.object({
+  results: z.array(QmdSearchHitSchema),
+  expanded_queries: z.array(QmdExpandedQuerySchema),
+  timing: QmdSearchTimingSchema,
+});
+export type QmdSearchResult = z.infer<typeof QmdSearchResultSchema>;

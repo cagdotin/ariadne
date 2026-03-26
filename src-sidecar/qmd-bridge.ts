@@ -444,6 +444,45 @@ const methods: Record<string, MethodHandler> = {
 
     send_result(id, { indexed, deactivated });
   },
+
+  // 13. search — hybrid search with query expansion + explain traces
+  async search(id, params) {
+    const query = params.query as string;
+    const collections = params.collections as string[] | undefined;
+    const limit = params.limit as number | undefined;
+
+    // Stage 1: Expand the query into typed sub-searches
+    const expand_start = Date.now();
+    send_progress(id, { stage: "expanding" });
+    const expanded = await store.expandQuery(query);
+    const expand_ms = Date.now() - expand_start;
+    send_progress(id, {
+      stage: "expanded",
+      queries: expanded,
+      elapsed_ms: expand_ms,
+    });
+
+    // Stage 2: Search with pre-expanded queries (skips internal expansion)
+    const search_start = Date.now();
+    send_progress(id, { stage: "searching" });
+    const results = await store.search({
+      queries: expanded,
+      collections,
+      limit: limit ?? 10,
+      explain: true,
+    });
+    const search_ms = Date.now() - search_start;
+
+    send_result(id, {
+      results,
+      expanded_queries: expanded,
+      timing: {
+        expand_ms,
+        search_ms,
+        total_ms: expand_ms + search_ms,
+      },
+    });
+  },
 };
 
 // ── Main ─────────────────────────────────────────────────────────────────────

@@ -797,6 +797,32 @@ pub async fn qmd_cleanup(
     .map_err(|e| e.to_string())?
 }
 
+// ─── SEARCH COMMANDS ────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn qmd_search(
+    sidecar: State<'_, QmdSidecar>,
+    index: String,
+    query: String,
+    collections: Option<Vec<String>>,
+    limit: Option<u32>,
+    app: AppHandle,
+) -> Result<serde_json::Value, String> {
+    let sidecar = sidecar.inner().clone();
+    let db_path = resolve_index_db_path(&index).to_string_lossy().to_string();
+    let params = json!({
+        "query": query,
+        "collections": collections,
+        "limit": limit,
+    });
+    tokio::task::spawn_blocking(move || {
+        sidecar.ensure_index(&db_path)?;
+        sidecar.call_with_progress_blocking("search", params, &app, "qmd:search-progress")
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 // ─── FILE MANAGEMENT COMMANDS ───────────────────────────────────────────────
 
 #[tauri::command]

@@ -7,6 +7,7 @@ import {
   QmdCollectionSchema,
   QmdCollectionDetailSchema,
   QmdCommandResultSchema,
+  QmdSearchResultSchema,
 } from "../schemas/qmd";
 import type {
   QmdAvailability,
@@ -15,6 +16,7 @@ import type {
   QmdCollection,
   QmdCollectionDetail,
   QmdCommandResult,
+  QmdSearchResult,
 } from "../schemas/qmd";
 
 // ─── Index Management ───────────────────────────────────────────────────────
@@ -163,4 +165,21 @@ export async function qmd_toggle_files(
 ): Promise<{ indexed: number; deactivated: number }> {
   const raw = await invoke("qmd_toggle_files", { index, collection, repoRoot: repo_root, adds, removes });
   return z.object({ indexed: z.number(), deactivated: z.number() }).parse(raw);
+}
+
+// ─── Search ─────────────────────────────────────────────────────────────────
+
+export async function qmd_search(
+  index: string,
+  query: string,
+  collections?: string[],
+  limit?: number,
+): Promise<QmdSearchResult> {
+  const raw = await invoke("qmd_search", {
+    index,
+    query,
+    collections: collections ?? null,
+    limit: limit ?? null,
+  });
+  return QmdSearchResultSchema.parse(raw);
 }
