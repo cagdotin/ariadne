@@ -146,6 +146,7 @@ pub struct ProjectFileStats {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ProjectToolSummary {
+    pub project_path: String,
     pub project_name: String,
     pub total_calls: u32,
     pub items: Vec<NameCount>,

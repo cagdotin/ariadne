@@ -356,9 +356,10 @@ impl SessionCache {
             .collect();
         items.sort_by(|a, b| b.count.cmp(&a.count));
 
-        // By project breakdown
-        let mut project_map: HashMap<String, HashMap<String, u32>> = HashMap::new();
+        // By project breakdown (keyed by project_path for correct identity)
+        let mut project_items: HashMap<String, HashMap<String, u32>> = HashMap::new();
         let mut project_calls: HashMap<String, u32> = HashMap::new();
+        let mut project_names: HashMap<String, String> = HashMap::new();
         for s in &filtered {
             let source = match tool_name {
                 "bash" => &s.bash_commands,
@@ -370,15 +371,16 @@ impl SessionCache {
             if source.is_empty() {
                 continue;
             }
-            let pmap = project_map.entry(s.project_name.clone()).or_default();
+            project_names.entry(s.project_path.clone()).or_insert_with(|| s.project_name.clone());
+            let pmap = project_items.entry(s.project_path.clone()).or_default();
             for (key, count) in source {
                 *pmap.entry(key.clone()).or_insert(0) += count;
-                *project_calls.entry(s.project_name.clone()).or_insert(0) += count;
+                *project_calls.entry(s.project_path.clone()).or_insert(0) += count;
             }
         }
-        let mut by_project: Vec<ProjectToolSummary> = project_map
+        let mut by_project: Vec<ProjectToolSummary> = project_items
             .into_iter()
-            .map(|(pname, imap)| {
+            .map(|(ppath, imap)| {
                 let mut pitems: Vec<NameCount> = imap
                     .into_iter()
                     .map(|(name, count)| NameCount { name, count })
@@ -386,8 +388,9 @@ impl SessionCache {
                 pitems.sort_by(|a, b| b.count.cmp(&a.count));
                 pitems.truncate(5);
                 ProjectToolSummary {
-                    total_calls: project_calls.get(&pname).copied().unwrap_or(0),
-                    project_name: pname,
+                    total_calls: project_calls.get(&ppath).copied().unwrap_or(0),
+                    project_path: ppath.clone(),
+                    project_name: project_names.get(&ppath).cloned().unwrap_or_default(),
                     items: pitems,
                 }
             })
