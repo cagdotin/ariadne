@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import type { ProjectSummary } from "@/schemas/analytics";
 import { use_project_scope } from "./project-scope-provider";
-import { format_cost, format_number, format_date_relative } from "@/lib/format";
+import { format_cost, format_date_relative, format_number } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 
 interface TopProjectsProps {
@@ -10,9 +11,10 @@ interface TopProjectsProps {
 export function TopProjects({ projects }: TopProjectsProps) {
   const { set_scope } = use_project_scope();
 
-  const top = [...projects]
-    .sort((a, b) => b.session_count - a.session_count)
-    .slice(0, 5);
+  const top = useMemo(
+    () => [...projects].sort((a, b) => b.session_count - a.session_count).slice(0, 5),
+    [projects],
+  );
 
   return (
     <div>

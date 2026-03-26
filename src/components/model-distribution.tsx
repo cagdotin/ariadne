@@ -1,4 +1,5 @@
-import type { ModelAggregate } from "../schemas/analytics";
+import { useMemo } from "react";
+import type { ModelAggregate } from "@/schemas/analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -6,13 +7,13 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis } from "recharts";
+import { BarChart, Bar, Cell, XAxis, YAxis } from "recharts";
 
 interface ModelDistributionProps {
   models: ModelAggregate[];
 }
 
-const COLORS = [
+const colors = [
   "var(--chart-1)",
   "var(--chart-2)",
   "var(--chart-3)",
@@ -24,22 +25,27 @@ const COLORS = [
 ];
 
 export function ModelDistribution({ models }: ModelDistributionProps) {
-  const sorted_models = [...models]
-    .sort((a, b) => b.message_count - a.message_count)
-    .slice(0, 8);
+  const { chart_config, chart_data } = useMemo(() => {
+    const sorted_models = [...models]
+      .sort((a, b) => b.message_count - a.message_count)
+      .slice(0, 8);
 
-  const chart_config: ChartConfig = Object.fromEntries(
-    sorted_models.map((m, i) => [
-      m.model_id,
-      { label: m.model_id, color: COLORS[i % COLORS.length] },
-    ])
-  );
+    const chart_config = sorted_models.reduce<ChartConfig>((config, model, index) => {
+      config[model.model_id] = {
+        label: model.model_id,
+        color: colors[index % colors.length],
+      };
+      return config;
+    }, {});
 
-  const chart_data = sorted_models.map((m, i) => ({
-    name: m.model_id,
-    messages: m.message_count,
-    fill: COLORS[i % COLORS.length],
-  }));
+    const chart_data = sorted_models.map((model, index) => ({
+      name: model.model_id,
+      messages: model.message_count,
+      fill: colors[index % colors.length],
+    }));
+
+    return { chart_config, chart_data };
+  }, [models]);
 
   return (
     <Card className="min-w-0 overflow-hidden">
@@ -48,11 +54,7 @@ export function ModelDistribution({ models }: ModelDistributionProps) {
       </CardHeader>
       <CardContent className="min-w-0">
         <ChartContainer config={chart_config} className="h-[300px] w-full">
-          <BarChart
-            data={chart_data}
-            layout="vertical"
-            margin={{ left: 8, right: 8 }}
-          >
+          <BarChart data={chart_data} layout="vertical" margin={{ left: 8, right: 8 }}>
             <XAxis type="number" hide />
             <YAxis
               type="category"
@@ -65,8 +67,8 @@ export function ModelDistribution({ models }: ModelDistributionProps) {
             />
             <ChartTooltip content={<ChartTooltipContent />} />
             <Bar dataKey="messages" radius={[0, 2, 2, 0]}>
-              {chart_data.map((entry, i) => (
-                <rect key={i} fill={entry.fill} />
+              {chart_data.map((entry) => (
+                <Cell key={entry.name} fill={entry.fill} />
               ))}
             </Bar>
           </BarChart>

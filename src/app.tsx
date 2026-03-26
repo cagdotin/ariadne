@@ -7,7 +7,7 @@ import {
   LibraryBig,
   ChevronRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { resync_sessions } from "./api/analytics";
 import {
   Sidebar,
@@ -56,8 +56,9 @@ export function AppLayout() {
     }
   };
 
-  const get_breadcrumbs = (): { label: string; href?: string }[] => {
+  const breadcrumbs = useMemo((): { label: string; href?: string }[] => {
     const parts = location.pathname.split("/").filter(Boolean);
+
     if (parts.length === 0) return [{ label: "Overview" }];
     if (parts[0] === "sessions" && parts[1]) {
       return [
@@ -85,8 +86,8 @@ export function AppLayout() {
     }
     if (parts[0] === "qmd") return [{ label: "QMD" }];
     return [{ label: parts[0] }];
-  };
-  const breadcrumbs = get_breadcrumbs();
+  }, [location.pathname]);
+
   const is_session_detail = /^\/sessions\/[^/]+$/.test(location.pathname);
   const is_qmd_route = location.pathname.startsWith("/qmd");
 

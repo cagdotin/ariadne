@@ -1,50 +1,46 @@
 import { memo } from "react";
-import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { ComboboxItem } from "@/components/ui/combobox";
 
 interface ProjectScopeItemProps {
+  value: unknown;
   label: string;
   subtitle?: string;
   meta: string;
-  selected: boolean;
-  on_select: () => void;
   title?: string;
 }
 
-// Memoized to prevent re-render of every row when parent state changes (5.6)
+// Memoized to limit row re-renders while query/filter state changes.
 export const ProjectScopeItem = memo(function ProjectScopeItem({
+  value,
   label,
   subtitle,
   meta,
-  selected,
-  on_select,
   title,
 }: ProjectScopeItemProps) {
   return (
-    <Button
-      variant="ghost"
-      onClick={on_select}
+    <ComboboxItem
+      value={value}
       title={title}
       className={cn(
-        "flex h-auto w-full items-center gap-2 whitespace-normal rounded-md p-2 text-left",
-        selected && "bg-accent",
+        "flex h-auto w-full items-center gap-2 whitespace-normal rounded-md p-2 text-left [&[data-highlighted]_.project-scope-item-label]:text-accent-foreground [&[data-highlighted]_.project-scope-item-meta]:text-accent-foreground/80 [&[data-highlighted]_.project-scope-item-subtitle]:text-accent-foreground/70 [&[data-selected]_.project-scope-item-label]:text-foreground",
       )}
     >
-      <div className="min-w-0 flex-1 text-xs">
+      <div className="min-w-0 flex-1 pr-6 text-xs">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="truncate text-muted-foreground font-semibold">
+          <p className="project-scope-item-label truncate font-semibold text-muted-foreground">
             {label}
           </p>
-          <span className="shrink-0 text-muted-foreground">{meta}</span>
+          <span className="project-scope-item-meta shrink-0 text-muted-foreground">
+            {meta}
+          </span>
         </div>
         {subtitle ? (
-          <p className="truncate  text-muted-foreground">{subtitle}</p>
+          <p className="project-scope-item-subtitle truncate text-muted-foreground">
+            {subtitle}
+          </p>
         ) : null}
       </div>
-      {selected ? (
-        <Check className="size-3.5 shrink-0 text-foreground" />
-      ) : null}
-    </Button>
+    </ComboboxItem>
   );
 });

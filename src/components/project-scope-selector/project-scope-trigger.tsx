@@ -1,7 +1,10 @@
-import { ChevronsUpDown, FolderGit2 } from "lucide-react";
+import { FolderGit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { PopoverTrigger } from "@/components/ui/popover";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  ComboboxTrigger,
+  ComboboxTriggerIcon,
+} from "@/components/ui/combobox";
 
 interface ProjectScopeTriggerProps {
   loading: boolean;
@@ -17,28 +20,26 @@ export function ProjectScopeTrigger({
   full_path,
 }: ProjectScopeTriggerProps) {
   return (
-    <PopoverTrigger
+    <ComboboxTrigger
       disabled={loading}
       title={full_path ?? "All projects"}
+      className={cn(
+        buttonVariants({ variant: "outline", size: "sm" }),
+        "max-w-[22rem] gap-6 justify-between",
+      )}
     >
-      <Button
-        variant="outline"
-        size="sm"
-        className={cn("gap-6 justify-between")}
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <FolderGit2 className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate text-sm font-medium">
-            {loading ? "Loading…" : label}
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-1.5">
-          <span className="hidden truncate text-xs text-muted-foreground lg:block leading-3">
-            {loading ? "" : description}
-          </span>
-          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-        </div>
-      </Button>
-    </PopoverTrigger>
+      <div className="flex min-w-0 items-center gap-2">
+        <FolderGit2 className="size-4 shrink-0 text-muted-foreground" />
+        <span className="truncate text-sm font-medium">
+          {loading ? "Loading…" : label}
+        </span>
+      </div>
+      <div className="flex items-center justify-center gap-1.5">
+        <span className="hidden truncate text-xs leading-3 text-muted-foreground lg:block">
+          {loading ? "" : description}
+        </span>
+        <ComboboxTriggerIcon />
+      </div>
+    </ComboboxTrigger>
   );
 }

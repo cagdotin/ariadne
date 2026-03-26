@@ -1,16 +1,22 @@
-import { useState, useEffect, useMemo } from "react";
-import type { AnalyticsOverview, TimeBreakdown } from "../schemas/analytics";
-import { get_analytics_overview, get_time_breakdown } from "../api/analytics";
-import { format_cost, format_tokens, format_number, format_file_size } from "../lib/format";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { AnalyticsOverview, TimeBreakdown } from "@/schemas/analytics";
+import { get_analytics_overview, get_time_breakdown } from "@/api/analytics";
+import {
+  format_cost,
+  format_file_size,
+  format_number,
+  format_tokens,
+} from "@/lib/format";
 import { use_project_scope } from "@/components/project-scope-provider";
-import { StatCard } from "../components/stat-card";
-import { ActivityHeatmap } from "../components/activity-heatmap";
+import { StatCard } from "@/components/stat-card";
+import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { DailyTrend } from "@/components/daily-trend";
 import { TopProjects } from "@/components/top-projects";
+import { RangePicker } from "@/components/range-picker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { error_message } from "@/lib/utils";
 
-const RANGE_OPTIONS = [
+const range_options = [
   { label: "Today", value: 1 },
   { label: "7d", value: 7 },
   { label: "30d", value: 30 },
@@ -28,48 +34,52 @@ export function Dashboard() {
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
 
-  // Load overview (always all-time) + initial time breakdown
+  // Track previous scope to distinguish scope changes from range changes.
+  // Scope change → show loading skeleton; range change → silent update.
+  const prev_project_path = useRef(project_path);
+
   useEffect(() => {
     let cancelled = false;
+    const scope_changed = prev_project_path.current !== project_path;
+    prev_project_path.current = project_path;
+
     const fetch_data = async () => {
       try {
-        set_loading(true);
+        // Show loading skeleton on scope change or initial mount (overview is null).
+        // Range-only changes keep the current data visible while refreshing.
+        if (scope_changed || !overview) set_loading(true);
         set_error(null);
-        const [ov, tb] = await Promise.all([
+        const [next_overview, next_time_data] = await Promise.all([
           get_analytics_overview(project_path),
           get_time_breakdown(range_days, project_path),
         ]);
         if (cancelled) return;
-        set_overview(ov);
-        set_time_data(tb);
+        set_overview(next_overview);
+        set_time_data(next_time_data);
       } catch (err) {
         if (cancelled) return;
-        set_error(
-          error_message(err, "Failed to load analytics"),
-        );
+        set_error(error_message(err, "Failed to load analytics"));
       } finally {
         if (!cancelled) set_loading(false);
       }
     };
-    fetch_data();
-    return () => { cancelled = true; };
-  }, [project_path]);
 
-  // Reload time breakdown when range changes (skip initial load)
-  useEffect(() => {
-    if (!overview) return;
-    get_time_breakdown(range_days, project_path).then(set_time_data).catch(console.error);
-  }, [range_days, project_path]);
+    fetch_data();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project_path, range_days]);
 
   const total_tool_calls = useMemo(() => {
     if (!overview) return 0;
-    return overview.tools.reduce((sum, t) => sum + t.total_calls, 0);
+    return overview.tools.reduce((sum, tool) => sum + tool.total_calls, 0);
   }, [overview]);
 
-  // Compute stats: time-filtered for sessions/cost/tokens, all-time for structural
   const stats = useMemo(() => {
     if (!overview || !time_data) return null;
     const is_all = range_days === 0;
+
     return {
       sessions: is_all ? overview.total_sessions : time_data.total_sessions,
       cost: is_all ? overview.total_cost : time_data.total_cost,
@@ -88,9 +98,9 @@ export function Dashboard() {
           <Skeleton className="h-7 w-56" />
         </div>
         <div className="flex flex-wrap gap-3">
-          {[...Array(7)].map((_, i) => (
+          {[...Array(7)].map((_, index) => (
             <Skeleton
-              key={i}
+              key={index}
               className="h-[88px] min-w-[140px] flex-1 basis-[calc(50%-0.375rem)] sm:basis-[calc(33.333%-0.5rem)] xl:basis-0"
             />
           ))}
@@ -114,34 +124,14 @@ export function Dashboard() {
   }
 
   const range_label =
-    range_days === 0
-      ? ""
-      : range_days === 1
-        ? " today"
-        : ` last ${range_days}d`;
+    range_days === 0 ? "" : range_days === 1 ? " today" : ` last ${range_days}d`;
 
   return (
     <div className="flex flex-col gap-4 min-w-0">
-      {/* Range picker */}
       <div className="flex items-center justify-end gap-4">
-        <div className="flex items-center gap-1 shrink-0">
-          {RANGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => set_range_days(opt.value)}
-              className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
-                range_days === opt.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <RangePicker options={range_options} value={range_days} on_change={set_range_days} />
       </div>
 
-      {/* Stat Cards */}
       <div className="flex flex-wrap gap-3">
         <StatCard
           label="Sessions"
@@ -158,9 +148,7 @@ export function Dashboard() {
           value={format_cost(stats.cost)}
           href="/usage"
           sub_label={
-            range_days !== 0
-              ? `${format_cost(overview.total_cost)} all time`
-              : undefined
+            range_days !== 0 ? `${format_cost(overview.total_cost)} all time` : undefined
           }
         />
         <StatCard
@@ -178,10 +166,7 @@ export function Dashboard() {
           value={format_cost(stats.avg_cost)}
           sub_label={range_label ? `avg${range_label}` : undefined}
         />
-        <StatCard
-          label="Projects"
-          value={format_number(stats.projects)}
-        />
+        <StatCard label="Projects" value={format_number(stats.projects)} />
         <StatCard
           label="Tool Calls"
           value={format_number(stats.tool_calls)}
@@ -194,13 +179,8 @@ export function Dashboard() {
         />
       </div>
 
-      {/* Daily Trend — follows selected range */}
       <DailyTrend data={time_data} range_days={range_days} />
-
-      {/* Top Projects — only in all-projects mode */}
       {!scope && <TopProjects projects={overview.projects} />}
-
-      {/* Activity Heatmap — always all-time */}
       <ActivityHeatmap data={overview.sessions_by_date} />
     </div>
   );

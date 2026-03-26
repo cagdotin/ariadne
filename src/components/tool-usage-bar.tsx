@@ -1,5 +1,6 @@
+import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { ToolAggregate } from "../schemas/analytics";
+import type { ToolAggregate } from "@/schemas/analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -7,13 +8,13 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, Cell } from "recharts";
+import { BarChart, Bar, Cell, XAxis, YAxis } from "recharts";
 
 interface ToolUsageBarProps {
   tools: ToolAggregate[];
 }
 
-const CLICKABLE_TOOLS = new Set(["bash", "read", "edit", "write"]);
+const clickable_tools = new Set(["bash", "read", "edit", "write"]);
 
 const chart_config = {
   success: {
@@ -29,18 +30,21 @@ const chart_config = {
 export function ToolUsageBar({ tools }: ToolUsageBarProps) {
   const navigate = useNavigate();
 
-  const sorted_tools = [...tools]
-    .sort((a, b) => b.total_calls - a.total_calls)
-    .slice(0, 12);
-
-  const chart_data = sorted_tools.map((tool) => ({
-    name: tool.name,
-    success: tool.total_calls - tool.total_errors,
-    errors: tool.total_errors,
-  }));
+  const chart_data = useMemo(
+    () =>
+      [...tools]
+        .sort((a, b) => b.total_calls - a.total_calls)
+        .slice(0, 12)
+        .map((tool) => ({
+          name: tool.name,
+          success: tool.total_calls - tool.total_errors,
+          errors: tool.total_errors,
+        })),
+    [tools],
+  );
 
   const handle_click = (data: { name?: string }) => {
-    if (data.name && CLICKABLE_TOOLS.has(data.name)) {
+    if (data.name && clickable_tools.has(data.name)) {
       navigate({ to: `/tools/${data.name}` });
     }
   };
@@ -59,8 +63,8 @@ export function ToolUsageBar({ tools }: ToolUsageBarProps) {
             data={chart_data}
             layout="vertical"
             margin={{ left: 8, right: 8 }}
-            onClick={(e) => {
-              if (e?.activeLabel) handle_click({ name: e.activeLabel });
+            onClick={(event) => {
+              if (event?.activeLabel) handle_click({ name: event.activeLabel });
             }}
             style={{ cursor: "pointer" }}
           >
@@ -71,7 +75,7 @@ export function ToolUsageBar({ tools }: ToolUsageBarProps) {
               width={110}
               interval={0}
               tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => {
-                const is_clickable = CLICKABLE_TOOLS.has(payload.value);
+                const is_clickable = clickable_tools.has(payload.value);
                 return (
                   <text
                     x={x}
@@ -95,8 +99,8 @@ export function ToolUsageBar({ tools }: ToolUsageBarProps) {
             <ChartTooltip content={<ChartTooltipContent />} />
             <Bar dataKey="success" stackId="a" fill="var(--chart-1)" radius={[0, 0, 0, 0]} />
             <Bar dataKey="errors" stackId="a" fill="var(--destructive)" radius={[0, 2, 2, 0]}>
-              {chart_data.map((_, i) => (
-                <Cell key={i} fill="var(--destructive)" />
+              {chart_data.map((tool) => (
+                <Cell key={tool.name} fill="var(--destructive)" />
               ))}
             </Bar>
           </BarChart>
