@@ -16,11 +16,6 @@ export async function get_analytics_overview(project_path?: string): Promise<Ana
   return AnalyticsOverviewSchema.parse(raw);
 }
 
-export async function get_project_sessions(project_name: string): Promise<SessionSummary[]> {
-  const raw = await invoke("get_project_sessions", { projectName: project_name });
-  return z.array(SessionSummarySchema).parse(raw);
-}
-
 export async function get_session_detail(session_id: string): Promise<SessionSummary> {
   const raw = await invoke("get_session_detail", { sessionId: session_id });
   return SessionSummarySchema.parse(raw);
@@ -36,8 +31,8 @@ export async function resync_sessions(): Promise<AnalyticsOverview> {
   return AnalyticsOverviewSchema.parse(raw);
 }
 
-export async function get_project_file_stats(project_name: string): Promise<ProjectFileStats> {
-  const raw = await invoke("get_project_file_stats", { projectName: project_name });
+export async function get_project_file_stats(project_path: string): Promise<ProjectFileStats> {
+  const raw = await invoke("get_project_file_stats", { projectPath: project_path });
   return ProjectFileStatsSchema.parse(raw);
 }
 

@@ -1,8 +1,6 @@
 import { createRouter, createRootRoute, createRoute } from '@tanstack/react-router';
 import { AppLayout } from './app';
 import { Dashboard } from './pages/dashboard';
-import { Projects } from './pages/projects';
-import { ProjectDetail } from './pages/project-detail';
 import { Sessions } from './pages/sessions';
 import { SessionDetail } from './pages/session-detail';
 import { Usage } from './pages/usage';
@@ -19,18 +17,6 @@ const index_route = createRoute({
   getParentRoute: () => root_route,
   path: '/',
   component: Dashboard,
-});
-
-const projects_route = createRoute({
-  getParentRoute: () => root_route,
-  path: '/projects',
-  component: Projects,
-});
-
-const project_detail_route = createRoute({
-  getParentRoute: () => root_route,
-  path: '/projects/$name',
-  component: ProjectDetail,
 });
 
 const sessions_route = createRoute({
@@ -77,8 +63,6 @@ const qmd_collection_route = createRoute({
 
 const route_tree = root_route.addChildren([
   index_route,
-  projects_route,
-  project_detail_route,
   sessions_route,
   session_detail_route,
   usage_route,

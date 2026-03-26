@@ -77,7 +77,7 @@ export const DirectoryStatSchema = z.object({
 export type DirectoryStat = z.infer<typeof DirectoryStatSchema>;
 
 export const ProjectFileStatsSchema = z.object({
-  project_name: z.string(),
+  project_path: z.string(),
   total_sessions: z.number(),
   tool_distribution: z.array(NameCountSchema),
   read_files: z.array(NameCountSchema),

@@ -1,7 +1,6 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  FolderOpen,
   List,
   BarChart3,
   RefreshCw,
@@ -56,13 +55,6 @@ export function AppLayout() {
   const get_breadcrumbs = (): { label: string; href?: string }[] => {
     const parts = location.pathname.split("/").filter(Boolean);
     if (parts.length === 0) return [{ label: "Overview" }];
-    if (parts[0] === "projects" && parts[1]) {
-      return [
-        { label: "Projects", href: "/projects" },
-        { label: decodeURIComponent(parts[1]) },
-      ];
-    }
-    if (parts[0] === "projects") return [{ label: "Projects" }];
     if (parts[0] === "sessions" && parts[1]) {
       return [
         { label: "Sessions", href: "/sessions" },
@@ -123,16 +115,6 @@ export function AppLayout() {
                     >
                       <LayoutDashboard />
                       <span>Overview</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      render={<Link to="/projects" />}
-                      isActive={is_active("/projects")}
-                      tooltip="Projects"
-                    >
-                      <FolderOpen />
-                      <span>Projects</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>

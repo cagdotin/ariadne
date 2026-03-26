@@ -7,6 +7,7 @@ import { ToolUsageBar } from "@/components/tool-usage-bar";
 import { ModelDistribution } from "@/components/model-distribution";
 import { CostBreakdown } from "@/components/cost-breakdown";
 import { ToolDetailBreakdown } from "@/components/tool-detail-breakdown";
+import { ScopedFileAnalytics } from "@/components/scoped-file-analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { error_message } from "@/lib/utils";
@@ -154,6 +155,11 @@ export function Usage() {
         edit_files={data.top_edit_files}
         write_files={data.top_write_files}
       />
+
+      {/* Scoped-only project file analytics — visible only when a project is selected */}
+      {project_path && (
+        <ScopedFileAnalytics project_path={project_path} />
+      )}
     </div>
   );
 }

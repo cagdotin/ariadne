@@ -181,7 +181,6 @@ export function Dashboard() {
         <StatCard
           label="Projects"
           value={format_number(stats.projects)}
-          href="/projects"
         />
         <StatCard
           label="Tool Calls"
