@@ -93,10 +93,11 @@ export function AppLayout() {
     return [{ label: parts[0] }];
   };
   const breadcrumbs = get_breadcrumbs();
+  const is_session_detail = /^\/sessions\/[^/]+$/.test(location.pathname);
 
   return (
     <ThemeProvider default_theme="dark" storage_key="ariadne-ui-theme">
-      <SidebarProvider>
+      <SidebarProvider className="max-h-svh overflow-hidden">
         <Sidebar collapsible="icon">
           <SidebarHeader className="border-b border-sidebar-border px-4 py-4 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-3">
             <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
@@ -192,11 +193,17 @@ export function AppLayout() {
               <ModeToggle />
             </div>
           </header>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 p-4 md:p-6 lg:p-8">
-            <div className="flex flex-col gap-4 min-w-0 max-w-full">
+          {is_session_detail ? (
+            <div className="flex-1 overflow-hidden min-w-0 min-h-0">
               <Outlet />
             </div>
-          </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 min-h-0 p-4 md:p-6 lg:p-8">
+              <div className="flex flex-col gap-4 min-w-0 max-w-full">
+                <Outlet />
+              </div>
+            </div>
+          )}
         </SidebarInset>
       </SidebarProvider>
     </ThemeProvider>

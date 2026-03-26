@@ -4,7 +4,7 @@ import { get_path, build_tool_result_map } from "./utils";
 import { SessionDetailHeader } from "./session-detail-header";
 import { SessionTree } from "./session-tree";
 import { MessageRenderer } from "./message-renderer";
-import { PanelLeftClose, PanelLeft } from "lucide-react";
+import { PanelRightClose, PanelRight } from "lucide-react";
 
 interface SessionViewerProps {
   header: SessionHeader | null;
@@ -53,41 +53,18 @@ export function SessionViewer({ header, entries, initial_leaf_id }: SessionViewe
   }, [scroll_target, path]);
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] min-h-0">
-      {/* Tree sidebar */}
-      {tree_open && (
-        <aside className="w-80 min-w-[280px] max-w-[400px] shrink-0 border-r border-border bg-card flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-3 pt-2 pb-0">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-              Session Tree
-            </span>
-            <button
-              onClick={() => set_tree_open(false)}
-              className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
-              title="Close tree"
-            >
-              <PanelLeftClose className="size-3.5" />
-            </button>
-          </div>
-          <SessionTree
-            entries={entries}
-            leaf_id={leaf_id}
-            on_navigate={handle_navigate}
-          />
-        </aside>
-      )}
-
+    <div className="flex h-full min-h-0">
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto" ref={messages_ref}>
-        <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
+        <div className="max-w-3xl mx-auto px-6 py-5 space-y-4">
           {/* Toggle tree button when collapsed */}
           {!tree_open && (
             <button
               onClick={() => set_tree_open(true)}
-              className="fixed left-16 top-16 z-10 rounded-md border border-border bg-card p-1.5 text-muted-foreground hover:text-foreground shadow-md transition-colors"
+              className="fixed right-4 top-14 z-10 rounded-md border border-border bg-card p-1.5 text-muted-foreground hover:text-foreground shadow-md transition-colors"
               title="Open tree"
             >
-              <PanelLeft className="size-4" />
+              <PanelRight className="size-4" />
             </button>
           )}
 
@@ -111,6 +88,29 @@ export function SessionViewer({ header, entries, initial_leaf_id }: SessionViewe
           )}
         </div>
       </main>
+
+      {/* Tree sidebar — right side */}
+      {tree_open && (
+        <aside className="w-80 min-w-[280px] max-w-[400px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-3 pt-2 pb-0">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+              Session Tree
+            </span>
+            <button
+              onClick={() => set_tree_open(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              title="Close tree"
+            >
+              <PanelRightClose className="size-3.5" />
+            </button>
+          </div>
+          <SessionTree
+            entries={entries}
+            leaf_id={leaf_id}
+            on_navigate={handle_navigate}
+          />
+        </aside>
+      )}
     </div>
   );
 }

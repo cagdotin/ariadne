@@ -68,7 +68,7 @@ export function AssistantMessage({ entry, tool_result_map }: AssistantMessagePro
 
       {/* Tool calls */}
       {resolved_tools.length > 0 && (
-        <div className="space-y-2 mt-2">
+        <div className="mt-1">
           {resolved_tools.map((tool) => (
             <ToolCallRenderer key={tool.id} tool={tool} />
           ))}

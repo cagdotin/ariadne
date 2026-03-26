@@ -24,7 +24,7 @@ export function SessionDetail() {
 
   if (error) {
     return (
-      <div className="min-w-0 w-full">
+      <div className="flex items-center justify-center h-full p-8">
         <p className="text-destructive text-sm">{error}</p>
       </div>
     );
@@ -32,7 +32,7 @@ export function SessionDetail() {
 
   if (loading || !data) {
     return (
-      <div className="min-w-0 w-full space-y-3">
+      <div className="p-6 space-y-3">
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-16 w-full" />

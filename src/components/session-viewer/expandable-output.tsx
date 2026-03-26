@@ -44,7 +44,10 @@ export function ExpandableOutput({
               background: "var(--input)",
             }}
             codeTagProps={{
-              style: { fontFamily: "var(--font-mono)" },
+              style: {
+                fontFamily: "var(--font-mono)",
+                textShadow: "none",
+              },
             }}
           >
             {display_text}
