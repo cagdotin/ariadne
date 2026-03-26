@@ -3,8 +3,15 @@ import type { SessionSummary } from "@/schemas/session";
 import { get_all_sessions } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
 import { DataTable } from "@/components/data-table";
-import { session_columns, session_columns_with_project } from "@/components/columns/session-columns";
+import {
+  session_columns,
+  session_columns_with_project,
+  SessionToolbar,
+  use_session_filters,
+  use_responsive_columns,
+} from "@/components/sessions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { error_message } from "@/lib/utils";
 
 export function Sessions() {
@@ -35,6 +42,23 @@ export function Sessions() {
     return () => { cancelled = true; };
   }, [project_path]);
 
+  const {
+    search,
+    set_search,
+    selected_tools,
+    selected_models,
+    available_tools,
+    available_models,
+    toggle_tool,
+    toggle_model,
+    clear_all,
+    has_active_filters,
+    filtered_sessions,
+  } = use_session_filters(sessions);
+
+  const column_visibility = use_responsive_columns();
+  const columns = scope ? session_columns : session_columns_with_project;
+
   if (error) {
     return (
       <div className="min-w-0 w-full">
@@ -44,21 +68,38 @@ export function Sessions() {
   }
 
   return (
-    <div className="min-w-0 w-full space-y-4">
-      {loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-      ) : (
-        <DataTable
-          columns={scope ? session_columns : session_columns_with_project}
-          data={sessions}
-          filter_column="title"
-          filter_placeholder="Search sessions..."
-        />
-      )}
-    </div>
+    <TooltipProvider>
+      <div className="min-w-0 w-full space-y-4">
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={filtered_sessions}
+            column_visibility={column_visibility}
+            toolbar={() => (
+              <SessionToolbar
+                search={search}
+                on_search_change={set_search}
+                available_tools={available_tools}
+                selected_tools={selected_tools}
+                on_toggle_tool={toggle_tool}
+                available_models={available_models}
+                selected_models={selected_models}
+                on_toggle_model={toggle_model}
+                has_active_filters={has_active_filters}
+                on_clear_all={clear_all}
+                total_count={sessions.length}
+                filtered_count={filtered_sessions.length}
+              />
+            )}
+          />
+        )}
+      </div>
+    </TooltipProvider>
   );
 }

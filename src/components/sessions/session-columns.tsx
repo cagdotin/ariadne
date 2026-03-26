@@ -1,31 +1,19 @@
 import { ColumnDef } from "@tanstack/react-table";
-import { useNavigate } from "@tanstack/react-router";
 import { SessionSummary } from "@/schemas/session";
 import { DataTableColumnHeader } from "@/components/data-table";
+import { SessionIdCell } from "./session-id-cell";
 import { format_duration, format_cost, format_tokens } from "@/lib/format";
-
-function SessionTitleCell({ row }: { row: { original: SessionSummary } }) {
-  const navigate = useNavigate();
-  const title = row.original.title;
-  const id = row.original.id;
-  const display = title || id.slice(0, 50) + "...";
-  return (
-    <button
-      className="truncate block text-left hover:underline hover:text-primary transition-colors"
-      onClick={() => navigate({ to: "/sessions/$id", params: { id } })}
-    >
-      {display}
-    </button>
-  );
-}
+import { Badge } from "@/components/ui/badge";
 
 export const session_columns: ColumnDef<SessionSummary>[] = [
   {
-    accessorKey: "title",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
+    id: "session",
+    accessorKey: "id",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Session" />,
     size: undefined,
     meta: { className: "w-auto" },
-    cell: ({ row }) => <SessionTitleCell row={row} />,
+    cell: ({ row }) => <SessionIdCell session={row.original} />,
+    enableGlobalFilter: true,
   },
   {
     accessorKey: "duration_seconds",
@@ -33,41 +21,52 @@ export const session_columns: ColumnDef<SessionSummary>[] = [
     size: 90,
     cell: ({ row }) => {
       const val = row.original.duration_seconds;
-      return <span>{val === null ? "-" : format_duration(val)}</span>;
+      return <span className="text-sm tabular-nums">{val === null ? "—" : format_duration(val)}</span>;
     },
   },
   {
     accessorKey: "total_cost",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Cost" />,
     size: 80,
-    cell: ({ row }) => <span>{format_cost(row.original.total_cost)}</span>,
+    cell: ({ row }) => (
+      <span className="text-sm tabular-nums">{format_cost(row.original.total_cost)}</span>
+    ),
   },
   {
     accessorKey: "total_tokens",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Tokens" />,
     size: 90,
-    cell: ({ row }) => <span>{format_tokens(row.original.total_tokens)}</span>,
+    cell: ({ row }) => (
+      <span className="text-sm tabular-nums">{format_tokens(row.original.total_tokens)}</span>
+    ),
   },
   {
     id: "tools",
     header: "Tools",
-    size: 120,
+    size: 150,
     accessorFn: (row) => {
-      const tool_calls = row.tool_calls;
-      const sorted = Object.values(tool_calls).sort((a, b) => b.calls - a.calls);
-      return sorted
-        .slice(0, 3)
-        .map((t) => t.name)
-        .join(", ");
+      return Object.values(row.tool_calls)
+        .sort((a, b) => b.calls - a.calls)
+        .slice(0, 4)
+        .map((t) => t.name);
     },
-    cell: ({ getValue }) => (
-      <span className="text-xs text-muted-foreground truncate block">{getValue() as string}</span>
-    ),
+    cell: ({ getValue }) => {
+      const tools = getValue() as string[];
+      return (
+        <div className="flex flex-wrap gap-1">
+          {tools.map((t) => (
+            <Badge key={t} variant="outline" className="text-[10px] px-1.5 py-0 h-[18px] font-normal">
+              {t}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
   },
   {
     id: "model",
     header: "Model",
-    size: 140,
+    size: 150,
     accessorFn: (row) => {
       const models = row.models_used;
       if (!models.length) return "";
@@ -86,7 +85,9 @@ export const project_column: ColumnDef<SessionSummary> = {
   accessorKey: "project_name",
   header: ({ column }) => <DataTableColumnHeader column={column} title="Project" />,
   size: 140,
-  cell: ({ row }) => <span className="truncate block">{row.original.project_name}</span>,
+  cell: ({ row }) => (
+    <span className="truncate block text-sm">{row.original.project_name}</span>
+  ),
 };
 
 export const session_columns_with_project: ColumnDef<SessionSummary>[] = [
