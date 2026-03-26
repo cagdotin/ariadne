@@ -90,6 +90,7 @@ export const ProjectFileStatsSchema = z.object({
 export type ProjectFileStats = z.infer<typeof ProjectFileStatsSchema>;
 
 export const ProjectToolSummarySchema = z.object({
+  project_path: z.string(),
   project_name: z.string(),
   total_calls: z.number(),
   items: z.array(NameCountSchema),

@@ -5,6 +5,7 @@ import {
   BarChart3,
   RefreshCw,
   LibraryBig,
+  ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
 import { resync_sessions } from "./api/analytics";
@@ -28,6 +29,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { PageHeader } from "@/components/page-header";
 import { LabyrinthLogo } from "@/components/labyrinth-logo";
 import { ProjectScopeSelector } from "@/components/project-scope-selector";
+import { Separator } from "./components/ui/separator";
 
 export function AppLayout() {
   const location = useLocation();
@@ -43,6 +45,8 @@ export function AppLayout() {
       set_is_syncing(true);
       await resync_sessions();
       console.log("Sessions synced successfully");
+      // Full reload is load-bearing: it re-runs the ProjectScopeProvider startup
+      // effect which re-fetches the project list and clears stale stored scope.
       window.location.reload();
     } catch (error) {
       console.error("Failed to sync sessions:", error);
@@ -77,10 +81,7 @@ export function AppLayout() {
       ];
     }
     if (parts[0] === "qmd" && parts[1]) {
-      return [
-        { label: "QMD", href: "/qmd" },
-        { label: parts[1] },
-      ];
+      return [{ label: "QMD", href: "/qmd" }, { label: parts[1] }];
     }
     if (parts[0] === "qmd") return [{ label: "QMD" }];
     return [{ label: parts[0] }];
@@ -157,16 +158,20 @@ export function AppLayout() {
         </Sidebar>
 
         <SidebarInset>
-          <header className="flex items-center gap-2 px-4 h-12 border-b border-border shrink-0">
+          <header className="flex items-center justify-center gap-1 pl-2 pr-4 h-12 border-b border-border shrink-0">
             <SidebarTrigger />
-            <div className="ml-2">
+            <Separator orientation="vertical" className="h-5 my-auto mr-1" />
+            {!is_qmd_route && (
+              <>
+                <ProjectScopeSelector />
+                <span>
+                  <ChevronRight className="size-3" />
+                </span>
+              </>
+            )}
+            <div className="">
               <PageHeader items={breadcrumbs} />
             </div>
-            {!is_qmd_route && (
-              <div className="ml-4">
-                <ProjectScopeSelector />
-              </div>
-            )}
             <div className="ml-auto flex items-center gap-2">
               <Button
                 variant="ghost"
