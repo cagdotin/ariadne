@@ -28,6 +28,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 import { PageHeader } from "@/components/page-header";
 import { LabyrinthLogo } from "@/components/labyrinth-logo";
+import { ProjectScopeSelector } from "@/components/project-scope-selector";
 
 export function AppLayout() {
   const location = useLocation();
@@ -94,6 +95,7 @@ export function AppLayout() {
   };
   const breadcrumbs = get_breadcrumbs();
   const is_session_detail = /^\/sessions\/[^/]+$/.test(location.pathname);
+  const is_qmd_route = location.pathname.startsWith("/qmd");
 
   return (
     <ThemeProvider default_theme="dark" storage_key="ariadne-ui-theme">
@@ -178,6 +180,11 @@ export function AppLayout() {
             <div className="ml-2">
               <PageHeader items={breadcrumbs} />
             </div>
+            {!is_qmd_route && (
+              <div className="ml-4">
+                <ProjectScopeSelector />
+              </div>
+            )}
             <div className="ml-auto flex items-center gap-2">
               <Button
                 variant="ghost"

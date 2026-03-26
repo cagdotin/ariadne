@@ -1,13 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 import { z } from "zod";
 import { SessionSummarySchema } from "../schemas/session";
-import { AnalyticsOverviewSchema, ToolDetailResponseSchema, ProjectFileStatsSchema, TimeBreakdownSchema } from "../schemas/analytics";
+import { AnalyticsOverviewSchema, ToolDetailResponseSchema, ProjectFileStatsSchema, TimeBreakdownSchema, ProjectSummarySchema } from "../schemas/analytics";
 import type { SessionSummary } from "../schemas/session";
-import type { AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown } from "../schemas/analytics";
+import type { AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown, ProjectSummary } from "../schemas/analytics";
 import type { SessionEntriesResponse } from "../components/session-viewer/types";
 
-export async function get_analytics_overview(): Promise<AnalyticsOverview> {
-  const raw = await invoke("get_analytics_overview");
+export async function list_projects(): Promise<ProjectSummary[]> {
+  const raw = await invoke("list_projects");
+  return z.array(ProjectSummarySchema).parse(raw);
+}
+
+export async function get_analytics_overview(project_path?: string): Promise<AnalyticsOverview> {
+  const raw = await invoke("get_analytics_overview", { projectPath: project_path ?? null });
   return AnalyticsOverviewSchema.parse(raw);
 }
 
@@ -21,8 +26,8 @@ export async function get_session_detail(session_id: string): Promise<SessionSum
   return SessionSummarySchema.parse(raw);
 }
 
-export async function get_all_sessions(project_name?: string): Promise<SessionSummary[]> {
-  const raw = await invoke("get_all_sessions", { projectName: project_name ?? null });
+export async function get_all_sessions(project_path?: string): Promise<SessionSummary[]> {
+  const raw = await invoke("get_all_sessions", { projectPath: project_path ?? null });
   return z.array(SessionSummarySchema).parse(raw);
 }
 
@@ -36,8 +41,8 @@ export async function get_project_file_stats(project_name: string): Promise<Proj
   return ProjectFileStatsSchema.parse(raw);
 }
 
-export async function get_time_breakdown(range_days: number): Promise<TimeBreakdown> {
-  const raw = await invoke("get_time_breakdown", { rangeDays: range_days });
+export async function get_time_breakdown(range_days: number, project_path?: string): Promise<TimeBreakdown> {
+  const raw = await invoke("get_time_breakdown", { rangeDays: range_days, projectPath: project_path ?? null });
   return TimeBreakdownSchema.parse(raw);
 }
 
@@ -48,11 +53,11 @@ export async function get_session_entries(session_id: string): Promise<SessionEn
 
 export async function get_tool_details(
   tool_name: string,
-  project_name?: string,
+  project_path?: string,
 ): Promise<ToolDetailResponse> {
   const raw = await invoke("get_tool_details", {
     toolName: tool_name,
-    projectName: project_name ?? null,
+    projectPath: project_path ?? null,
   });
   return ToolDetailResponseSchema.parse(raw);
 }
