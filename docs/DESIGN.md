@@ -269,23 +269,9 @@ The landing page for daily pulse checks. Shows:
 
 Stat cards respond to the range picker — they show range-filtered sessions/cost/tokens alongside all-time totals.
 
-### Projects (`/projects`)
-
-Sortable table of all projects with columns: Name, Sessions, Cost, Tokens, Last Active. Rows link to project detail. Includes text search filter.
-
-### Project Detail (`/projects/:name`)
-
-Deep-dive into one project:
-- Stat cards (sessions, cost, tokens, files touched)
-- Tool distribution horizontal bars
-- Directory hotspots (stacked read/edit/write bars per directory)
-- File activity tables with R/E/W tabs
-- Session list for this project
-- Path exclusion filter (comma-separated patterns)
-
 ### Sessions (`/sessions`)
 
-Global session table with project filter dropdown. Columns: Title, Project, Started, Duration, Cost, Tokens, Model, Tools. Links to session detail.
+Session table scoped by the global project selector. Shows all sessions in all-projects mode, or the selected project's sessions when scoped. The project column is hidden when a single project is selected. Columns: Title, Project (all-projects only), Started, Duration, Cost, Tokens, Model, Tools. Links to session detail.
 
 ### Session Detail (`/sessions/:id`)
 
@@ -293,12 +279,18 @@ Full session replay viewer (see Section 3). Two-pane layout: tree sidebar + mess
 
 ### Usage (`/usage`)
 
-Cross-project analytics dashboard:
+Analytics deep-dive, scoped by the global project selector:
 - Tool usage horizontal bars (bash, read, edit, write, etc.)
 - Model distribution bars
 - Cost breakdown donut chart (input/output/cache read/cache write)
 - Time patterns (weekday + time-of-day distributions)
 - Tool detail cards (top bash commands, most read/edited/written files)
+
+When a project is selected, additional scoped-only sections appear:
+- Exclude-path filter (comma-separated patterns)
+- Per-project tool distribution bars
+- Directory hotspots (stacked R/E/W bars per directory)
+- File activity tables with Read/Edit/Write tabs
 
 ### Tool Detail (`/tools/:tool_name`)
 
@@ -448,7 +440,7 @@ TypeScript types are erased at runtime. Tauri IPC returns `unknown`. Without run
 
 ### Why TanStack Router over React Router?
 
-TanStack Router provides type-safe routing with full TypeScript inference for route params. The `$name` and `$id` params in routes like `/projects/$name` are typed at the component level.
+TanStack Router provides type-safe routing with full TypeScript inference for route params. The `$id` and `$tool_name` params in routes like `/sessions/$id` and `/tools/$tool_name` are typed at the component level.
 
 ### Why direct SQLite reads for QMD?
 

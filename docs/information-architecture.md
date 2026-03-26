@@ -10,12 +10,20 @@ Ariadne answers **four distinct questions** for developers observing their AI ag
 | Question | Page | Icon |
 |---|---|---|
 | "What's the pulse?" | **Overview** | `LayoutDashboard` |
-| "What's happening in my projects?" | **Projects** | `FolderOpen` |
 | "What did specific sessions do?" | **Sessions** | `List` |
 | "How are tools/models/costs distributed?" | **Usage** | `BarChart3` |
 | "What's in my knowledge base?" | **QMD** | `Search` |
 
 Each question gets its own top-level sidebar entry. No data should require more than 2 clicks to reach. Detail pages use breadcrumbs for navigation — no manual back buttons.
+
+### Scope-first project model
+
+Project selection is a global scope concern, not a page-level destination. The header project selector controls which project's data appears across all analytics pages. When a project is selected:
+- **Overview** shows scoped stat cards, trend, and heatmap; Top Projects is hidden.
+- **Sessions** shows only sessions for the selected project.
+- **Usage** shows scoped tool/model/cost analytics plus project-specific file analytics (directory hotspots, file activity, tool distribution, exclude-path filtering).
+
+When no project is selected (all-projects mode), Usage shows global analytics only and project-specific file sections are hidden.
 
 ---
 
@@ -24,7 +32,6 @@ Each question gets its own top-level sidebar entry. No data should require more 
 ### Sidebar (always visible)
 ```
 ├── Overview        /
-├── Projects        /projects
 ├── Sessions        /sessions
 ├── Usage           /usage
 └── QMD             /qmd
@@ -32,14 +39,14 @@ Each question gets its own top-level sidebar entry. No data should require more 
 
 ### Detail Routes (breadcrumb-navigated)
 ```
-/projects/:name              →  breadcrumb: Projects / {name}
 /tools/:tool_name            →  breadcrumb: Usage / {tool_name}
+/sessions/:id                →  breadcrumb: Sessions / {id…}
 /qmd/:index                  →  breadcrumb: QMD / {index}
 /qmd/:index/:collection      →  breadcrumb: QMD / {index} / {collection}
 ```
 
 ### Top Header Bar
-- Left: `SidebarTrigger` + breadcrumbs (when on a detail page)
+- Left: `SidebarTrigger` + breadcrumbs (when on a detail page) + project scope selector (on analytics routes)
 - Right: Sync button + Theme toggle
 
 ---
@@ -61,70 +68,45 @@ Each question gets its own top-level sidebar entry. No data should require more 
 
 ---
 
-### 2. Projects (`/projects`)
+### 2. Sessions (`/sessions`)
 
-**Purpose**: Browse and compare all projects.
-
-| Section | Component | Description |
-|---|---|---|
-| Search/filter | Text input | Filter projects by name |
-| Project table | `DataTable` | Sortable columns: Name, Sessions, Cost, Tokens, Last Active. Click → project detail |
-
----
-
-### 3. Project Detail (`/projects/:name`)
-
-**Purpose**: Deep-dive into a specific project's agent activity.
+**Purpose**: Browse sessions. Shows all sessions in all-projects mode, or the selected project's sessions when scoped.
 
 | Section | Component | Description |
 |---|---|---|
-| Breadcrumb | `Breadcrumb` | Projects / {name} |
-| Stat cards | `StatCard` × 4 | Sessions, Total Cost, Total Tokens, Files Touched |
-| Exclude filter | Input with tags | Comma-separated path exclusions |
-| Tool distribution | Horizontal bars | Per-project tool call counts |
-| Directory hotspots | `DirectoryHotspots` | Stacked R/E/W bars by directory |
-| File activity | `DataTable` with tabs | Read / Edit / Write tabs, each a sortable table |
-| Sessions | `DataTable` | All sessions for this project |
+| Session table | `DataTable` | Title, Project (all-projects mode only), Duration, Cost, Tokens, Tools, Model. Sortable, filterable |
+
+Session detail (`/sessions/:id`) provides full session timeline, tool calls, conversation flow.
 
 ---
 
-### 4. Sessions (`/sessions`)
+### 3. Usage (`/usage`)
 
-**Purpose**: Browse all sessions across all projects. Future: click → session detail page.
+**Purpose**: Analytics deep-dive — tools, models, costs, time patterns, and project-scoped file analytics.
 
-| Section | Component | Description |
-|---|---|---|
-| Filters | Project dropdown + date range | Filter sessions by project and time |
-| Session table | `DataTable` | Title, Project, Duration, Cost, Tokens, Tools, Model. Sortable, filterable |
+Organized in clear card sections, 2-column grid where sensible. When a project is selected via the global scope, additional project-specific sections appear.
 
-**Future**: `/sessions/:id` detail page showing the full session timeline, tool calls, conversation flow.
-
----
-
-### 5. Usage (`/usage`)
-
-**Purpose**: Analytics deep-dive — tools, models, costs, time patterns.
-
-Organized in clear card sections, 2-column grid where sensible.
-
-| Section | Component | Description |
-|---|---|---|
-| Tools | `ToolUsageBar` | Horizontal bar chart. Click bash/read/edit/write → tool detail |
-| Models | `ModelDistribution` | Horizontal bar chart of model usage |
-| Cost breakdown | `CostBreakdown` | Donut chart + legend (input/output/cache read/cache write) |
-| Time patterns | `TimePatterns` | Weekday + time-of-day horizontal bars (no duplicate tables) |
-| Tool details | `ToolDetailBreakdown` | 4-card grid: top bash programs, most read/edited/written files |
+| Section | Component | Scope | Description |
+|---|---|---|---|
+| Tools | `ToolUsageBar` | Global + scoped | Horizontal bar chart. Click bash/read/edit/write → tool detail |
+| Models | `ModelDistribution` | Global + scoped | Horizontal bar chart of model usage |
+| Cost breakdown | `CostBreakdown` | Global + scoped | Donut chart + legend (input/output/cache read/cache write) |
+| Time patterns | `TimePatterns` | Global + scoped | Weekday + time-of-day horizontal bars |
+| Tool details | `ToolDetailBreakdown` | Global + scoped | 4-card grid: top bash programs, most read/edited/written files |
+| Exclude filter | Input | Scoped only | Comma-separated path exclusions for file analytics |
+| Tool distribution | Horizontal bars | Scoped only | Per-project tool call counts |
+| Directory hotspots | `DirectoryHotspots` | Scoped only | Stacked R/E/W bars by directory |
+| File activity | `DataTable` with tabs | Scoped only | Read / Edit / Write tabs, each a sortable table |
 
 ---
 
-### 6. Tool Detail (`/tools/:tool_name`)
+### 4. Tool Detail (`/tools/:tool_name`)
 
 **Purpose**: Deep-dive into a specific tool (bash, read, edit, write).
 
 | Section | Component | Description |
 |---|---|---|
 | Breadcrumb | `Breadcrumb` | Usage / {tool_name} |
-| Project filter | Dropdown | Filter by project |
 | Stat cards | `StatCard` × 3 | Total Calls, Errors, Unique Items |
 | Usage over time | Area chart | Daily usage trend |
 | Items table | `DataTable` | All files/programs with count bars |
@@ -140,7 +122,7 @@ Based on [shadcn data table pattern](https://ui.shadcn.com/docs/components/radix
 - Column definitions separated from table component
 - Sorting, filtering built-in
 - Consistent styling across all tables
-- Used by: Sessions, Projects, Project Detail (files + sessions), Tool Detail (items)
+- Used by: Sessions, Usage (scoped file activity), Tool Detail (items)
 
 ### StatCard
 Compact metric display. Label + value + optional sub-label.
@@ -176,18 +158,20 @@ Uses shadcn `Breadcrumb` component. Shows on all detail pages below the top head
 ```
 
 ### API Commands (existing)
-- `get_analytics_overview` → Overview, Projects, Usage data
-- `get_project_sessions` → Sessions for a project
-- `get_project_file_stats` → File/tool stats per project
-- `get_time_breakdown` → Weekday, time-of-day, daily trend
-- `get_tool_details` → Per-tool deep-dive
-- `get_session_detail` → Single session (future: session detail page)
+- `list_projects` → Lightweight project list for scope selector
+- `get_analytics_overview(project_path?)` → Overview, Usage data (global or scoped)
+- `get_all_sessions(project_path?)` → Sessions list (global or scoped)
+- `get_project_file_stats(project_path)` → File/tool stats for scoped Usage deep-dive
+- `get_time_breakdown(range_days, project_path?)` → Weekday, time-of-day, daily trend
+- `get_tool_details(tool_name, project_path?)` → Per-tool deep-dive
+- `get_session_detail(session_id)` → Single session detail
+- `get_session_entries(session_id)` → Session replay entries
 - `resync_sessions` → Re-parse all sessions
 - `qmd_search` → Hybrid search (expansion + BM25 + vector + reranking) with explain traces
 
 ---
 
-### 6. QMD Root (`/qmd`)
+### 5. QMD Root (`/qmd`)
 
 **Purpose**: Redirect to the last-visited index or the default index.
 
@@ -195,7 +179,7 @@ Reads `localStorage` key `ariadne:qmd:last-index`. Redirects to `/qmd/{last_inde
 
 ---
 
-### 7. QMD Index Overview (`/qmd/:index`)
+### 6. QMD Index Overview (`/qmd/:index`)
 
 **Purpose**: Manage and monitor a single QMD index — its collections, contexts, index health.
 
@@ -213,7 +197,7 @@ An **index** is a named, independent knowledge base. Each index has its own coll
 
 ---
 
-### 8. QMD Collection Detail (`/qmd/:index/:collection`)
+### 7. QMD Collection Detail (`/qmd/:index/:collection`)
 
 **Purpose**: Deep-dive into a single QMD collection — settings, contexts, files.
 

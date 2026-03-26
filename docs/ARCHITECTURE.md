@@ -94,11 +94,9 @@ src/
 │   └── qmd.ts              QmdAvailability, QmdIndex, QmdCollection, QmdSearchResult, etc.
 ├── pages/                   Route components (one per page)
 │   ├── dashboard.tsx        Overview / landing page
-│   ├── projects.tsx         All projects table
-│   ├── project-detail.tsx   Per-project drill-down
-│   ├── sessions.tsx         All sessions table
+│   ├── sessions.tsx         All sessions table (scoped via global project selector)
 │   ├── session-detail.tsx   Session replay viewer
-│   ├── usage.tsx            Tool/model/cost/time analytics
+│   ├── usage.tsx            Tool/model/cost/time analytics + scoped file deep-dive
 │   ├── tool-detail.tsx      Per-tool drill-down
 │   ├── qmd.tsx              QMD index overview
 │   ├── qmd-redirect.tsx     Redirect /qmd → /qmd/{last_index}
@@ -130,7 +128,8 @@ src/
 │   ├── activity-heatmap.tsx GitHub-style contribution heatmap
 │   ├── daily-trend.tsx      Area chart with range toggle
 │   ├── stat-card.tsx        Compact metric card
-│   ├── top-projects.tsx     Most active projects cards
+│   ├── top-projects.tsx     Most active projects cards (all-projects mode only)
+│   ├── scoped-file-analytics.tsx  Project-scoped file deep-dive for Usage
 │   ├── tool-usage-bar.tsx   Horizontal tool usage bars
 │   ├── model-distribution.tsx  Model usage breakdown
 │   ├── cost-breakdown.tsx   Donut chart for cost categories
