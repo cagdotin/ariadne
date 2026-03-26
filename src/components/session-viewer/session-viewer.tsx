@@ -87,9 +87,9 @@ export function SessionViewer({
         </Button>
       </div>
 
-      {/* Main content — mr-1.5 keeps scrollbar away from sidebar border */}
+      {/* Main content */}
       <main
-        className={`flex-1 min-w-0 overflow-y-auto ${sidebar_open ? "mr-1.5" : ""}`}
+        className="flex-1 min-w-0 overflow-y-auto"
         ref={messages_ref}
       >
         <div className="max-w-3xl mx-auto px-6 py-5 space-y-3">

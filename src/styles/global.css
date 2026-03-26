@@ -256,10 +256,10 @@
   font-weight: 600;
 }
 
-/* Slim scrollbars */
+/* Slim scrollbars with gutter spacing */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -268,11 +268,15 @@
 
 ::-webkit-scrollbar-thumb {
   background: oklch(0.26 0.003 260);
-  border-radius: 3px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: oklch(0.34 0.004 260);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-corner {
