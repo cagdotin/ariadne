@@ -1,0 +1,311 @@
+import { useMemo } from "react";
+import type { SessionSummary, ToolCallSummary } from "@/schemas/session";
+import { format_number } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
+import {
+  Terminal,
+  FileText,
+  FilePen,
+  FilePlus2,
+  Cpu,
+  AlertCircle,
+} from "lucide-react";
+
+interface SessionSidebarAnalyticsProps {
+  session: SessionSummary;
+}
+
+interface NameCount {
+  name: string;
+  count: number;
+}
+
+interface ToolAgg {
+  name: string;
+  total_calls: number;
+  total_errors: number;
+}
+
+function to_name_counts(map: Record<string, number>): NameCount[] {
+  return Object.entries(map)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function to_tool_aggregates(map: Record<string, ToolCallSummary>): ToolAgg[] {
+  return Object.values(map)
+    .map((tc) => ({
+      name: tc.name,
+      total_calls: tc.calls,
+      total_errors: tc.errors,
+    }))
+    .sort((a, b) => b.total_calls - a.total_calls);
+}
+
+const TOOL_COLORS: Record<string, string> = {
+  bash: "var(--chart-1)",
+  read: "var(--chart-2)",
+  edit: "var(--chart-3)",
+  write: "var(--chart-4)",
+  grep: "var(--chart-5)",
+  find: "var(--chart-1)",
+  ls: "var(--chart-2)",
+  todo: "var(--chart-3)",
+  expertise: "var(--chart-4)",
+  track: "var(--chart-5)",
+};
+
+function get_tool_color(name: string, index: number): string {
+  return TOOL_COLORS[name] ?? `var(--chart-${(index % 5) + 1})`;
+}
+
+export function SessionSidebarAnalytics({ session }: SessionSidebarAnalyticsProps) {
+  const tools = useMemo(() => to_tool_aggregates(session.tool_calls), [session.tool_calls]);
+  const bash_commands = useMemo(() => to_name_counts(session.bash_commands), [session.bash_commands]);
+  const read_files = useMemo(() => to_name_counts(session.read_files), [session.read_files]);
+  const edit_files = useMemo(() => to_name_counts(session.edit_files), [session.edit_files]);
+  const write_files = useMemo(() => to_name_counts(session.write_files), [session.write_files]);
+
+  const max_tool_calls = tools.length > 0 ? tools[0].total_calls : 1;
+  const total_tool_calls = tools.reduce((sum, t) => sum + t.total_calls, 0);
+  const total_errors = tools.reduce((sum, t) => sum + t.total_errors, 0);
+
+  const models = session.models_used;
+
+  return (
+    <div className="flex flex-col h-full overflow-y-auto">
+      {/* Tool calls overview */}
+      <div className="px-5 pt-5 pb-4 border-b border-border/50">
+        <div className="flex items-center justify-between mb-3">
+          <SectionLabel>Tool Calls</SectionLabel>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {format_number(total_tool_calls)} total
+            </span>
+            {total_errors > 0 && (
+              <span className="flex items-center gap-0.5 text-[10px] text-destructive">
+                <AlertCircle className="size-2.5" />
+                {total_errors}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="space-y-2">
+          {tools.map((tool, i) => (
+            <ToolRow
+              key={tool.name}
+              name={tool.name}
+              calls={tool.total_calls}
+              errors={tool.total_errors}
+              max={max_tool_calls}
+              color={get_tool_color(tool.name, i)}
+            />
+          ))}
+          {tools.length === 0 && (
+            <EmptyState>No tool calls in this session</EmptyState>
+          )}
+        </div>
+      </div>
+
+      {/* Bash commands */}
+      <DetailSection
+        icon={<Terminal className="size-3" />}
+        label="Bash Commands"
+        items={bash_commands}
+        max_visible={15}
+      />
+
+      {/* Read files */}
+      <DetailSection
+        icon={<FileText className="size-3" />}
+        label="Files Read"
+        items={read_files}
+        max_visible={15}
+        shorten_paths
+      />
+
+      {/* Edit files */}
+      <DetailSection
+        icon={<FilePen className="size-3" />}
+        label="Files Edited"
+        items={edit_files}
+        max_visible={15}
+        shorten_paths
+      />
+
+      {/* Write files */}
+      <DetailSection
+        icon={<FilePlus2 className="size-3" />}
+        label="Files Written"
+        items={write_files}
+        max_visible={15}
+        shorten_paths
+      />
+
+      {/* Models */}
+      <div className="px-5 py-4">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Cpu className="size-3 text-muted-foreground" />
+          <SectionLabel>Models Used</SectionLabel>
+        </div>
+        {models.length === 0 ? (
+          <EmptyState>No model data</EmptyState>
+        ) : (
+          <div className="space-y-1.5">
+            {models.map((m) => (
+              <div key={`${m.provider}/${m.model_id}`} className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-mono text-foreground truncate min-w-0" title={`${m.provider}/${m.model_id}`}>
+                  {m.model_id}
+                </span>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0 tabular-nums">
+                  {m.message_count}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+      {children}
+    </h3>
+  );
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return <p className="text-[11px] text-muted-foreground/60 italic">{children}</p>;
+}
+
+function ToolRow({
+  name,
+  calls,
+  errors,
+  max,
+  color,
+}: {
+  name: string;
+  calls: number;
+  errors: number;
+  max: number;
+  color: string;
+}) {
+  const success = calls - errors;
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="w-[4.5rem] shrink-0">
+        <span className="text-[11px] font-mono text-foreground">{name}</span>
+      </div>
+      <div className="flex-1 min-w-0 bg-muted/40 rounded-sm h-3.5 overflow-hidden flex">
+        {success > 0 && (
+          <div
+            className="h-full transition-all duration-500"
+            style={{
+              width: `${(success / max) * 100}%`,
+              backgroundColor: color,
+            }}
+          />
+        )}
+        {errors > 0 && (
+          <div
+            className="h-full bg-destructive transition-all duration-500"
+            style={{ width: `${(errors / max) * 100}%` }}
+          />
+        )}
+      </div>
+      <div className="flex items-center gap-1 w-12 shrink-0 justify-end">
+        <span className="text-[10px] tabular-nums text-foreground font-medium">
+          {calls}
+        </span>
+        {errors > 0 && (
+          <span className="text-[9px] tabular-nums text-destructive">
+            ({errors})
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function shorten_path(p: string): string {
+  if (p.startsWith("/Users/")) {
+    const parts = p.split("/");
+    if (parts.length > 2) return "~" + p.slice(("/Users/" + parts[2]).length);
+  }
+  if (p.startsWith("/home/")) {
+    const parts = p.split("/");
+    if (parts.length > 2) return "~" + p.slice(("/home/" + parts[2]).length);
+  }
+  return p;
+}
+
+function DetailSection({
+  icon,
+  label,
+  items,
+  max_visible = 10,
+  shorten_paths = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  items: NameCount[];
+  max_visible?: number;
+  shorten_paths?: boolean;
+}) {
+  if (items.length === 0) return null;
+
+  const max_count = items[0]?.count ?? 1;
+  const visible = items.slice(0, max_visible);
+  const remaining = items.length - max_visible;
+
+  return (
+    <div className="px-5 py-4 border-b border-border/50">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-muted-foreground">{icon}</span>
+          <SectionLabel>{label}</SectionLabel>
+        </div>
+        <span className="text-[10px] tabular-nums text-muted-foreground">
+          {items.length} unique
+        </span>
+      </div>
+      <div className="space-y-2">
+        {visible.map((item) => {
+          const display_name = shorten_paths ? shorten_path(item.name) : item.name;
+          const bar_width = (item.count / max_count) * 100;
+          return (
+            <div key={item.name}>
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span
+                  className="text-[10px] font-mono text-foreground/80 truncate min-w-0"
+                  title={item.name}
+                >
+                  {display_name}
+                </span>
+                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 shrink-0 tabular-nums">
+                  {item.count}
+                </Badge>
+              </div>
+              <div className="w-full bg-muted/30 rounded-sm h-0.5 overflow-hidden">
+                <div
+                  className="h-full rounded-sm transition-all duration-300"
+                  style={{ width: `${bar_width}%`, backgroundColor: "var(--chart-2)" }}
+                />
+              </div>
+            </div>
+          );
+        })}
+        {remaining > 0 && (
+          <p className="text-[10px] text-muted-foreground/50 pt-0.5">
+            +{remaining} more
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

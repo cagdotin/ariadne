@@ -9,7 +9,7 @@ import { ThinkingBlock } from "./thinking-block";
 import { ToolCallRenderer } from "./tool-call-renderer";
 import { RawEntryInspector } from "./raw-entry-inspector";
 import { format_timestamp } from "./utils";
-import { Bot, AlertCircle, XCircle } from "lucide-react";
+import { AlertCircle, XCircle } from "lucide-react";
 
 interface AssistantMessageProps {
   entry: MessageEntry;
@@ -34,24 +34,17 @@ export function AssistantMessage({ entry, tool_result_map }: AssistantMessagePro
 
   const is_aborted = msg.stopReason === "aborted";
   const is_error = msg.stopReason === "error";
+  const has_text = text_blocks.length > 0;
 
   return (
     <div className="relative space-y-2">
-      <div className="flex items-center gap-2 mb-1">
-        <div className="flex items-center justify-center size-5 rounded-full bg-muted">
-          <Bot className="size-3 text-muted-foreground" />
-        </div>
-        <span className="text-[11px] font-medium text-muted-foreground">Assistant</span>
-        {msg.model && (
-          <span className="text-[10px] text-muted-foreground/60 font-mono">
-            {msg.provider ? `${msg.provider}/` : ""}
-            {msg.model}
-          </span>
-        )}
-        <span className="text-[10px] text-muted-foreground">
+      {/* Minimal turn divider — timestamp + inspector */}
+      <div className="flex items-center gap-2 py-0.5">
+        <div className="flex-1 h-px bg-border/60" />
+        <span className="text-[10px] tabular-nums text-muted-foreground/50 shrink-0">
           {format_timestamp(entry.timestamp)}
         </span>
-        <div className="ml-auto">
+        <div className="shrink-0">
           <RawEntryInspector entry={entry} />
         </div>
       </div>
@@ -61,14 +54,18 @@ export function AssistantMessage({ entry, tool_result_map }: AssistantMessagePro
         <ThinkingBlock key={i} text={"thinking" in block ? (block.thinking as string) : ""} />
       ))}
 
-      {/* Text blocks */}
-      {text_blocks.map((block, i) => (
-        <MarkdownContent key={i} content={"text" in block ? (block.text as string) : ""} />
-      ))}
+      {/* Text blocks — the actual assistant prose */}
+      {has_text && (
+        <div>
+          {text_blocks.map((block, i) => (
+            <MarkdownContent key={i} content={"text" in block ? (block.text as string) : ""} />
+          ))}
+        </div>
+      )}
 
       {/* Tool calls */}
       {resolved_tools.length > 0 && (
-        <div className="mt-1">
+        <div className={has_text ? "mt-1" : ""}>
           {resolved_tools.map((tool) => (
             <ToolCallRenderer key={tool.id} tool={tool} />
           ))}
