@@ -323,14 +323,28 @@ export const ContributionGraphBlock = ({
     );
   }
 
+  const formatted_date = parseISO(activity.date).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const tooltip =
+    activity.count === 0
+      ? `No sessions on ${formatted_date}`
+      : activity.count === 1
+        ? `1 session on ${formatted_date}`
+        : `${activity.count} sessions on ${formatted_date}`;
+
   return (
     <rect
       className={cn(
         'data-[level="0"]:fill-muted',
-        'data-[level="1"]:fill-muted-foreground/20',
-        'data-[level="2"]:fill-muted-foreground/40',
-        'data-[level="3"]:fill-muted-foreground/60',
-        'data-[level="4"]:fill-muted-foreground/80',
+        'data-[level="1"]:fill-green-300 dark:data-[level="1"]:fill-green-900',
+        'data-[level="2"]:fill-green-400 dark:data-[level="2"]:fill-green-700',
+        'data-[level="3"]:fill-green-500 dark:data-[level="3"]:fill-green-500',
+        'data-[level="4"]:fill-green-600 dark:data-[level="4"]:fill-green-400',
         className
       )}
       data-count={activity.count}
@@ -343,7 +357,9 @@ export const ContributionGraphBlock = ({
       x={(blockSize + blockMargin) * weekIndex}
       y={labelHeight + (blockSize + blockMargin) * dayIndex}
       {...props}
-    />
+    >
+      <title>{tooltip}</title>
+    </rect>
   );
 };
 
@@ -393,7 +409,7 @@ export const ContributionGraphCalendar = ({
           ? { width: "100%", style: { aspectRatio: `${width} / ${height}` } }
           : { width, height })}
       >
-        <title>Contribution Graph</title>
+        <title>Session activity over the last year</title>
         {!hideMonthLabels && (
           <g className="fill-current">
             {month_labels.map(({ label, weekIndex }) => (
@@ -501,10 +517,10 @@ export const ContributionGraphLegend = ({
               className={cn(
                 "stroke-[1px] stroke-border",
                 'data-[level="0"]:fill-muted',
-                'data-[level="1"]:fill-muted-foreground/20',
-                'data-[level="2"]:fill-muted-foreground/40',
-                'data-[level="3"]:fill-muted-foreground/60',
-                'data-[level="4"]:fill-muted-foreground/80'
+                'data-[level="1"]:fill-green-300 dark:data-[level="1"]:fill-green-900',
+                'data-[level="2"]:fill-green-400 dark:data-[level="2"]:fill-green-700',
+                'data-[level="3"]:fill-green-500 dark:data-[level="3"]:fill-green-500',
+                'data-[level="4"]:fill-green-600 dark:data-[level="4"]:fill-green-400'
               )}
               data-level={level}
               height={blockSize}
