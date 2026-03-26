@@ -64,9 +64,40 @@ impl SessionCache {
         Ok(all_sessions)
     }
 
-    /// Get analytics overview from cached data
-    pub async fn get_analytics_overview(&self) -> Result<AnalyticsOverview, String> {
+    /// List all projects (lightweight, for selector)
+    pub async fn list_projects(&self) -> Result<Vec<ProjectSummary>, String> {
         let all_sessions = self.get_or_init().await?;
+
+        let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
+        for session in &all_sessions {
+            let entry = project_map.entry(session.project_path.clone()).or_insert(ProjectSummary {
+                name: session.project_name.clone(),
+                path: session.project_path.clone(),
+                session_count: 0,
+                total_cost: 0.0,
+                total_tokens: 0,
+                last_active: session.started_at.clone(),
+            });
+            entry.session_count += 1;
+            entry.total_cost += session.total_cost;
+            entry.total_tokens += session.total_tokens;
+            if session.started_at > entry.last_active {
+                entry.last_active = session.started_at.clone();
+            }
+        }
+
+        let mut projects: Vec<ProjectSummary> = project_map.into_values().collect();
+        projects.sort_by(|a, b| b.session_count.cmp(&a.session_count));
+        Ok(projects)
+    }
+
+    /// Get analytics overview from cached data, optionally filtered by project path
+    pub async fn get_analytics_overview(&self, project_path: Option<&str>) -> Result<AnalyticsOverview, String> {
+        let all = self.get_or_init().await?;
+        let all_sessions: Vec<SessionSummary> = match project_path {
+            Some(pp) => all.into_iter().filter(|s| s.project_path == pp).collect(),
+            None => all,
+        };
 
         // Aggregate data (same logic as before)
         let total_sessions = all_sessions.len() as u32;
@@ -78,10 +109,10 @@ impl SessionCache {
         let total_tokens: u64 = all_sessions.iter().map(|s| s.total_tokens).sum();
         let total_file_size_bytes: u64 = all_sessions.iter().map(|s| s.file_size_bytes).sum();
 
-        // Group by project
+        // Group by project (keyed by project_path for uniqueness)
         let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
         for session in &all_sessions {
-            let entry = project_map.entry(session.project_name.clone()).or_insert(ProjectSummary {
+            let entry = project_map.entry(session.project_path.clone()).or_insert(ProjectSummary {
                 name: session.project_name.clone(),
                 path: session.project_path.clone(),
                 session_count: 0,
@@ -279,12 +310,12 @@ impl SessionCache {
             .ok_or_else(|| format!("Session with id {} not found", session_id))
     }
 
-    /// Get all sessions, optionally filtered by project name
-    pub async fn get_all_sessions(&self, project_name: Option<&str>) -> Result<Vec<SessionSummary>, String> {
+    /// Get all sessions, optionally filtered by project path
+    pub async fn get_all_sessions(&self, project_path: Option<&str>) -> Result<Vec<SessionSummary>, String> {
         let all_sessions = self.get_or_init().await?;
 
-        let mut filtered: Vec<SessionSummary> = match project_name {
-            Some(pn) => all_sessions.into_iter().filter(|s| s.project_name == pn).collect(),
+        let mut filtered: Vec<SessionSummary> = match project_path {
+            Some(pp) => all_sessions.into_iter().filter(|s| s.project_path == pp).collect(),
             None => all_sessions,
         };
 
@@ -294,18 +325,18 @@ impl SessionCache {
         Ok(filtered)
     }
 
-    /// Get detailed tool usage data, optionally filtered by project
+    /// Get detailed tool usage data, optionally filtered by project path
     pub async fn get_tool_details(
         &self,
         tool_name: &str,
-        project_name: Option<&str>,
+        project_path: Option<&str>,
     ) -> Result<ToolDetailResponse, String> {
         let all_sessions = self.get_or_init().await?;
 
         let filtered: Vec<&SessionSummary> = all_sessions
             .iter()
-            .filter(|s| match project_name {
-                Some(pn) => s.project_name == pn,
+            .filter(|s| match project_path {
+                Some(pp) => s.project_path == pp,
                 None => true,
             })
             .collect();
@@ -546,13 +577,20 @@ impl SessionCache {
         })
     }
 
-    pub async fn get_time_breakdown(&self, range_days: u32) -> Result<TimeBreakdown, String> {
+    pub async fn get_time_breakdown(&self, range_days: u32, project_path: Option<&str>) -> Result<TimeBreakdown, String> {
         use chrono::{Datelike, Timelike};
 
         let sessions = self.get_or_init().await?;
 
         let now = Utc::now();
         let filtered: Vec<&crate::models::session::SessionSummary> = sessions.iter().filter(|s| {
+            // Project path filter
+            if let Some(pp) = project_path {
+                if s.project_path != pp {
+                    return false;
+                }
+            }
+            // Time range filter
             if range_days == 0 {
                 return true;
             }
