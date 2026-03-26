@@ -216,8 +216,8 @@ export function ToolDetail() {
                 </TableHeader>
                 <TableBody>
                   {data.by_project.map((p) => (
-                    <TableRow key={p.project_name}>
-                      <TableCell className="truncate font-medium">
+                    <TableRow key={p.project_path}>
+                      <TableCell className="truncate font-medium" title={p.project_path}>
                         {p.project_name}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">

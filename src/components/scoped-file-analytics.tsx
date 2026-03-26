@@ -82,6 +82,10 @@ export function ScopedFileAnalytics({ project_path }: ScopedFileAnalyticsProps) 
   const [active_tab, set_active_tab] = useState<FileTab>("read");
 
   useEffect(() => {
+    // Reset local filter state when project changes
+    set_exclude_paths("");
+    set_active_tab("read");
+
     let cancelled = false;
     const fetch_data = async () => {
       try {
