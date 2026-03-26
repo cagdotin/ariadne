@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "@tanstack/react-router";
-import type { ToolDetailResponse, AnalyticsOverview } from "../schemas/analytics";
-import { get_tool_details, get_analytics_overview } from "../api/analytics";
+import type { ToolDetailResponse } from "../schemas/analytics";
+import { get_tool_details } from "../api/analytics";
+import { use_project_scope } from "@/components/project-scope-provider";
 import { format_number } from "../lib/format";
 import { error_message } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,45 +35,36 @@ const ITEM_LABEL: Record<string, string> = {
 
 export function ToolDetail() {
   const { tool_name } = useParams({ strict: false }) as { tool_name: string };
+  const { scope } = use_project_scope();
+  const project_path = scope?.project_path;
 
   const [data, set_data] = useState<ToolDetailResponse | null>(null);
-  const [projects, set_projects] = useState<string[]>([]);
-  const [selected_project, set_selected_project] = useState<string>("");
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
 
-  // Fetch project list once
-  useEffect(() => {
-    get_analytics_overview().then((overview: AnalyticsOverview) => {
-      const names = overview.projects
-        .sort((a, b) => b.session_count - a.session_count)
-        .map((p) => p.name);
-      set_projects(names);
-    });
-  }, []);
-
-  // Fetch tool details when tool or project changes
+  // Fetch tool details when tool or scope changes
   useEffect(() => {
     if (!tool_name) return;
-    const fetch = async () => {
+    let cancelled = false;
+    const fetch_data = async () => {
       try {
         set_loading(true);
         set_error(null);
-        const result = await get_tool_details(
-          tool_name,
-          selected_project || undefined,
-        );
+        const result = await get_tool_details(tool_name, project_path);
+        if (cancelled) return;
         set_data(result);
       } catch (err) {
+        if (cancelled) return;
         set_error(
           error_message(err, "Failed to load tool details"),
         );
       } finally {
-        set_loading(false);
+        if (!cancelled) set_loading(false);
       }
     };
-    fetch();
-  }, [tool_name, selected_project]);
+    fetch_data();
+    return () => { cancelled = true; };
+  }, [tool_name, project_path]);
 
   if (loading) {
     return (
@@ -115,22 +107,6 @@ export function ToolDetail() {
 
   return (
     <div className="min-w-0 w-full space-y-4">
-      {/* Project filter */}
-      <div className="flex items-center justify-end gap-4">
-        <select
-          value={selected_project}
-          onChange={(e) => set_selected_project(e.target.value)}
-          className="bg-background border border-border rounded px-3 py-1.5 text-sm text-foreground min-w-[180px]"
-        >
-          <option value="">All Projects</option>
-          {projects.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <StatCard label="Total Calls" value={format_number(data.total_calls)} />
@@ -192,8 +168,8 @@ export function ToolDetail() {
         </CardContent>
       </Card>
 
-      {/* By project */}
-      {data.by_project.length > 0 && (
+      {/* By project — only in all-projects mode */}
+      {!scope && data.by_project.length > 0 && (
         <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">By Project</CardTitle>

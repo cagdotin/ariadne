@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import type { AnalyticsOverview, TimeBreakdown } from "../schemas/analytics";
 import { get_analytics_overview, get_time_breakdown } from "../api/analytics";
 import { format_cost, format_tokens, format_number, format_file_size } from "../lib/format";
+import { use_project_scope } from "@/components/project-scope-provider";
 import { StatCard } from "../components/stat-card";
 import { ActivityHeatmap } from "../components/activity-heatmap";
 import { DailyTrend } from "@/components/daily-trend";
@@ -18,6 +19,9 @@ const RANGE_OPTIONS = [
 ];
 
 export function Dashboard() {
+  const { scope } = use_project_scope();
+  const project_path = scope?.project_path;
+
   const [overview, set_overview] = useState<AnalyticsOverview | null>(null);
   const [time_data, set_time_data] = useState<TimeBreakdown | null>(null);
   const [range_days, set_range_days] = useState(30);
@@ -26,32 +30,36 @@ export function Dashboard() {
 
   // Load overview (always all-time) + initial time breakdown
   useEffect(() => {
+    let cancelled = false;
     const fetch_data = async () => {
       try {
         set_loading(true);
         set_error(null);
         const [ov, tb] = await Promise.all([
-          get_analytics_overview(),
-          get_time_breakdown(range_days),
+          get_analytics_overview(project_path),
+          get_time_breakdown(range_days, project_path),
         ]);
+        if (cancelled) return;
         set_overview(ov);
         set_time_data(tb);
       } catch (err) {
+        if (cancelled) return;
         set_error(
           error_message(err, "Failed to load analytics"),
         );
       } finally {
-        set_loading(false);
+        if (!cancelled) set_loading(false);
       }
     };
     fetch_data();
-  }, []);
+    return () => { cancelled = true; };
+  }, [project_path]);
 
   // Reload time breakdown when range changes (skip initial load)
   useEffect(() => {
     if (!overview) return;
-    get_time_breakdown(range_days).then(set_time_data).catch(console.error);
-  }, [range_days]);
+    get_time_breakdown(range_days, project_path).then(set_time_data).catch(console.error);
+  }, [range_days, project_path]);
 
   const total_tool_calls = useMemo(() => {
     if (!overview) return 0;
@@ -190,8 +198,8 @@ export function Dashboard() {
       {/* Daily Trend — follows selected range */}
       <DailyTrend data={time_data} range_days={range_days} />
 
-      {/* Top Projects */}
-      <TopProjects projects={overview.projects} />
+      {/* Top Projects — only in all-projects mode */}
+      {!scope && <TopProjects projects={overview.projects} />}
 
       {/* Activity Heatmap — always all-time */}
       <ActivityHeatmap data={overview.sessions_by_date} />

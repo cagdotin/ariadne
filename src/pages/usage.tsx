@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { AnalyticsOverview, TimeBreakdown as TimeBreakdownType } from "@/schemas/analytics";
 import { get_analytics_overview, get_time_breakdown } from "@/api/analytics";
+import { use_project_scope } from "@/components/project-scope-provider";
 import { format_cost } from "@/lib/format";
 import { ToolUsageBar } from "@/components/tool-usage-bar";
 import { ModelDistribution } from "@/components/model-distribution";
@@ -11,36 +12,45 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { error_message } from "@/lib/utils";
 
 export function Usage() {
+  const { scope } = use_project_scope();
+  const project_path = scope?.project_path;
+
   const [data, set_data] = useState<AnalyticsOverview | null>(null);
   const [time_data, set_time_data] = useState<TimeBreakdownType | null>(null);
   const [time_range, set_time_range] = useState(30);
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
 
+  // Load overview + time breakdown on mount and when scope changes
   useEffect(() => {
+    let cancelled = false;
     const fetch_data = async () => {
       try {
         set_loading(true);
         set_error(null);
         const [overview, breakdown] = await Promise.all([
-          get_analytics_overview(),
-          get_time_breakdown(time_range),
+          get_analytics_overview(project_path),
+          get_time_breakdown(time_range, project_path),
         ]);
+        if (cancelled) return;
         set_data(overview);
         set_time_data(breakdown);
       } catch (err) {
+        if (cancelled) return;
         set_error(error_message(err, "Failed to load usage data"));
       } finally {
-        set_loading(false);
+        if (!cancelled) set_loading(false);
       }
     };
     fetch_data();
-  }, []);
+    return () => { cancelled = true; };
+  }, [project_path]);
 
+  // Reload time breakdown when range changes
   useEffect(() => {
     if (!data) return;
-    get_time_breakdown(time_range).then(set_time_data).catch(console.error);
-  }, [time_range]);
+    get_time_breakdown(time_range, project_path).then(set_time_data).catch(console.error);
+  }, [time_range, project_path]);
 
   if (error) {
     return (
