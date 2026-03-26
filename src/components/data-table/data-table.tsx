@@ -1,7 +1,10 @@
 import {
-  ColumnDef,
-  SortingState,
-  ColumnFiltersState,
+  type ColumnDef,
+  type SortingState,
+  type ColumnFiltersState,
+  type Table as TanstackTable,
+  type VisibilityState,
+  type FilterFn,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
@@ -22,20 +25,36 @@ import { Input } from "@/components/ui/input";
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  /** Render a custom toolbar. When provided, overrides filter_column/filter_placeholder. */
+  toolbar?: (table: TanstackTable<TData>) => React.ReactNode;
+  /** Custom global filter function — used when toolbar manages globalFilter state. */
+  global_filter_fn?: FilterFn<TData>;
   filter_column?: string;
   filter_placeholder?: string;
   on_row_click?: (row: TData) => void;
+  /** Controlled column visibility from the parent. */
+  column_visibility?: VisibilityState;
+  /** Callback when column visibility changes. */
+  on_column_visibility_change?: (visibility: VisibilityState) => void;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  toolbar,
+  global_filter_fn,
   filter_column,
   filter_placeholder = "Filter...",
   on_row_click,
+  column_visibility,
+  on_column_visibility_change,
 }: DataTableProps<TData, TValue>) {
   const [sorting, set_sorting] = useState<SortingState>([]);
   const [column_filters, set_column_filters] = useState<ColumnFiltersState>([]);
+  const [internal_visibility, set_internal_visibility] = useState<VisibilityState>({});
+
+  const visibility = column_visibility ?? internal_visibility;
+  const set_visibility = on_column_visibility_change ?? set_internal_visibility;
 
   const table = useReactTable({
     data,
@@ -45,18 +64,31 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: set_sorting,
     onColumnFiltersChange: set_column_filters,
-    state: { sorting, columnFilters: column_filters },
+    onColumnVisibilityChange: (updater) => {
+      const next = typeof updater === "function" ? updater(visibility) : updater;
+      set_visibility(next);
+    },
+    globalFilterFn: global_filter_fn,
+    state: {
+      sorting,
+      columnFilters: column_filters,
+      columnVisibility: visibility,
+    },
   });
 
   return (
     <div className="w-full min-w-0 space-y-2">
-      {filter_column && (
-        <Input
-          placeholder={filter_placeholder}
-          value={(table.getColumn(filter_column)?.getFilterValue() as string) ?? ""}
-          onChange={(e) => table.getColumn(filter_column)?.setFilterValue(e.target.value)}
-          className="max-w-sm"
-        />
+      {toolbar ? (
+        toolbar(table)
+      ) : (
+        filter_column && (
+          <Input
+            placeholder={filter_placeholder}
+            value={(table.getColumn(filter_column)?.getFilterValue() as string) ?? ""}
+            onChange={(e) => table.getColumn(filter_column)?.setFilterValue(e.target.value)}
+            className="max-w-sm"
+          />
+        )
       )}
       <div className="w-full min-w-0 overflow-x-auto">
         <Table className="w-full table-fixed">
