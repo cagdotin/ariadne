@@ -99,9 +99,9 @@ export function AppLayout() {
     <ThemeProvider default_theme="dark" storage_key="ariadne-ui-theme">
       <SidebarProvider className="max-h-svh overflow-hidden">
         <Sidebar collapsible="icon">
-          <SidebarHeader className="border-b border-sidebar-border px-4 py-4 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-3">
+          <SidebarHeader className="border-b border-sidebar-border px-4 h-12 justify-center group-data-[collapsible=icon]:px-2">
             <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
-              <LabyrinthLogo className="size-7 shrink-0 text-foreground group-data-[collapsible=icon]:size-6" />
+              <LabyrinthLogo className="size-6 shrink-0 text-foreground group-data-[collapsible=icon]:size-5" />
               <div className="group-data-[collapsible=icon]:hidden">
                 <h2 className="text-foreground text-md font-semibold leading-tight">
                   Ariadne
@@ -173,7 +173,7 @@ export function AppLayout() {
         </Sidebar>
 
         <SidebarInset>
-          <header className="flex items-center gap-2 px-4 py-2 border-b border-border shrink-0">
+          <header className="flex items-center gap-2 px-4 h-12 border-b border-border shrink-0">
             <SidebarTrigger />
             <div className="ml-2">
               <PageHeader items={breadcrumbs} />
