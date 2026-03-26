@@ -15,11 +15,6 @@ pub async fn list_projects(cache: State<'_, SessionCache>) -> Result<Vec<Project
 }
 
 #[tauri::command]
-pub async fn get_project_sessions(cache: State<'_, SessionCache>, project_name: String) -> Result<Vec<SessionSummary>, String> {
-    cache.get_project_sessions(&project_name).await
-}
-
-#[tauri::command]
 pub async fn get_session_detail(cache: State<'_, SessionCache>, session_id: String) -> Result<SessionSummary, String> {
     cache.get_session_detail(&session_id).await
 }
@@ -43,9 +38,9 @@ pub async fn resync_sessions(cache: State<'_, SessionCache>) -> Result<Analytics
 #[tauri::command]
 pub async fn get_project_file_stats(
     cache: State<'_, SessionCache>,
-    project_name: String,
+    project_path: String,
 ) -> Result<ProjectFileStats, String> {
-    cache.get_project_file_stats(&project_name).await
+    cache.get_project_file_stats(&project_path).await
 }
 
 #[tauri::command]

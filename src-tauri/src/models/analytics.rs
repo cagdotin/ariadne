@@ -132,7 +132,7 @@ pub struct DirectoryStat {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ProjectFileStats {
-    pub project_name: String,
+    pub project_path: String,
     pub total_sessions: u32,
     pub tool_distribution: Vec<NameCount>,
     pub read_files: Vec<NameCount>,

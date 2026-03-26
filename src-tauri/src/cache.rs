@@ -285,21 +285,6 @@ impl SessionCache {
         })
     }
 
-    /// Get sessions for a specific project from cached data
-    pub async fn get_project_sessions(&self, project_name: &str) -> Result<Vec<SessionSummary>, String> {
-        let all_sessions = self.get_or_init().await?;
-        
-        let mut project_sessions: Vec<SessionSummary> = all_sessions
-            .into_iter()
-            .filter(|session| session.project_name == project_name)
-            .collect();
-
-        // Sort by started_at descending
-        project_sessions.sort_by(|a, b| b.started_at.cmp(&a.started_at));
-
-        Ok(project_sessions)
-    }
-
     /// Get a specific session from cached data
     pub async fn get_session_detail(&self, session_id: &str) -> Result<SessionSummary, String> {
         let all_sessions = self.get_or_init().await?;
@@ -445,12 +430,12 @@ impl SessionCache {
     }
 
     /// Get file and tool analytics for a specific project
-    pub async fn get_project_file_stats(&self, project_name: &str) -> Result<ProjectFileStats, String> {
+    pub async fn get_project_file_stats(&self, project_path: &str) -> Result<ProjectFileStats, String> {
         let all_sessions = self.get_or_init().await?;
 
         let project_sessions: Vec<_> = all_sessions
             .iter()
-            .filter(|s| s.project_name == project_name)
+            .filter(|s| s.project_path == project_path)
             .collect();
 
         let total_sessions = project_sessions.len() as u32;
@@ -565,7 +550,7 @@ impl SessionCache {
         activity_by_date.sort_by(|a, b| a.date.cmp(&b.date));
 
         Ok(ProjectFileStats {
-            project_name: project_name.to_string(),
+            project_path: project_path.to_string(),
             total_sessions,
             tool_distribution,
             read_files,
