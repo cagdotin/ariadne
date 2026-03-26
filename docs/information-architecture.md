@@ -183,6 +183,7 @@ Uses shadcn `Breadcrumb` component. Shows on all detail pages below the top head
 - `get_tool_details` → Per-tool deep-dive
 - `get_session_detail` → Single session (future: session detail page)
 - `resync_sessions` → Re-parse all sessions
+- `qmd_search` → Hybrid search (expansion + BM25 + vector + reranking) with explain traces
 
 ---
 
@@ -207,7 +208,8 @@ An **index** is a named, independent knowledge base. Each index has its own coll
 | Stat cards | `StatCard` × 4 | Total Documents, Embedded Chunks, Collections, DB Size |
 | Global context | `GlobalContextEditor` | Inline editable text field |
 | Collections table | `DataTable` | Name, Path, Pattern, Docs, Embedded, Last Updated, Default. Click → collection detail |
-| Actions | Button group | Add Collection, Re-index All, Embed All, Cleanup |
+| Actions | Button group | Search trigger, Add Collection, Re-index All, Embed All, Cleanup |
+| Search modal | `QmdSearchModal` | Self-contained modal: query input, collection filter pills, pipeline progress (expansion + search timing), ranked result cards with scores/snippets, expandable score breakdown + full document preview. Opens from search trigger in actions bar. |
 
 ---
 
