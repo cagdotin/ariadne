@@ -25,6 +25,7 @@ export const SessionSummarySchema = z.object({
   ended_at: z.string().nullable(),
   duration_seconds: z.number().nullable(),
   title: z.string().nullable(),
+  first_user_message: z.string().nullable(),
   total_cost: z.number(),
   input_cost: z.number(),
   output_cost: z.number(),

@@ -14,6 +14,7 @@ pub struct SessionSummary {
     pub ended_at: Option<String>,      // timestamp of last event
     pub duration_seconds: Option<f64>,
     pub title: Option<String>,         // from session_info event if present
+    pub first_user_message: Option<String>, // first user message text, truncated to 200 chars
 
     // Costs
     pub total_cost: f64,

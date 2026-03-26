@@ -87,6 +87,41 @@ pub fn parse_session_file(file_path: &Path, dir_name: String) -> Result<SessionS
                     match message.get("role").and_then(|r| r.as_str()) {
                         Some("user") => {
                             session_summary.user_message_count += 1;
+
+                            // Capture first user message text (truncated to 200 chars)
+                            if session_summary.first_user_message.is_none() {
+                                if let Some(content) = message.get("content") {
+                                    let text = if let Some(s) = content.as_str() {
+                                        s.to_string()
+                                    } else if let Some(blocks) = content.as_array() {
+                                        blocks.iter()
+                                            .filter_map(|b| {
+                                                if b.get("type").and_then(|t| t.as_str()) == Some("text") {
+                                                    b.get("text").and_then(|t| t.as_str()).map(|s| s.to_string())
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .collect::<Vec<_>>()
+                                            .join(" ")
+                                    } else {
+                                        String::new()
+                                    };
+                                    let trimmed = text.trim().to_string();
+                                    if !trimmed.is_empty() {
+                                        let truncated = if trimmed.len() > 200 {
+                                            let mut end = 200;
+                                            while !trimmed.is_char_boundary(end) && end > 0 {
+                                                end -= 1;
+                                            }
+                                            format!("{}…", &trimmed[..end])
+                                        } else {
+                                            trimmed
+                                        };
+                                        session_summary.first_user_message = Some(truncated);
+                                    }
+                                }
+                            }
                         },
                         Some("assistant") => {
                             session_summary.assistant_message_count += 1;
@@ -256,6 +291,7 @@ impl Default for SessionSummary {
             ended_at: None,
             duration_seconds: None,
             title: None,
+            first_user_message: None,
             total_cost: 0.0,
             input_cost: 0.0,
             output_cost: 0.0,
