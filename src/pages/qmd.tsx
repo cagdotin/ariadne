@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "@tanstack/react-router";
+import { useParams, useNavigate, Link } from "@tanstack/react-router";
 import type { QmdStatus, QmdCollection, QmdAvailability, QmdIndex } from "@/schemas/qmd";
+import type { QmdLogStats } from "@/schemas/qmd-logs";
 import {
   qmd_check_availability,
   qmd_get_status,
@@ -15,6 +16,8 @@ import {
   qmd_embed,
   qmd_cleanup,
 } from "@/api/qmd";
+import { get_qmd_log_stats } from "@/api/qmd-logs";
+import { use_project_scope } from "@/components/project-scope-provider";
 import { IndexSelector } from "@/components/index-selector";
 import { CreateIndexDialog } from "@/components/create-index-dialog";
 import { DeleteIndexDialog } from "@/components/delete-index-dialog";
@@ -27,10 +30,11 @@ import { AddCollectionDialog } from "@/components/add-collection-dialog";
 import { QmdProgress } from "@/components/qmd-progress";
 import { InfoTip } from "@/components/info-tip";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format_number, format_file_size } from "@/lib/format";
 import { error_message } from "@/lib/utils";
-import { RefreshCw, Plus, Zap, Trash2, Search } from "lucide-react";
+import { RefreshCw, Plus, Zap, Trash2, Search, ScrollText } from "lucide-react";
 import { use_qmd_operation } from "@/hooks/use-qmd-operation";
 import { QmdSearchModal } from "@/components/qmd-search-modal";
 
@@ -51,7 +55,9 @@ export function Qmd() {
   const [delete_target, set_delete_target] = useState<QmdIndex | null>(null);
   const [show_search, set_show_search] = useState(false);
   const [action_loading, set_action_loading] = useState<string | null>(null);
+  const [log_stats, set_log_stats] = useState<QmdLogStats | null>(null);
   const { state: op_state, start_operation, clear_operation } = use_qmd_operation();
+  const { scope } = use_project_scope();
   const collection_columns = useMemo(() => create_qmd_collection_columns(index_name), [index_name]);
 
   // Save last-visited index
@@ -113,6 +119,17 @@ export function Qmd() {
   }, [index_name, fetch_indexes]);
 
   useEffect(() => { fetch_data(true); }, [fetch_data]);
+
+  // Load QMD log stats independently from the main page data
+  useEffect(() => {
+    let cancelled = false;
+    get_qmd_log_stats(scope?.project_path).then((stats) => {
+      if (!cancelled) set_log_stats(stats);
+    }).catch((err) => {
+      if (import.meta.env.DEV) console.warn("QMD log stats fetch failed:", err);
+    });
+    return () => { cancelled = true; };
+  }, [scope?.project_path]);
 
   const handle_reindex = async () => {
     try {
@@ -282,6 +299,17 @@ export function Qmd() {
             <Search className="h-3.5 w-3.5" />
             <span>Search...</span>
           </div>
+          <Link to="/qmd/logs">
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <ScrollText className="h-3.5 w-3.5" />
+              Logs
+              {log_stats !== null && log_stats.total_calls > 0 && (
+                <Badge variant="secondary" className="ml-0.5 text-[10px] px-1.5 py-0">
+                  {format_number(log_stats.total_calls)}
+                </Badge>
+              )}
+            </Button>
+          </Link>
           <Button
             size="sm"
             variant="outline"
