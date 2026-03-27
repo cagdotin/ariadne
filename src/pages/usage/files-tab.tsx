@@ -1,9 +1,20 @@
 import { useMemo, useState } from "react";
 import type { ProjectFileStats, NameCount } from "@/schemas/analytics";
 import { format_number } from "@/lib/format";
+import {
+  type OperationLens,
+  type FileInsight,
+  OPERATION_LENS_OPTIONS,
+  from_backend_insights,
+} from "@/lib/file-analytics";
 import { MiniStat } from "./mini-stat";
+import { use_usage_context } from "./usage-context";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FileHotspotTreemap } from "@/components/file-hotspot-treemap";
 import { FileHotspotGrid } from "@/components/file-hotspot-grid";
+import { FileImbalanceChart } from "@/components/file-imbalance-chart";
+import { FileSessionBreadthChart } from "@/components/file-session-breadth-chart";
+import { FileSizeActivityScatter } from "@/components/file-size-activity-scatter";
 import { Input } from "@/components/ui/input";
 
 interface FilesTabProps {
@@ -25,6 +36,11 @@ function filter_files(files: NameCount[], excludes: string[]): NameCount[] {
   return files.filter((f) => !is_excluded(f.name, excludes));
 }
 
+function filter_insights(insights: FileInsight[], excludes: string[]): FileInsight[] {
+  if (excludes.length === 0) return insights;
+  return insights.filter((f) => !is_excluded(f.path, excludes));
+}
+
 function FileSummaryCards({ stats }: { stats: ProjectFileStats }) {
   return (
     <div className="flex flex-wrap gap-3">
@@ -36,11 +52,54 @@ function FileSummaryCards({ stats }: { stats: ProjectFileStats }) {
   );
 }
 
+function OperationLensPicker({
+  value,
+  on_change,
+}: {
+  value: OperationLens;
+  on_change: (v: OperationLens) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      {OPERATION_LENS_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => on_change(opt.value)}
+          className={`px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer ${
+            value === opt.value
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function FilesTab({ file_stats }: FilesTabProps) {
   const [exclude_paths, set_exclude_paths] = useState(DEFAULT_EXCLUDES);
+  const [lens, set_lens] = useState<OperationLens>("all");
 
   const excludes = useMemo(() => parse_excludes(exclude_paths), [exclude_paths]);
 
+  // Unified file insights from backend (includes distinct_session_count)
+  const all_insights = useMemo(
+    () =>
+      file_stats
+        ? from_backend_insights(file_stats.file_insights)
+        : [],
+    [file_stats],
+  );
+
+  const filtered_insights = useMemo(
+    () => filter_insights(all_insights, excludes),
+    [all_insights, excludes],
+  );
+
+  // Legacy filtered arrays for grid (which still uses NameCount[])
   const filtered_read = useMemo(
     () => filter_files(file_stats?.read_files ?? [], excludes),
     [file_stats, excludes],
@@ -55,14 +114,8 @@ export function FilesTab({ file_stats }: FilesTabProps) {
   );
 
   const hidden_count = useMemo(() => {
-    if (!file_stats) return 0;
-    const all = new Set([
-      ...file_stats.read_files.map((f) => f.name),
-      ...file_stats.edit_files.map((f) => f.name),
-      ...file_stats.write_files.map((f) => f.name),
-    ]);
-    return [...all].filter((p) => is_excluded(p, excludes)).length;
-  }, [file_stats, excludes]);
+    return all_insights.length - filtered_insights.length;
+  }, [all_insights, filtered_insights]);
 
   if (!file_stats) {
     return (
@@ -78,28 +131,52 @@ export function FilesTab({ file_stats }: FilesTabProps) {
     <div className="space-y-4">
       <FileSummaryCards stats={file_stats} />
 
-      <div className="flex min-w-0 items-center gap-3">
-        <label className="shrink-0 text-sm text-muted-foreground">Exclude paths:</label>
-        <Input
-          value={exclude_paths}
-          onChange={(e) => set_exclude_paths(e.target.value)}
-          placeholder="node_modules, .git, dist (comma-separated)"
-          className="min-w-0 flex-1"
-        />
-        {hidden_count > 0 && (
-          <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
-            {hidden_count} hidden
-          </span>
-        )}
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <OperationLensPicker value={lens} on_change={set_lens} />
+
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <label className="shrink-0 text-sm text-muted-foreground">Exclude paths:</label>
+          <Input
+            value={exclude_paths}
+            onChange={(e) => set_exclude_paths(e.target.value)}
+            placeholder="node_modules, .git, dist (comma-separated)"
+            className="min-w-0 flex-1"
+          />
+          {hidden_count > 0 && (
+            <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+              {hidden_count} hidden
+            </span>
+          )}
+        </div>
       </div>
 
+      {/* Primary explorer */}
       <FileHotspotTreemap
-        read_files={filtered_read}
-        edit_files={filtered_edit}
-        write_files={filtered_write}
+        insights={filtered_insights}
+        lens={lens}
         project_path={file_stats.project_path}
       />
 
+      {/* Companion charts */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <FileImbalanceChart
+          insights={filtered_insights}
+          project_path={file_stats.project_path}
+        />
+        <FileSessionBreadthChart
+          insights={filtered_insights}
+          lens={lens}
+          project_path={file_stats.project_path}
+        />
+      </div>
+
+      <FileSizeActivityScatter
+        insights={filtered_insights}
+        lens={lens}
+        project_path={file_stats.project_path}
+      />
+
+      {/* Precise lookup table */}
       <FileHotspotGrid
         read_files={filtered_read}
         edit_files={filtered_edit}
@@ -108,4 +185,22 @@ export function FilesTab({ file_stats }: FilesTabProps) {
       />
     </div>
   );
+}
+
+export function FilesPage() {
+  const { file_stats, loading, error } = use_usage_context();
+
+  if (error) return <p className="text-destructive text-sm">{error}</p>;
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  return <FilesTab file_stats={file_stats} />;
 }

@@ -1,16 +1,24 @@
-import { useMemo, useRef, useState, useEffect } from "react";
-import type { NameCount } from "@/schemas/analytics";
+import { useMemo, useRef } from "react";
+import type { FileInsight, OperationLens } from "@/lib/file-analytics";
+import {
+  dominant_op,
+  OP_HUE,
+  intensity_bucket,
+  intensity_fill,
+  format_pct,
+} from "@/lib/file-analytics";
 import { Treemap, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format_number } from "@/lib/format";
+import { strip_project_prefix } from "@/lib/path-utils";
+import { use_container_width } from "@/hooks/use-container-width";
 import { ChevronRight } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
 interface FileHotspotTreemapProps {
-  read_files: NameCount[];
-  edit_files: NameCount[];
-  write_files: NameCount[];
+  insights: FileInsight[];
+  lens: OperationLens;
   project_path?: string;
 }
 
@@ -19,59 +27,12 @@ interface TreeNode {
   reads: number;
   edits: number;
   writes: number;
+  value: number; // lens-driven sizing metric
   total: number;
   file_count?: number;
   children?: TreeNode[];
-}
-
-// ── Color ──────────────────────────────────────────────────────────────
-
-function get_cell_color(reads: number, edits: number, writes: number): string {
-  const total = reads + edits + writes;
-  if (total === 0) return "var(--muted)";
-  const r = reads / total;
-  const e = edits / total;
-  const w = writes / total;
-  if (r >= e && r >= w) return `hsl(210, ${50 + r * 40}%, 55%)`;
-  if (e >= r && e >= w) return `hsl(145, ${50 + e * 40}%, 45%)`;
-  return `hsl(30, ${50 + w * 40}%, 50%)`;
-}
-
-// ── Path normalization ─────────────────────────────────────────────────
-
-/**
- * Strip the project path (and common absolute prefixes like /Users/xxx/)
- * from file paths so the tree shows only project-relative paths.
- */
-function normalize_path(raw: string, project_path?: string): string {
-  let p = raw;
-
-  // Strip project path prefix if provided
-  if (project_path) {
-    const base = project_path.endsWith("/") ? project_path : project_path + "/";
-    if (p.startsWith(base)) {
-      p = p.slice(base.length);
-    }
-  }
-
-  // Strip leading /
-  if (p.startsWith("/")) p = p.slice(1);
-
-  // If still starts with an absolute-looking home dir, strip up to the
-  // last recognizable project root marker.
-  // e.g. "Users/cgn/git/dev/0xcgn/ariadne/ariadne/src/foo.tsx" → "src/foo.tsx"
-  if (project_path) {
-    const project_name = project_path.replace(/\/$/, "").split("/").pop() ?? "";
-    if (project_name) {
-      const marker = project_name + "/";
-      const idx = p.lastIndexOf(marker);
-      if (idx !== -1) {
-        p = p.slice(idx + marker.length);
-      }
-    }
-  }
-
-  return p || raw;
+  /** for intensity: max lens value among siblings at this level */
+  _level_max?: number;
 }
 
 // ── Deep tree construction ─────────────────────────────────────────────
@@ -89,35 +50,30 @@ function new_raw(name: string): RawNode {
 }
 
 function build_file_tree(
-  read_files: NameCount[],
-  edit_files: NameCount[],
-  write_files: NameCount[],
+  insights: FileInsight[],
+  lens: OperationLens,
   project_path?: string,
 ): TreeNode[] {
   const root = new_raw("root");
 
-  const insert = (path: string, r: number, e: number, w: number) => {
-    const normalized = normalize_path(path, project_path);
+  for (const insight of insights) {
+    const normalized = strip_project_prefix(insight.path, project_path);
     const segments = normalized.split("/").filter(Boolean);
-    if (segments.length === 0) return;
+    if (segments.length === 0) continue;
 
     let cur = root;
     for (const seg of segments) {
       if (!cur.children.has(seg)) cur.children.set(seg, new_raw(seg));
       cur = cur.children.get(seg)!;
     }
-    cur.reads += r;
-    cur.edits += e;
-    cur.writes += w;
-  };
-
-  for (const { name, count } of read_files) insert(name, count, 0, 0);
-  for (const { name, count } of edit_files) insert(name, 0, count, 0);
-  for (const { name, count } of write_files) insert(name, 0, 0, count);
+    cur.reads += insight.read_count;
+    cur.edits += insight.edit_count;
+    cur.writes += insight.write_count;
+  }
 
   aggregate(root);
 
-  // Collapse single-child chains from the root
+  // Collapse single-child directory chains from the root
   let eff = root;
   while (eff.children.size === 1) {
     const only = [...eff.children.values()][0];
@@ -128,7 +84,7 @@ function build_file_tree(
     }
   }
 
-  return to_tree_nodes(eff);
+  return to_tree_nodes(eff, lens);
 }
 
 function aggregate(n: RawNode): void {
@@ -140,10 +96,24 @@ function aggregate(n: RawNode): void {
   }
 }
 
-function to_tree_nodes(parent: RawNode): TreeNode[] {
+function lens_value(r: number, e: number, w: number, lens: OperationLens): number {
+  switch (lens) {
+    case "all": return r + e + w;
+    case "read": return r;
+    case "edit": return e;
+    case "write": return w;
+  }
+}
+
+function to_tree_nodes(parent: RawNode, lens: OperationLens): TreeNode[] {
   const nodes: TreeNode[] = [];
   for (const child of parent.children.values()) {
     const total = child.reads + child.edits + child.writes;
+    const value = lens_value(child.reads, child.edits, child.writes, lens);
+
+    // Skip nodes with zero value under the current lens
+    if (value <= 0) continue;
+
     if (child.children.size > 0) {
       // Collapse inner single-child chains
       let display = child;
@@ -155,17 +125,32 @@ function to_tree_nodes(parent: RawNode): TreeNode[] {
           display = only;
         } else break;
       }
+      const children = to_tree_nodes(display, lens);
+      // Skip directories that became empty after lens filtering
+      if (children.length === 0) continue;
       nodes.push({
         name: display_name,
-        reads: child.reads, edits: child.edits, writes: child.writes, total,
+        reads: child.reads, edits: child.edits, writes: child.writes,
+        value, total,
         file_count: count_leaves(display),
-        children: to_tree_nodes(display),
+        children,
       });
     } else {
-      nodes.push({ name: child.name, reads: child.reads, edits: child.edits, writes: child.writes, total });
+      nodes.push({
+        name: child.name,
+        reads: child.reads, edits: child.edits, writes: child.writes,
+        value, total,
+      });
     }
   }
-  nodes.sort((a, b) => b.total - a.total);
+  nodes.sort((a, b) => b.value - a.value);
+
+  // Annotate level max for intensity computation
+  const level_max = nodes.reduce((m, n) => Math.max(m, n.value), 0);
+  for (const n of nodes) {
+    n._level_max = level_max;
+  }
+
   return nodes;
 }
 
@@ -176,39 +161,74 @@ function count_leaves(n: RawNode): number {
   return c;
 }
 
+// ── Color for a cell ───────────────────────────────────────────────────
+
+function get_cell_fill(
+  reads: number,
+  edits: number,
+  writes: number,
+  lens_val: number,
+  level_max: number,
+  lens: OperationLens,
+): string {
+  const bucket = intensity_bucket(lens_val, level_max);
+
+  if (lens === "all") {
+    const dom = dominant_op(reads, edits, writes);
+    return intensity_fill(OP_HUE[dom], bucket);
+  }
+  // Single-op mode: fixed hue
+  return intensity_fill(OP_HUE[lens], bucket);
+}
+
 // ── Cell Renderer ──────────────────────────────────────────────────────
 
 interface CellProps {
   x: number; y: number; width: number; height: number; depth: number;
-  name: string; reads: number; edits: number; writes: number; total: number;
-  index: number; file_count?: number; children?: TreeNode[]; y_scale?: number;
+  name: string; reads: number; edits: number; writes: number;
+  value: number; total: number;
+  index: number; file_count?: number; children?: TreeNode[];
+  y_scale?: number; lens?: OperationLens; _level_max?: number;
 }
 
 function TreemapCell(props: CellProps) {
-  const { x, y, width, height, depth, name, reads, edits, writes, total, file_count, children, y_scale = 1 } = props;
+  const {
+    x, y, width, height, depth, name,
+    reads, edits, writes, value, total,
+    file_count, children,
+    y_scale = 1, lens = "all", _level_max = 1,
+  } = props;
 
   const scaled_y = y * y_scale;
   const scaled_height = height * y_scale;
 
   if (width < 2 || scaled_height < 2) return null;
 
-  const fill = get_cell_color(reads ?? 0, edits ?? 0, writes ?? 0);
+  const fill = get_cell_fill(
+    reads ?? 0, edits ?? 0, writes ?? 0,
+    value ?? 0, _level_max, lens,
+  );
   const has_children = children && children.length > 0;
   const is_dir = depth === 1 && has_children;
   const show_label = width > 28 && scaled_height > 14;
   const has_room = width > 100 && scaled_height > 50;
+  const has_extra_room = width > 140 && scaled_height > 65;
 
   const max_chars = Math.floor(width / 7);
   const display = (name ?? "").length > max_chars
     ? (name ?? "").slice(0, max_chars - 1) + "…"
     : (name ?? "");
 
+  // Mini mix indicator for large cells
+  const lens_label = lens === "all" ? "ops" : lens;
+  const lens_val = value ?? 0;
+
   return (
     <g>
       <rect
         x={x} y={scaled_y} width={width} height={scaled_height}
         fill={fill} stroke="var(--background)"
-        strokeWidth={is_dir ? 2.5 : 1} opacity={0.88}
+        strokeWidth={is_dir ? 2.5 : 1} opacity={0.92}
         rx={is_dir ? 4 : 1}
       />
       {show_label && (
@@ -222,14 +242,22 @@ function TreemapCell(props: CellProps) {
             {display}
           </text>
           {is_dir && has_room && (
-            <>
-              <text x={x + 5} y={scaled_y + 30} fontSize={10} fill="rgba(255,255,255,0.75)" style={{ pointerEvents: "none" }}>
-                {format_number(total)} ops · {file_count ?? 0} files
-              </text>
-              <text x={x + 5} y={scaled_y + scaled_height - 8} fontSize={9} fill="rgba(255,255,255,0.45)" style={{ pointerEvents: "none" }}>
-                click to explore →
-              </text>
-            </>
+            <text x={x + 5} y={scaled_y + 30} fontSize={10} fill="rgba(255,255,255,0.75)" style={{ pointerEvents: "none" }}>
+              {format_number(lens_val)} {lens_label} · {file_count ?? 0} files
+            </text>
+          )}
+          {is_dir && has_extra_room && (
+            <text x={x + 5} y={scaled_y + scaled_height - 8} fontSize={9} fill="rgba(255,255,255,0.45)" style={{ pointerEvents: "none" }}>
+              click to explore →
+            </text>
+          )}
+          {!is_dir && has_room && (
+            <text x={x + 5} y={scaled_y + 28} fontSize={9} fill="rgba(255,255,255,0.6)" style={{ pointerEvents: "none" }}>
+              {format_number(lens_val)} {lens_label}
+              {lens === "all" && total > 0
+                ? ` · R:${format_pct(reads, total)} E:${format_pct(edits, total)} W:${format_pct(writes, total)}`
+                : ""}
+            </text>
           )}
         </>
       )}
@@ -243,8 +271,8 @@ function NestBreadcrumb(item: { name?: string }, i: number) {
   return (
     <span className="inline-flex items-center gap-0.5 text-xs">
       {i > 0 && <ChevronRight className="size-3 text-muted-foreground/60" />}
-      <span className="px-1.5 py-0.5 rounded hover:bg-muted/50 transition-colors">
-        {i === 0 ? "All" : item?.name ?? ""}
+      <span className="px-1.5 py-0.5 rounded hover:bg-muted/50 transition-colors cursor-pointer">
+        {i === 0 ? "⌂ Root" : item?.name ?? ""}
       </span>
     </span>
   );
@@ -252,9 +280,10 @@ function NestBreadcrumb(item: { name?: string }, i: number) {
 
 // ── Tooltip ────────────────────────────────────────────────────────────
 
-function TreemapTooltipContent({ active, payload }: {
+function TreemapTooltipContent({ active, payload, lens }: {
   active?: boolean;
   payload?: { payload?: Record<string, unknown> }[];
+  lens?: OperationLens;
 }) {
   if (!active || !payload?.[0]?.payload) return null;
   const d = payload[0].payload;
@@ -265,87 +294,168 @@ function TreemapTooltipContent({ active, payload }: {
   const total = (d.total as number) ?? 0;
   const file_count = d.file_count as number | undefined;
   const is_dir = Array.isArray(d.children) && d.children.length > 0;
+  const current_lens = lens ?? "all";
 
   return (
-    <div className="rounded-md border bg-popover px-3 py-2 text-popover-foreground shadow-md text-xs space-y-1">
+    <div className="rounded-md border bg-popover px-3 py-2 text-popover-foreground shadow-md text-xs space-y-1.5 max-w-xs">
       <p className="font-medium text-sm">{is_dir ? `${name}/` : name}</p>
-      <div className="flex gap-3">
-        <span className="text-blue-400">R: {format_number(reads)}</span>
-        <span className="text-green-400">E: {format_number(edits)}</span>
-        <span className="text-orange-400">W: {format_number(writes)}</span>
+
+      {/* Operation counts + percentages */}
+      <div className="space-y-0.5">
+        <div className="flex items-center justify-between gap-4">
+          <span className={`text-blue-400 ${current_lens === "read" ? "font-bold" : ""}`}>
+            Read
+          </span>
+          <span className="tabular-nums">
+            {format_number(reads)}{" "}
+            <span className="text-muted-foreground">({format_pct(reads, total)})</span>
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className={`text-green-400 ${current_lens === "edit" ? "font-bold" : ""}`}>
+            Edit
+          </span>
+          <span className="tabular-nums">
+            {format_number(edits)}{" "}
+            <span className="text-muted-foreground">({format_pct(edits, total)})</span>
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className={`text-orange-400 ${current_lens === "write" ? "font-bold" : ""}`}>
+            Write
+          </span>
+          <span className="tabular-nums">
+            {format_number(writes)}{" "}
+            <span className="text-muted-foreground">({format_pct(writes, total)})</span>
+          </span>
+        </div>
       </div>
-      <p className="text-muted-foreground">
-        {format_number(total)} total{is_dir && file_count ? ` · ${file_count} files` : ""}
-      </p>
-      {is_dir && <p className="text-muted-foreground/70 italic">Click to explore</p>}
+
+      <div className="border-t border-border pt-1 flex items-center justify-between gap-4">
+        <span className="text-muted-foreground">Total</span>
+        <span className="tabular-nums font-medium">{format_number(total)}{is_dir && file_count ? ` · ${file_count} files` : ""}</span>
+      </div>
+
+      {is_dir && (
+        <p className="text-muted-foreground/70 italic pt-0.5">Click to explore</p>
+      )}
     </div>
   );
 }
 
-// ── Responsive Width ───────────────────────────────────────────────────
+// ── Legend ──────────────────────────────────────────────────────────────
 
-function use_container_width(ref: React.RefObject<HTMLDivElement | null>): number {
-  const [w, set_w] = useState(800);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new ResizeObserver((entries) => {
-      for (const e of entries) set_w(Math.floor(e.contentRect.width));
-    });
-    obs.observe(el);
-    set_w(Math.floor(el.clientWidth));
-    return () => obs.disconnect();
-  }, [ref]);
-  return w;
+function TreemapLegend({ lens }: { lens: OperationLens }) {
+  const area_label =
+    lens === "all" ? "total operations" : `${lens} count`;
+
+  const color_label =
+    lens === "all"
+      ? "dominant operation type"
+      : `${lens} intensity`;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
+      <span>
+        <span className="font-medium text-foreground/80">Area</span> = {area_label}
+      </span>
+      <span>
+        <span className="font-medium text-foreground/80">Color</span> = {color_label}
+      </span>
+      <span>
+        <span className="font-medium text-foreground/80">Darker</span> = more activity
+      </span>
+      {lens === "all" && (
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-sm" style={{ background: `hsl(210, 70%, 50%)` }} />
+          <span>Read</span>
+          <span className="inline-block size-2.5 rounded-sm" style={{ background: `hsl(145, 70%, 42%)` }} />
+          <span>Edit</span>
+          <span className="inline-block size-2.5 rounded-sm" style={{ background: `hsl(30, 70%, 48%)` }} />
+          <span>Write</span>
+        </span>
+      )}
+      {lens !== "all" && (
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-sm" style={{ background: `hsl(${OP_HUE[lens]}, 70%, 45%)` }} />
+          <span>{lens} operations</span>
+        </span>
+      )}
+    </div>
+  );
 }
 
 // ── Main ───────────────────────────────────────────────────────────────
 
 const NEST_BREADCRUMB_HEIGHT = 30;
 
-export function FileHotspotTreemap({ read_files, edit_files, write_files, project_path }: FileHotspotTreemapProps) {
+export function FileHotspotTreemap({ insights, lens, project_path }: FileHotspotTreemapProps) {
   const ref = useRef<HTMLDivElement>(null);
   const cw = use_container_width(ref);
 
   const tree_data = useMemo(
-    () => build_file_tree(read_files, edit_files, write_files, project_path),
-    [read_files, edit_files, write_files, project_path],
+    () => build_file_tree(insights, lens, project_path),
+    [insights, lens, project_path],
   );
 
-  if (tree_data.length === 0) return null;
-
-  // Recharts nest treemaps subtract 30px from the rendered SVG for the breadcrumb bar,
-  // but still compute node layout against the full height. Scale y/height into the visible
-  // plot area so the bottom row is not clipped.
+  // Recharts nest treemaps subtract 30px for the breadcrumb bar,
+  // but compute layout against the full height. Scale y/height so the
+  // bottom row is not clipped.
   const chart_h = Math.max(Math.round(window.innerHeight * 0.6), 450);
   const y_scale = (chart_h - NEST_BREADCRUMB_HEIGHT) / chart_h;
 
+  const lens_name = lens === "all" ? "total operations" : `${lens} operations`;
+
   return (
     <Card className="min-w-0 overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-base">File Treemap</CardTitle>
+      <CardHeader className="space-y-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <CardTitle className="text-base">File Treemap</CardTitle>
+          <span className="text-xs text-muted-foreground">
+            Sized by <span className="font-medium text-foreground/80">{lens_name}</span>
+          </span>
+        </div>
+
+        <TreemapLegend lens={lens} />
+
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Each rectangle is a file or directory, sized by total operations.{" "}
-          <span className="text-blue-400 font-medium">Blue = read-heavy</span>,{" "}
-          <span className="text-green-400 font-medium">green = edit-heavy</span>,{" "}
-          <span className="text-orange-400 font-medium">orange = write-heavy</span>.
-          Click a directory to explore its files. Use the breadcrumb bar to navigate back.
+          Click a directory to explore its files. Use the breadcrumb bar below the chart to navigate back.
         </p>
       </CardHeader>
+
       <CardContent ref={ref}>
-        <Treemap
-          width={cw - 4}
-          height={chart_h}
-          data={tree_data}
-          dataKey="total"
-          nameKey="name"
-          type="nest"
-          nestIndexContent={NestBreadcrumb}
-          content={<TreemapCell x={0} y={0} width={0} height={0} depth={0} name="" reads={0} edits={0} writes={0} total={0} index={0} y_scale={y_scale} />}
-          isAnimationActive={false}
-        >
-          <Tooltip content={<TreemapTooltipContent />} />
-        </Treemap>
+        {tree_data.length === 0 ? (
+          <div className="flex h-48 items-center justify-center rounded-md border border-dashed">
+            <p className="text-sm text-muted-foreground">
+              {lens === "all"
+                ? "No file activity after applying current filters."
+                : `No ${lens} operations found after applying current filters.`}
+            </p>
+          </div>
+        ) : (
+          <Treemap
+            width={cw - 4}
+            height={chart_h}
+            data={tree_data}
+            dataKey="value"
+            nameKey="name"
+            type="nest"
+            nestIndexContent={NestBreadcrumb}
+            content={
+              <TreemapCell
+                x={0} y={0} width={0} height={0} depth={0}
+                name="" reads={0} edits={0} writes={0}
+                value={0} total={0} index={0}
+                y_scale={y_scale} lens={lens} _level_max={1}
+              />
+            }
+            isAnimationActive={false}
+          >
+            <Tooltip
+              content={<TreemapTooltipContent lens={lens} />}
+            />
+          </Treemap>
+        )}
       </CardContent>
     </Card>
   );

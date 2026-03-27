@@ -3,6 +3,7 @@ import type { NameCount } from "@/schemas/analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { format_number } from "@/lib/format";
+import { strip_project_prefix } from "@/lib/path-utils";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -27,26 +28,6 @@ type SortKey = "total" | "reads" | "edits" | "writes" | "name";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 10;
-
-// ── Path normalization ─────────────────────────────────────────────────
-
-function normalize_path(raw: string, project_path?: string): string {
-  let p = raw;
-  if (project_path) {
-    const base = project_path.endsWith("/") ? project_path : project_path + "/";
-    if (p.startsWith(base)) p = p.slice(base.length);
-  }
-  if (p.startsWith("/")) p = p.slice(1);
-  if (project_path) {
-    const project_name = project_path.replace(/\/$/, "").split("/").pop() ?? "";
-    if (project_name) {
-      const marker = project_name + "/";
-      const idx = p.lastIndexOf(marker);
-      if (idx !== -1) p = p.slice(idx + marker.length);
-    }
-  }
-  return p || raw;
-}
 
 // ── Color ──────────────────────────────────────────────────────────────
 
@@ -88,7 +69,7 @@ function build_grid_data(
   const rows: FileRow[] = [];
 
   for (const [full_path, counts] of file_map) {
-    const relative = normalize_path(full_path, project_path);
+    const relative = strip_project_prefix(full_path, project_path);
     const total = counts.reads + counts.edits + counts.writes;
     const last_slash = relative.lastIndexOf("/");
     const dir = last_slash >= 0 ? relative.slice(0, last_slash) : ".";
