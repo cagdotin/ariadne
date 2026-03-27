@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { shorten_path } from "../utils/path";
 
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -118,18 +119,6 @@ export function ToolRow({
 interface NameCount {
   name: string;
   count: number;
-}
-
-function shorten_path(p: string): string {
-  if (p.startsWith("/Users/")) {
-    const parts = p.split("/");
-    if (parts.length > 2) return "~" + p.slice(("/Users/" + parts[2]).length);
-  }
-  if (p.startsWith("/home/")) {
-    const parts = p.split("/");
-    if (parts.length > 2) return "~" + p.slice(("/home/" + parts[2]).length);
-  }
-  return p;
 }
 
 export function DetailSection({
