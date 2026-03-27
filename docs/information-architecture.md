@@ -21,7 +21,7 @@ Each question gets its own top-level sidebar entry. No data should require more 
 Project selection is a global scope concern, not a page-level destination. The header project selector controls which project's data appears across all analytics pages. When a project is selected:
 - **Overview** shows scoped stat cards, trend, and heatmap; Top Projects is hidden.
 - **Sessions** shows only sessions for the selected project.
-- **Usage** shows scoped tool/model/cost analytics plus project-specific file analytics (directory hotspots, file activity, tool distribution, exclude-path filtering).
+- **Usage** shows scoped tool/model/cost analytics plus a project-specific file analytics workspace (operation-lens treemap explorer, companion analysis charts, file activity grid, exclude-path filtering).
 
 When no project is selected (all-projects mode), Usage shows global analytics only and project-specific file sections are hidden.
 
@@ -33,13 +33,21 @@ When no project is selected (all-projects mode), Usage shows global analytics on
 ```
 ├── Overview        /
 ├── Sessions        /sessions
-├── Usage           /usage
+├── Usage           /usage  (redirects to /usage/cost)
 └── QMD             /qmd
+```
+
+### Usage Sub-Routes (tab-navigated)
+```
+/usage/cost                   →  Cost analytics
+/usage/tools                  →  Tool usage overview
+/usage/tools/:tool_name       →  breadcrumb: Usage / {tool_name}
+/usage/patterns               →  Activity patterns
+/usage/files                  →  File analytics (scoped only)
 ```
 
 ### Detail Routes (breadcrumb-navigated)
 ```
-/tools/:tool_name            →  breadcrumb: Usage / {tool_name}
 /sessions/:id                →  breadcrumb: Sessions / {id…}
 /qmd/:index                  →  breadcrumb: QMD / {index}
 /qmd/:index/:collection      →  breadcrumb: QMD / {index} / {collection}
@@ -117,17 +125,22 @@ Organized as a **4-tab layout** with a **global time range picker** (Today / 7d 
 
 #### Tab 4: Files — *"What files are being touched?"* (scoped only)
 
+A file analytics workspace with shared controls and multiple complementary views. All views share the same project scope, date range, exclude-path filter, and operation lens.
+
 | Section | Component | Description |
 |---|---|---|
 | Stat cards | `MiniStat` × 4 | Sessions, Files Read, Files Edited, Files Written |
-| Exclude filter | Input | Comma-separated path exclusions for file analytics |
-| Tool distribution | `ToolDistribution` | Per-project tool call counts |
-| Directory hotspots | `DirectoryHotspots` | Stacked R/E/W bars by directory |
-| File activity | `DataTable` with tabs | Read / Edit / Write tabs, each a sortable table |
+| Operation lens | `OperationLensPicker` | All / Read / Edit / Write — shared control that drives treemap area sizing and companion chart filtering |
+| Exclude filter | Input | Comma-separated path exclusions for file analytics, with hidden-count badge |
+| File treemap | `FileHotspotTreemap` | Primary explorer. Rectangle area = selected operation count. Color hue = dominant op type (All) or fixed op hue (single-op). Intensity = GitHub-style bucketed activity level. Click directories to drill down; breadcrumb bar navigates back. Tooltip shows R/E/W counts, percentages, and total. Legend explains area, color, and intensity semantics. |
+| Read vs change imbalance | `FileImbalanceChart` | Horizontal stacked bars per file showing read ratio vs change (edit+write) ratio. Sorted by skew from 50/50 — most imbalanced files surface first. Lens-independent. |
+| Session breadth | `FileSessionBreadthChart` | Bar chart ranking files by distinct session count. Bar width = sessions, intensity = ops/session under active lens. Distinguishes broadly important files from one-session noise. |
+| Size vs activity scatter | `FileSizeActivityScatter` | Scatter plot with log-log axes: X = file size, Y = selected operation count. Fetches file sizes asynchronously (two-phase). Reports count of files excluded due to missing size metadata. |
+| File activity grid | `FileHotspotGrid` | Precise lookup table. Sortable by R/E/W/Total, searchable, paginated. Heat-colored cells show relative frequency per column. |
 
 ---
 
-### 4. Tool Detail (`/tools/:tool_name`)
+### 4. Tool Detail (`/usage/tools/:tool_name`)
 
 **Purpose**: Deep-dive into a specific tool (bash, read, edit, write).
 
@@ -184,11 +197,12 @@ Uses shadcn `Breadcrumb` component. Shows on all detail pages below the top head
   React Pages                    ← Render with shadcn + recharts
 ```
 
-### API Commands (existing)
+### API Commands
 - `list_projects` → Lightweight project list for scope selector
-- `get_analytics_overview(project_path?)` → Overview, Usage data (global or scoped)
+- `get_analytics_overview(project_path?, range_days?)` → Overview, Usage data (global or scoped)
 - `get_all_sessions(project_path?)` → Sessions list (global or scoped)
-- `get_project_file_stats(project_path)` → File/tool stats for scoped Usage deep-dive
+- `get_project_file_stats(project_path, range_days?)` → File/tool stats for scoped Usage deep-dive. Returns unified `file_insights` with per-file read/edit/write/total counts and distinct session counts, plus legacy separate arrays for backward compatibility.
+- `get_file_sizes(paths[])` → Async file size lookup. Stats each path on disk, returns `null` for deleted/inaccessible files. Called separately from `get_project_file_stats` to keep the main response fast (two-phase pattern).
 - `get_time_breakdown(range_days, project_path?)` → Weekday, time-of-day, daily trend
 - `get_tool_details(tool_name, project_path?)` → Per-tool deep-dive
 - `get_session_detail(session_id)` → Single session detail
