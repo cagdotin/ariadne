@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { SessionSummary } from "@/schemas/session";
 import { get_all_sessions } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
+import { use_analytics_time_range } from "@/components/analytics-time-range-provider";
 import { DataTable } from "@/components/data-table";
 import {
   session_columns,
@@ -16,6 +17,7 @@ import { error_message } from "@/lib/utils";
 
 export function Sessions() {
   const { scope } = use_project_scope();
+  const { range_days } = use_analytics_time_range();
   const project_path = scope?.project_path;
 
   const [sessions, set_sessions] = useState<SessionSummary[]>([]);
@@ -28,7 +30,7 @@ export function Sessions() {
       try {
         set_loading(true);
         set_error(null);
-        const data = await get_all_sessions(project_path);
+        const data = await get_all_sessions(project_path, range_days);
         if (cancelled) return;
         set_sessions(data);
       } catch (err) {
@@ -40,7 +42,7 @@ export function Sessions() {
     };
     fetch_sessions();
     return () => { cancelled = true; };
-  }, [project_path]);
+  }, [project_path, range_days]);
 
   const {
     search,

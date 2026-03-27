@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import type { ToolDetailResponse } from "@/schemas/analytics";
 import { get_tool_details } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
+import { use_analytics_time_range } from "@/components/analytics-time-range-provider";
 import { format_number } from "@/lib/format";
 import { error_message } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,7 @@ const bar_config: ChartConfig = {
 export function ToolDetail() {
   const { tool_name } = useParams({ strict: false }) as { tool_name: string };
   const { scope } = use_project_scope();
+  const { range_days } = use_analytics_time_range();
   const project_path = scope?.project_path;
 
   const [data, set_data] = useState<ToolDetailResponse | null>(null);
@@ -59,7 +61,7 @@ export function ToolDetail() {
       try {
         set_loading(true);
         set_error(null);
-        const result = await get_tool_details(tool_name, project_path);
+        const result = await get_tool_details(tool_name, project_path, range_days);
         if (cancelled) return;
         set_data(result);
       } catch (err) {
@@ -75,7 +77,7 @@ export function ToolDetail() {
     return () => {
       cancelled = true;
     };
-  }, [tool_name, project_path]);
+  }, [tool_name, project_path, range_days]);
 
   if (loading) {
     return (
