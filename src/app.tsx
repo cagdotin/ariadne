@@ -92,6 +92,12 @@ export function AppLayout() {
       }
       return [{ label: "Usage" }];
     }
+    if (parts[0] === "qmd" && parts[1] === "logs") {
+      return [
+        { label: "QMD", href: "/qmd" },
+        { label: "Logs" },
+      ];
+    }
     if (parts[0] === "qmd" && parts[1] && parts[2]) {
       return [
         { label: "QMD", href: "/qmd" },
@@ -107,7 +113,6 @@ export function AppLayout() {
   }, [location.pathname]);
 
   const is_session_detail = /^\/sessions\/[^/]+$/.test(location.pathname);
-  const is_qmd_route = location.pathname.startsWith("/qmd");
 
   return (
     <ThemeProvider default_theme="dark" storage_key="ariadne-ui-theme">
@@ -178,14 +183,10 @@ export function AppLayout() {
           <header className="flex items-center justify-center gap-1 pl-2 pr-4 h-12 border-b border-border shrink-0">
             <SidebarTrigger />
             <Separator orientation="vertical" className="h-5 my-auto mr-1" />
-            {!is_qmd_route && (
-              <>
-                <ProjectScopeSelector />
-                <span>
-                  <ChevronRight className="size-3" />
-                </span>
-              </>
-            )}
+            <ProjectScopeSelector />
+            <span>
+              <ChevronRight className="size-3" />
+            </span>
             <div className="">
               <PageHeader items={breadcrumbs} />
             </div>

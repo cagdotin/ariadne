@@ -8,6 +8,7 @@ import { ToolDetail } from './pages/tool-detail';
 import { QmdRedirect } from './pages/qmd-redirect';
 import { Qmd } from './pages/qmd';
 import { QmdCollection } from './pages/qmd-collection';
+import { QmdLogs } from './pages/qmd-logs';
 
 const root_route = createRootRoute({
   component: AppLayout,
@@ -81,6 +82,12 @@ const qmd_redirect_route = createRoute({
   component: QmdRedirect,
 });
 
+const qmd_logs_route = createRoute({
+  getParentRoute: () => root_route,
+  path: '/qmd/logs',
+  component: QmdLogs,
+});
+
 const qmd_index_route = createRoute({
   getParentRoute: () => root_route,
   path: '/qmd/$index',
@@ -106,6 +113,7 @@ const route_tree = root_route.addChildren([
     usage_files_route,
   ]),
   qmd_redirect_route,
+  qmd_logs_route,
   qmd_index_route,
   qmd_collection_route,
 ]);
