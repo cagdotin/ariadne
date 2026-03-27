@@ -91,13 +91,28 @@ impl SessionCache {
         Ok(projects)
     }
 
-    /// Get analytics overview from cached data, optionally filtered by project path
-    pub async fn get_analytics_overview(&self, project_path: Option<&str>) -> Result<AnalyticsOverview, String> {
+    /// Get analytics overview from cached data, optionally filtered by project path and time range
+    pub async fn get_analytics_overview(&self, project_path: Option<&str>, range_days: u32) -> Result<AnalyticsOverview, String> {
         let all = self.get_or_init().await?;
-        let all_sessions: Vec<SessionSummary> = match project_path {
-            Some(pp) => all.into_iter().filter(|s| s.project_path == pp).collect(),
-            None => all,
-        };
+        let now = Utc::now();
+        let all_sessions: Vec<SessionSummary> = all.into_iter().filter(|s| {
+            // Project path filter
+            if let Some(pp) = project_path {
+                if s.project_path != pp {
+                    return false;
+                }
+            }
+            // Time range filter
+            if range_days == 0 {
+                return true;
+            }
+            if let Ok(dt) = DateTime::parse_from_rfc3339(&s.started_at) {
+                let age = now.signed_duration_since(dt.with_timezone(&Utc));
+                age.num_days() < range_days as i64
+            } else {
+                false
+            }
+        }).collect();
 
         // Aggregate data (same logic as before)
         let total_sessions = all_sessions.len() as u32;
@@ -107,7 +122,19 @@ impl SessionCache {
         let cache_read_cost: f64 = all_sessions.iter().map(|s| s.cache_read_cost).sum();
         let cache_write_cost: f64 = all_sessions.iter().map(|s| s.cache_write_cost).sum();
         let total_tokens: u64 = all_sessions.iter().map(|s| s.total_tokens).sum();
+        let input_tokens: u64 = all_sessions.iter().map(|s| s.input_tokens).sum();
+        let output_tokens: u64 = all_sessions.iter().map(|s| s.output_tokens).sum();
+        let cache_read_tokens: u64 = all_sessions.iter().map(|s| s.cache_read_tokens).sum();
+        let cache_write_tokens: u64 = all_sessions.iter().map(|s| s.cache_write_tokens).sum();
         let total_file_size_bytes: u64 = all_sessions.iter().map(|s| s.file_size_bytes).sum();
+
+        // Session-level aggregates
+        let total_compactions: u32 = all_sessions.iter().map(|s| s.compaction_count).sum();
+        let total_turns: u32 = all_sessions.iter().map(|s| s.turn_count).sum();
+        let avg_turns_per_session = if total_sessions > 0 { total_turns as f64 / total_sessions as f64 } else { 0.0 };
+        let duration_sum: f64 = all_sessions.iter().filter_map(|s| s.duration_seconds).sum();
+        let duration_count = all_sessions.iter().filter(|s| s.duration_seconds.is_some()).count() as f64;
+        let avg_session_duration_seconds = if duration_count > 0.0 { duration_sum / duration_count } else { 0.0 };
 
         // Group by project (keyed by project_path for uniqueness)
         let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
@@ -203,6 +230,9 @@ impl SessionCache {
             })
             .collect();
 
+        let total_tool_calls: u32 = tools.iter().map(|t| t.total_calls).sum();
+        let total_tool_errors: u32 = tools.iter().map(|t| t.total_errors).sum();
+
         // Aggregate tool detail data
         let mut bash_commands_map: HashMap<String, u32> = HashMap::new();
         let mut read_files_map: HashMap<String, u32> = HashMap::new();
@@ -271,7 +301,16 @@ impl SessionCache {
             cache_read_cost,
             cache_write_cost,
             total_tokens,
+            input_tokens,
+            output_tokens,
+            cache_read_tokens,
+            cache_write_tokens,
             total_file_size_bytes,
+            total_tool_calls,
+            total_tool_errors,
+            avg_session_duration_seconds,
+            avg_turns_per_session,
+            total_compactions,
             sessions_by_date,
             cost_by_date,
             projects,
@@ -432,13 +471,27 @@ impl SessionCache {
         })
     }
 
-    /// Get file and tool analytics for a specific project
-    pub async fn get_project_file_stats(&self, project_path: &str) -> Result<ProjectFileStats, String> {
+    /// Get file and tool analytics for a specific project, optionally filtered by time range
+    pub async fn get_project_file_stats(&self, project_path: &str, range_days: u32) -> Result<ProjectFileStats, String> {
         let all_sessions = self.get_or_init().await?;
+        let now = Utc::now();
 
         let project_sessions: Vec<_> = all_sessions
             .iter()
-            .filter(|s| s.project_path == project_path)
+            .filter(|s| {
+                if s.project_path != project_path {
+                    return false;
+                }
+                if range_days == 0 {
+                    return true;
+                }
+                if let Ok(dt) = DateTime::parse_from_rfc3339(&s.started_at) {
+                    let age = now.signed_duration_since(dt.with_timezone(&Utc));
+                    age.num_days() < range_days as i64
+                } else {
+                    false
+                }
+            })
             .collect();
 
         let total_sessions = project_sessions.len() as u32;

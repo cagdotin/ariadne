@@ -11,8 +11,11 @@ export async function list_projects(): Promise<ProjectSummary[]> {
   return z.array(ProjectSummarySchema).parse(raw);
 }
 
-export async function get_analytics_overview(project_path?: string): Promise<AnalyticsOverview> {
-  const raw = await invoke("get_analytics_overview", { projectPath: project_path ?? null });
+export async function get_analytics_overview(project_path?: string, range_days?: number): Promise<AnalyticsOverview> {
+  const raw = await invoke("get_analytics_overview", {
+    projectPath: project_path ?? null,
+    rangeDays: range_days ?? null,
+  });
   return AnalyticsOverviewSchema.parse(raw);
 }
 
@@ -31,8 +34,11 @@ export async function resync_sessions(): Promise<AnalyticsOverview> {
   return AnalyticsOverviewSchema.parse(raw);
 }
 
-export async function get_project_file_stats(project_path: string): Promise<ProjectFileStats> {
-  const raw = await invoke("get_project_file_stats", { projectPath: project_path });
+export async function get_project_file_stats(project_path: string, range_days?: number): Promise<ProjectFileStats> {
+  const raw = await invoke("get_project_file_stats", {
+    projectPath: project_path,
+    rangeDays: range_days ?? null,
+  });
   return ProjectFileStatsSchema.parse(raw);
 }
 

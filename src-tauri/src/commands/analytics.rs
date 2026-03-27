@@ -5,8 +5,8 @@ use crate::models::session::{SessionSummary, SessionEntriesResponse};
 use crate::cache::SessionCache;
 
 #[tauri::command]
-pub async fn get_analytics_overview(cache: State<'_, SessionCache>, project_path: Option<String>) -> Result<AnalyticsOverview, String> {
-    cache.get_analytics_overview(project_path.as_deref()).await
+pub async fn get_analytics_overview(cache: State<'_, SessionCache>, project_path: Option<String>, range_days: Option<u32>) -> Result<AnalyticsOverview, String> {
+    cache.get_analytics_overview(project_path.as_deref(), range_days.unwrap_or(0)).await
 }
 
 #[tauri::command]
@@ -31,16 +31,17 @@ pub async fn get_all_sessions(
 pub async fn resync_sessions(cache: State<'_, SessionCache>) -> Result<AnalyticsOverview, String> {
     // Force resync the cache
     cache.resync().await?;
-    // Return fresh analytics overview
-    cache.get_analytics_overview(None).await
+    // Return fresh analytics overview (all time, all projects)
+    cache.get_analytics_overview(None, 0).await
 }
 
 #[tauri::command]
 pub async fn get_project_file_stats(
     cache: State<'_, SessionCache>,
     project_path: String,
+    range_days: Option<u32>,
 ) -> Result<ProjectFileStats, String> {
-    cache.get_project_file_stats(&project_path).await
+    cache.get_project_file_stats(&project_path, range_days.unwrap_or(0)).await
 }
 
 #[tauri::command]
