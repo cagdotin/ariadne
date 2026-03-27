@@ -3,6 +3,8 @@ import { format_cost, format_tokens, format_number } from "@/lib/format";
 import { CostBreakdown } from "@/components/cost-breakdown";
 import { ModelDistribution } from "@/components/model-distribution";
 import { MiniStat } from "./mini-stat";
+import { use_usage_context } from "./usage-context";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -174,4 +176,25 @@ export function CostTab({ overview, time_data }: CostTabProps) {
       <ModelDistribution models={overview.models} />
     </div>
   );
+}
+
+export function CostPage() {
+  const { overview, time_data, loading, error } = use_usage_context();
+
+  if (error) return <p className="text-destructive text-sm">{error}</p>;
+
+  if (loading || !overview || !time_data) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  return <CostTab overview={overview} time_data={time_data} />;
 }

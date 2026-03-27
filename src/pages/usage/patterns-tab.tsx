@@ -1,6 +1,8 @@
 import type { TimeBreakdown } from "@/schemas/analytics";
 import { format_number } from "@/lib/format";
 import { MiniStat } from "./mini-stat";
+import { use_usage_context } from "./usage-context";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -170,4 +172,25 @@ export function PatternsTab({ time_data, range_days }: PatternsTabProps) {
       <SessionsTrend time_data={time_data} />
     </div>
   );
+}
+
+export function PatternsPage() {
+  const { time_data, range_days, loading, error } = use_usage_context();
+
+  if (error) return <p className="text-destructive text-sm">{error}</p>;
+
+  if (loading || !time_data) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  return <PatternsTab time_data={time_data} range_days={range_days} />;
 }

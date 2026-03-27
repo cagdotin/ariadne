@@ -67,13 +67,31 @@ export function AppLayout() {
       ];
     }
     if (parts[0] === "sessions") return [{ label: "Sessions" }];
-    if (parts[0] === "tools" && parts[1]) {
-      return [
-        { label: "Usage", href: "/usage" },
-        { label: decodeURIComponent(parts[1]) },
-      ];
+    if (parts[0] === "usage") {
+      const tab_labels: Record<string, string> = {
+        cost: "Cost",
+        tools: "Tools",
+        patterns: "Patterns",
+        files: "Files",
+      };
+      const tab = parts[1];
+      const tab_label = tab_labels[tab];
+
+      if (tab === "tools" && parts[2]) {
+        return [
+          { label: "Usage", href: "/usage" },
+          { label: "Tools", href: "/usage/tools" },
+          { label: decodeURIComponent(parts[2]) },
+        ];
+      }
+      if (tab_label) {
+        return [
+          { label: "Usage", href: "/usage" },
+          { label: tab_label },
+        ];
+      }
+      return [{ label: "Usage" }];
     }
-    if (parts[0] === "usage") return [{ label: "Usage" }];
     if (parts[0] === "qmd" && parts[1] && parts[2]) {
       return [
         { label: "QMD", href: "/qmd" },
@@ -132,9 +150,7 @@ export function AppLayout() {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       render={<Link to="/usage" />}
-                      isActive={
-                        location.pathname === "/usage" || is_active("/tools")
-                      }
+                      isActive={is_active("/usage")}
                       tooltip="Usage"
                     >
                       <BarChart3 />

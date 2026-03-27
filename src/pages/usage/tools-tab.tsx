@@ -3,6 +3,8 @@ import { format_number } from "@/lib/format";
 import { ToolUsageBar } from "@/components/tool-usage-bar";
 import { ToolDetailBreakdown } from "@/components/tool-detail-breakdown";
 import { MiniStat } from "./mini-stat";
+import { use_usage_context } from "./usage-context";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ToolsTabProps {
   overview: AnalyticsOverview;
@@ -92,4 +94,25 @@ export function ToolsTab({ overview }: ToolsTabProps) {
       />
     </div>
   );
+}
+
+export function ToolsPage() {
+  const { overview, loading, error } = use_usage_context();
+
+  if (error) return <p className="text-destructive text-sm">{error}</p>;
+
+  if (loading || !overview) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  return <ToolsTab overview={overview} />;
 }

@@ -45,7 +45,7 @@ export function ToolUsageBar({ tools }: ToolUsageBarProps) {
 
   const handle_click = (data: { name?: string }) => {
     if (data.name && clickable_tools.has(data.name)) {
-      navigate({ to: `/tools/${data.name}` });
+      navigate({ to: `/usage/tools/${data.name}` });
     }
   };
 
@@ -86,7 +86,7 @@ export function ToolUsageBar({ tools }: ToolUsageBarProps) {
                     fill={is_clickable ? "var(--chart-1)" : "var(--muted-foreground)"}
                     style={{ cursor: is_clickable ? "pointer" : "default" }}
                     onClick={() => {
-                      if (is_clickable) navigate({ to: `/tools/${payload.value}` });
+                      if (is_clickable) navigate({ to: `/usage/tools/${payload.value}` });
                     }}
                   >
                     {payload.value}

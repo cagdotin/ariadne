@@ -3,7 +3,7 @@ import { AppLayout } from './app';
 import { Dashboard } from './pages/dashboard';
 import { Sessions } from './pages/sessions';
 import { ScopedSessionDetail } from './pages/scoped-session-detail';
-import { Usage } from './pages/usage';
+import { UsageLayout, UsageRedirect, CostPage, ToolsPage, PatternsPage, FilesPage } from './pages/usage';
 import { ToolDetail } from './pages/tool-detail';
 import { QmdRedirect } from './pages/qmd-redirect';
 import { Qmd } from './pages/qmd';
@@ -31,16 +31,48 @@ const session_detail_route = createRoute({
   component: ScopedSessionDetail,
 });
 
-const usage_route = createRoute({
+// Usage layout — shared nav, range picker, and data context
+const usage_layout_route = createRoute({
   getParentRoute: () => root_route,
   path: '/usage',
-  component: Usage,
+  component: UsageLayout,
 });
 
-const tool_detail_route = createRoute({
-  getParentRoute: () => root_route,
+// /usage → redirect to /usage/cost
+const usage_index_route = createRoute({
+  getParentRoute: () => usage_layout_route,
+  path: '/',
+  component: UsageRedirect,
+});
+
+const usage_cost_route = createRoute({
+  getParentRoute: () => usage_layout_route,
+  path: '/cost',
+  component: CostPage,
+});
+
+const usage_tools_route = createRoute({
+  getParentRoute: () => usage_layout_route,
+  path: '/tools',
+  component: ToolsPage,
+});
+
+const usage_tool_detail_route = createRoute({
+  getParentRoute: () => usage_layout_route,
   path: '/tools/$tool_name',
   component: ToolDetail,
+});
+
+const usage_patterns_route = createRoute({
+  getParentRoute: () => usage_layout_route,
+  path: '/patterns',
+  component: PatternsPage,
+});
+
+const usage_files_route = createRoute({
+  getParentRoute: () => usage_layout_route,
+  path: '/files',
+  component: FilesPage,
 });
 
 const qmd_redirect_route = createRoute({
@@ -65,8 +97,14 @@ const route_tree = root_route.addChildren([
   index_route,
   sessions_route,
   session_detail_route,
-  usage_route,
-  tool_detail_route,
+  usage_layout_route.addChildren([
+    usage_index_route,
+    usage_cost_route,
+    usage_tools_route,
+    usage_tool_detail_route,
+    usage_patterns_route,
+    usage_files_route,
+  ]),
   qmd_redirect_route,
   qmd_index_route,
   qmd_collection_route,
