@@ -21,13 +21,13 @@ Observable verification will be: change the header control from `30d` to `7d`, w
 
 - [x] (2026-03-27 21:00 local) Research current header, Overview, Usage, Sessions, Tool Detail, and backend analytics commands.
 - [x] (2026-03-27 21:00 local) Write spec and execution plan artifacts for the global time-range feature.
-- [ ] (2026-03-27 21:00 local) Add global analytics time-range provider and shared option definitions.
-- [ ] (2026-03-27 21:00 local) Add header-level responsive time-range selector and place it before Sync in `src/app.tsx`.
-- [ ] (2026-03-27 21:00 local) Remove page-local range picker ownership from Overview and Usage.
-- [ ] (2026-03-27 21:00 local) Extend Sessions frontend/backend data flow to respect global `range_days`.
-- [ ] (2026-03-27 21:00 local) Extend Tool Detail frontend/backend data flow to respect global `range_days`.
-- [ ] (2026-03-27 21:00 local) Refactor shared backend session filtering to avoid duplicated date logic.
-- [ ] (2026-03-27 21:00 local) Validate responsive behavior and update docs.
+- [x] (2026-03-27) Add global analytics time-range provider and shared option definitions.
+- [x] (2026-03-27) Add header-level responsive time-range selector and place it before Sync in `src/app.tsx`.
+- [x] (2026-03-27) Remove page-local range picker ownership from Overview and Usage.
+- [x] (2026-03-27) Extend Sessions frontend/backend data flow to respect global `range_days`.
+- [x] (2026-03-27) Extend Tool Detail frontend/backend data flow to respect global `range_days`.
+- [x] (2026-03-27) Refactor shared backend session filtering to avoid duplicated date logic.
+- [x] (2026-03-27) Validate responsive behavior and update docs.
 
 ## Surprises & Discoveries
 
@@ -62,16 +62,20 @@ Observable verification will be: change the header control from `30d` to `7d`, w
 
 ## Outcomes & Retrospective
 
-Completed outcomes so far:
+Completed outcomes:
 - current-state research across header layout, Overview, Usage, Sessions, Tool Detail, and backend analytics filtering
 - written implementation spec and living execution plan
-
-Intended final outcomes:
-- one persisted analytics time range shared across analytics routes
-- one header selector located before Sync
-- responsive collapse behavior under narrow widths
-- Sessions and Tool Detail brought into range parity with Overview/Usage
-- cleaner backend filtering reuse
+- global analytics time-range provider (`src/components/analytics-time-range-provider.tsx`) with local storage persistence
+- responsive header selector (`src/components/analytics-time-range-selector.tsx`) — segmented at wide, dropdown at narrow/mobile
+- selector placed in `src/app.tsx` header, immediately before Sync, visible only on analytics routes
+- Overview and Usage no longer render page-local range pickers; both consume global provider
+- `UsageContextValue` simplified (removed `set_range_days`)
+- Sessions page wired to global `range_days` with backend support
+- Tool Detail page wired to global `range_days` with backend support
+- `get_all_sessions` and `get_tool_details` extended with `range_days` across frontend API, Rust commands, and cache
+- shared `session_matches()` / `filter_sessions()` helpers in `src-tauri/src/cache.rs` — replaces duplicated date filtering in `get_analytics_overview`, `get_all_sessions`, `get_project_file_stats`, `get_time_breakdown`, `get_tool_details`
+- IA docs updated to reflect header-level time-range control
+- all checks pass: `tsc --noEmit`, `vite build`, `cargo check`
 
 ## Context and orientation
 

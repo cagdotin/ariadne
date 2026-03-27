@@ -54,8 +54,10 @@ When no project is selected (all-projects mode), Usage shows global analytics on
 ```
 
 ### Top Header Bar
-- Left: `SidebarTrigger` + breadcrumbs (when on a detail page) + project scope selector (on analytics routes)
-- Right: Sync button + Theme toggle
+- Left: `SidebarTrigger` + project scope selector + breadcrumbs
+- Right: Global analytics time-range selector (Today / 7d / 30d / 90d / All) + Sync button + Theme toggle
+
+The time-range selector is a global analytics scope control, persisted in local storage. It applies to Overview, Sessions, Usage tabs, and Tool Detail. It collapses into a compact dropdown on narrow/mobile widths. It is hidden on Session Detail and QMD routes.
 
 ---
 
@@ -67,8 +69,7 @@ When no project is selected (all-projects mode), Usage shows global analytics on
 
 | Section | Component | Description |
 |---|---|---|
-| Range picker | Button group | Today / 7d / 30d / 90d / All — controls stat card and trend time range |
-| Stat cards | `StatCard` × 7 | Sessions, Total Cost, Total Tokens, Avg/Session, Projects, Tool Calls, Disk Usage. Time-filtered values show all-time totals as sub-labels. |
+| Stat cards | `StatCard` × 7 | Sessions, Total Cost, Total Tokens, Avg/Session, Projects, Tool Calls, Disk Usage. Time-filtered values show all-time totals as sub-labels. Time range is controlled by the global header selector. |
 | Daily trend | `DailyTrend` | Area chart showing sessions and cost over selected range |
 | Top projects | `TopProjects` | 3–5 most active projects as compact clickable cards. Click sets global scope. Hidden when a project is selected. |
 | Activity heatmap | `ActivityHeatmap` | 52-week GitHub-style contribution graph (always all-time) |
@@ -79,11 +80,11 @@ When no project is selected (all-projects mode), Usage shows global analytics on
 
 ### 2. Sessions (`/sessions`)
 
-**Purpose**: Browse sessions. Shows all sessions in all-projects mode, or the selected project's sessions when scoped.
+**Purpose**: Browse sessions. Shows all sessions in all-projects mode, or the selected project's sessions when scoped. Respects the global analytics time-range selector in the header.
 
 | Section | Component | Description |
 |---|---|---|
-| Session table | `DataTable` | Title, Project (all-projects mode only), Duration, Cost, Tokens, Tools, Model. Sortable, filterable |
+| Session table | `DataTable` | Title, Project (all-projects mode only), Duration, Cost, Tokens, Tools, Model. Sortable, filterable. Time-range filtered server-side via the global header selector. |
 
 Session detail (`/sessions/:id`) provides full session timeline, tool calls, conversation flow.
 
@@ -93,7 +94,7 @@ Session detail (`/sessions/:id`) provides full session timeline, tool calls, con
 
 **Purpose**: Analytics deep-dive — costs, tools, activity patterns, and project-scoped file analytics.
 
-Organized as a **4-tab layout** with a **global time range picker** (Today / 7d / 30d / 90d / All) that applies to all tabs. The time range is passed to backend endpoints so filtering happens server-side. When a project is selected via the global scope, a Files tab appears.
+Organized as a **4-tab layout**. The global time-range selector in the header (Today / 7d / 30d / 90d / All) applies to all tabs. The time range is passed to backend endpoints so filtering happens server-side. When a project is selected via the global scope, a Files tab appears.
 
 #### Tab 1: Cost — *"How much am I spending?"*
 
@@ -200,11 +201,11 @@ Uses shadcn `Breadcrumb` component. Shows on all detail pages below the top head
 ### API Commands
 - `list_projects` → Lightweight project list for scope selector
 - `get_analytics_overview(project_path?, range_days?)` → Overview, Usage data (global or scoped)
-- `get_all_sessions(project_path?)` → Sessions list (global or scoped)
+- `get_all_sessions(project_path?, range_days?)` → Sessions list (global or scoped, time-range filtered)
 - `get_project_file_stats(project_path, range_days?)` → File/tool stats for scoped Usage deep-dive. Returns unified `file_insights` with per-file read/edit/write/total counts and distinct session counts, plus legacy separate arrays for backward compatibility.
 - `get_file_sizes(paths[])` → Async file size lookup. Stats each path on disk, returns `null` for deleted/inaccessible files. Called separately from `get_project_file_stats` to keep the main response fast (two-phase pattern).
 - `get_time_breakdown(range_days, project_path?)` → Weekday, time-of-day, daily trend
-- `get_tool_details(tool_name, project_path?)` → Per-tool deep-dive
+- `get_tool_details(tool_name, project_path?, range_days?)` → Per-tool deep-dive (time-range filtered)
 - `get_session_detail(session_id)` → Single session detail
 - `get_session_entries(session_id)` → Session replay entries
 - `resync_sessions` → Re-parse all sessions
