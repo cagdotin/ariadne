@@ -3,6 +3,7 @@ use tauri::State;
 use crate::models::analytics::{AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown, ProjectSummary, FileSizeResult};
 use crate::models::session::{SessionSummary, SessionEntriesResponse};
 use crate::cache::SessionCache;
+use crate::qmd_log_cache::QmdLogCache;
 
 #[tauri::command]
 pub async fn get_analytics_overview(cache: State<'_, SessionCache>, project_path: Option<String>, range_days: Option<u32>) -> Result<AnalyticsOverview, String> {
@@ -28,9 +29,14 @@ pub async fn get_all_sessions(
 }
 
 #[tauri::command]
-pub async fn resync_sessions(cache: State<'_, SessionCache>) -> Result<AnalyticsOverview, String> {
-    // Force resync the cache
+pub async fn resync_sessions(
+    cache: State<'_, SessionCache>,
+    qmd_log_cache: State<'_, QmdLogCache>,
+) -> Result<AnalyticsOverview, String> {
+    // Force resync the session cache
     cache.resync().await?;
+    // Invalidate QMD log cache so it rebuilds lazily on next request
+    qmd_log_cache.invalidate().await;
     // Return fresh analytics overview (all time, all projects)
     cache.get_analytics_overview(None, 0).await
 }
