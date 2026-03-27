@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::models::analytics::{AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown, ProjectSummary};
+use crate::models::analytics::{AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown, ProjectSummary, FileSizeResult};
 use crate::models::session::{SessionSummary, SessionEntriesResponse};
 use crate::cache::SessionCache;
 
@@ -56,6 +56,13 @@ pub async fn get_tool_details(
     project_path: Option<String>,
 ) -> Result<ToolDetailResponse, String> {
     cache.get_tool_details(&tool_name, project_path.as_deref()).await
+}
+
+#[tauri::command]
+pub async fn get_file_sizes(
+    paths: Vec<String>,
+) -> Result<Vec<FileSizeResult>, String> {
+    Ok(SessionCache::get_file_sizes(paths))
 }
 
 #[tauri::command]

@@ -1,9 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { z } from "zod";
 import { SessionSummarySchema } from "../schemas/session";
-import { AnalyticsOverviewSchema, ToolDetailResponseSchema, ProjectFileStatsSchema, TimeBreakdownSchema, ProjectSummarySchema } from "../schemas/analytics";
+import { AnalyticsOverviewSchema, ToolDetailResponseSchema, ProjectFileStatsSchema, TimeBreakdownSchema, ProjectSummarySchema, FileSizeResultSchema } from "../schemas/analytics";
 import type { SessionSummary } from "../schemas/session";
-import type { AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown, ProjectSummary } from "../schemas/analytics";
+import type { AnalyticsOverview, ToolDetailResponse, ProjectFileStats, TimeBreakdown, ProjectSummary, FileSizeResult } from "../schemas/analytics";
 import type { SessionEntriesResponse } from "../components/session-viewer/types";
 
 export async function list_projects(): Promise<ProjectSummary[]> {
@@ -61,4 +61,9 @@ export async function get_tool_details(
     projectPath: project_path ?? null,
   });
   return ToolDetailResponseSchema.parse(raw);
+}
+
+export async function get_file_sizes(paths: string[]): Promise<FileSizeResult[]> {
+  const raw = await invoke("get_file_sizes", { paths });
+  return z.array(FileSizeResultSchema).parse(raw);
 }

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::models::session::{SessionSummary, SessionEntriesResponse};
-use crate::models::analytics::{AnalyticsOverview, ProjectSummary, DayCount, DayCost, ModelAggregate, ToolAggregate, NameCount, ToolDetailResponse, ProjectToolSummary, ProjectFileStats, DirectoryStat, TimeBreakdown, WeekdayStat, TimeOfDayStat};
+use crate::models::analytics::{AnalyticsOverview, ProjectSummary, DayCount, DayCost, ModelAggregate, ToolAggregate, NameCount, ToolDetailResponse, ProjectToolSummary, ProjectFileStats, DirectoryStat, TimeBreakdown, WeekdayStat, TimeOfDayStat, FileInsightRecord, FileSizeResult};
 use crate::parser::discovery::discover_session_files;
 use crate::parser::session::parse_session_file;
 
@@ -509,21 +509,25 @@ impl SessionCache {
             .collect();
         tool_distribution.sort_by(|a, b| b.count.cmp(&a.count));
 
-        // Aggregate file maps
+        // Aggregate file maps + track distinct sessions per file
         let mut read_map: HashMap<String, u32> = HashMap::new();
         let mut edit_map: HashMap<String, u32> = HashMap::new();
         let mut write_map: HashMap<String, u32> = HashMap::new();
         let mut bash_map: HashMap<String, u32> = HashMap::new();
+        let mut file_sessions: HashMap<String, HashSet<String>> = HashMap::new();
 
         for s in &project_sessions {
             for (k, v) in &s.read_files {
                 *read_map.entry(k.clone()).or_insert(0) += v;
+                file_sessions.entry(k.clone()).or_default().insert(s.id.clone());
             }
             for (k, v) in &s.edit_files {
                 *edit_map.entry(k.clone()).or_insert(0) += v;
+                file_sessions.entry(k.clone()).or_default().insert(s.id.clone());
             }
             for (k, v) in &s.write_files {
                 *write_map.entry(k.clone()).or_insert(0) += v;
+                file_sessions.entry(k.clone()).or_default().insert(s.id.clone());
             }
             for (k, v) in &s.bash_commands {
                 *bash_map.entry(k.clone()).or_insert(0) += v;
@@ -605,6 +609,36 @@ impl SessionCache {
             .collect();
         activity_by_date.sort_by(|a, b| a.date.cmp(&b.date));
 
+        // Build unified file insight records
+        let all_file_paths: HashSet<String> = read_map.keys()
+            .chain(edit_map.keys())
+            .chain(write_map.keys())
+            .cloned()
+            .collect();
+
+        let mut file_insights: Vec<FileInsightRecord> = all_file_paths
+            .into_iter()
+            .map(|path| {
+                let read_count = read_map.get(&path).copied().unwrap_or(0);
+                let edit_count = edit_map.get(&path).copied().unwrap_or(0);
+                let write_count = write_map.get(&path).copied().unwrap_or(0);
+                let total_count = read_count + edit_count + write_count;
+                let distinct_session_count = file_sessions
+                    .get(&path)
+                    .map(|s| s.len() as u32)
+                    .unwrap_or(0);
+                FileInsightRecord {
+                    path,
+                    read_count,
+                    edit_count,
+                    write_count,
+                    total_count,
+                    distinct_session_count,
+                }
+            })
+            .collect();
+        file_insights.sort_by(|a, b| b.total_count.cmp(&a.total_count));
+
         Ok(ProjectFileStats {
             project_path: project_path.to_string(),
             total_sessions,
@@ -615,7 +649,20 @@ impl SessionCache {
             bash_commands,
             directory_stats,
             activity_by_date,
+            file_insights,
         })
+    }
+
+    /// Stat file sizes for a list of paths. Runs synchronously on each path.
+    /// Returns None for paths that cannot be statted (deleted, inaccessible, etc.).
+    pub fn get_file_sizes(paths: Vec<String>) -> Vec<FileSizeResult> {
+        paths
+            .into_iter()
+            .map(|path| {
+                let size_bytes = std::fs::metadata(&path).ok().map(|m| m.len());
+                FileSizeResult { path, size_bytes }
+            })
+            .collect()
     }
 
     pub async fn get_time_breakdown(&self, range_days: u32, project_path: Option<&str>) -> Result<TimeBreakdown, String> {

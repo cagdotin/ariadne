@@ -140,6 +140,24 @@ pub struct DirectoryStat {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
+pub struct FileInsightRecord {
+    pub path: String,
+    pub read_count: u32,
+    pub edit_count: u32,
+    pub write_count: u32,
+    pub total_count: u32,
+    pub distinct_session_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FileSizeResult {
+    pub path: String,
+    pub size_bytes: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ProjectFileStats {
     pub project_path: String,
     pub total_sessions: u32,
@@ -150,6 +168,7 @@ pub struct ProjectFileStats {
     pub bash_commands: Vec<NameCount>,
     pub directory_stats: Vec<DirectoryStat>,
     pub activity_by_date: Vec<DayCount>,
+    pub file_insights: Vec<FileInsightRecord>,
 }
 
 #[derive(Debug, Clone, Serialize)]

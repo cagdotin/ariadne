@@ -76,6 +76,22 @@ export const AnalyticsOverviewSchema = z.object({
 });
 export type AnalyticsOverview = z.infer<typeof AnalyticsOverviewSchema>;
 
+export const FileInsightRecordSchema = z.object({
+  path: z.string(),
+  read_count: z.number(),
+  edit_count: z.number(),
+  write_count: z.number(),
+  total_count: z.number(),
+  distinct_session_count: z.number(),
+});
+export type FileInsightRecord = z.infer<typeof FileInsightRecordSchema>;
+
+export const FileSizeResultSchema = z.object({
+  path: z.string(),
+  size_bytes: z.number().nullable(),
+});
+export type FileSizeResult = z.infer<typeof FileSizeResultSchema>;
+
 export const DirectoryStatSchema = z.object({
   path: z.string(),
   read_count: z.number(),
@@ -95,6 +111,7 @@ export const ProjectFileStatsSchema = z.object({
   bash_commands: z.array(NameCountSchema),
   directory_stats: z.array(DirectoryStatSchema),
   activity_by_date: z.array(DayCountSchema),
+  file_insights: z.array(FileInsightRecordSchema),
 });
 export type ProjectFileStats = z.infer<typeof ProjectFileStatsSchema>;
 
