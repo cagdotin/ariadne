@@ -29,6 +29,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { PageHeader } from "@/components/page-header";
 import { LabyrinthLogo } from "@/components/labyrinth-logo";
 import { ProjectScopeSelector } from "@/components/project-scope-selector";
+import { AnalyticsTimeRangeSelector } from "@/components/analytics-time-range-selector";
 import { Separator } from "./components/ui/separator";
 
 export function AppLayout() {
@@ -114,6 +115,16 @@ export function AppLayout() {
 
   const is_session_detail = /^\/sessions\/[^/]+$/.test(location.pathname);
 
+  // Show the global time-range selector on aggregate analytics routes only.
+  // Hidden on session detail and QMD where it has no effect.
+  const show_time_range_selector = useMemo(() => {
+    const p = location.pathname;
+    if (p === "/") return true;
+    if (p === "/sessions") return true;
+    if (p.startsWith("/usage")) return true;
+    return false;
+  }, [location.pathname]);
+
   return (
     <ThemeProvider default_theme="dark" storage_key="ariadne-ui-theme">
       <SidebarProvider className="max-h-svh overflow-hidden">
@@ -191,6 +202,7 @@ export function AppLayout() {
               <PageHeader items={breadcrumbs} />
             </div>
             <div className="ml-auto flex items-center gap-2">
+              {show_time_range_selector && <AnalyticsTimeRangeSelector />}
               <Button
                 variant="ghost"
                 size="sm"
