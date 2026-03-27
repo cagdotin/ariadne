@@ -1,10 +1,17 @@
 import { useState } from "react";
 import type { QmdIndex } from "@/schemas/qmd";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { error_message } from "@/lib/utils";
-import { X, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 interface DeleteIndexDialogProps {
   index: QmdIndex;
@@ -38,33 +45,28 @@ export function DeleteIndexDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Delete Index</CardTitle>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={on_close}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-3 rounded-md bg-destructive/10 border border-destructive/20 p-3">
-            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-            <div className="space-y-1 text-sm">
+    <Dialog open onOpenChange={(open) => { if (!open) on_close(); }}>
+      <DialogContent className="sm:max-w-md" showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Delete Index</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Alert variant="destructive">
+            <AlertTriangle className="size-4" />
+            <AlertTitle>This action cannot be undone</AlertTitle>
+            <AlertDescription>
               <p>
                 Are you sure you want to delete the{" "}
                 <strong className="text-foreground">"{index.name}"</strong> index?
               </p>
-              <p className="text-muted-foreground">This will permanently remove:</p>
-              <ul className="text-muted-foreground list-disc list-inside space-y-0.5">
+              <p className="mt-1">This will permanently remove:</p>
+              <ul className="list-disc list-inside space-y-0.5 mt-1">
                 <li>{index.collection_count} collection{index.collection_count !== 1 ? "s" : ""}</li>
                 <li>{index.document_count} document{index.document_count !== 1 ? "s" : ""}</li>
                 <li>All vector embeddings</li>
               </ul>
-              <p className="text-destructive font-medium mt-2">This action cannot be undone.</p>
-            </div>
-          </div>
+            </AlertDescription>
+          </Alert>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
@@ -87,19 +89,18 @@ export function DeleteIndexDialog({
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={on_close}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={handle_delete}
-              disabled={!confirmed || deleting}
-            >
-              {deleting ? "Deleting..." : "Delete Index"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={on_close}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={handle_delete}
+            disabled={!confirmed || deleting}
+          >
+            {deleting ? "Deleting..." : "Delete Index"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

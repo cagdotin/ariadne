@@ -100,17 +100,18 @@ export function IndexSelector({
             key={idx.name}
             className="group/index relative flex items-center"
           >
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 if (!is_renaming && !disabled) on_navigate(idx.name);
               }}
               disabled={disabled}
               className={cn(
-                "relative flex flex-col items-start min-w-[120px] px-3 py-1.5 rounded-md transition-colors text-left",
+                "relative flex flex-col items-start min-w-[120px] px-3 py-1.5 h-auto text-left",
                 is_active
                   ? "bg-accent ring-1 ring-primary"
                   : "hover:bg-accent/50",
-                disabled && "opacity-50 pointer-events-none",
               )}
             >
               {is_renaming ? (
@@ -164,7 +165,7 @@ export function IndexSelector({
                   </span>
                 </>
               )}
-            </button>
+            </Button>
 
             {/* Context menu trigger — visible on hover */}
             {idx.name !== "default" && !is_renaming && (

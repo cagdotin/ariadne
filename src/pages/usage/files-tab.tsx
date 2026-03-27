@@ -10,6 +10,8 @@ import {
 import { MiniStat } from "./mini-stat";
 import { use_usage_context } from "./usage-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileHotspotTreemap } from "@/components/file-hotspot-treemap";
 import { FileHotspotGrid } from "@/components/file-hotspot-grid";
 import { FileImbalanceChart } from "@/components/file-imbalance-chart";
@@ -60,22 +62,15 @@ function OperationLensPicker({
   on_change: (v: OperationLens) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 shrink-0">
-      {OPERATION_LENS_OPTIONS.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => on_change(opt.value)}
-          className={`px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer ${
-            value === opt.value
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
+    <Tabs value={value} onValueChange={(v) => on_change(v as OperationLens)} className="shrink-0">
+      <TabsList>
+        {OPERATION_LENS_OPTIONS.map((opt) => (
+          <TabsTrigger key={opt.value} value={opt.value}>
+            {opt.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -143,9 +138,7 @@ export function FilesTab({ file_stats }: FilesTabProps) {
             className="min-w-0 flex-1"
           />
           {hidden_count > 0 && (
-            <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
-              {hidden_count} hidden
-            </span>
+            <Badge variant="secondary">{hidden_count} hidden</Badge>
           )}
         </div>
       </div>

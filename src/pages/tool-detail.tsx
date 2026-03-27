@@ -17,6 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,
@@ -96,9 +98,11 @@ export function ToolDetail() {
 
   if (error) {
     return (
-      <div className="rounded-md border border-destructive bg-destructive/20 p-4 text-destructive">
-        Error: {error}
-      </div>
+      <Alert variant="destructive">
+        <AlertTriangle className="size-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     );
   }
 

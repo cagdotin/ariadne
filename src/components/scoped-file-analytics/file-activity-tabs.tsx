@@ -1,5 +1,6 @@
 import { DataTable } from "@/components/data-table";
 import { file_activity_columns } from "@/components/columns/file-activity-columns";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { NameCount } from "@/schemas/analytics";
 import type { FileTab } from "./types";
 
@@ -8,7 +9,6 @@ interface FileActivityTabsProps {
   filtered_read: NameCount[];
   filtered_edit: NameCount[];
   filtered_write: NameCount[];
-  active_file_list: NameCount[];
   on_tab_change: (tab: FileTab) => void;
 }
 
@@ -19,7 +19,6 @@ export function FileActivityTabs({
   filtered_read,
   filtered_edit,
   filtered_write,
-  active_file_list,
   on_tab_change,
 }: FileActivityTabsProps) {
   const counts_by_tab: Record<FileTab, number> = {
@@ -31,29 +30,26 @@ export function FileActivityTabs({
   return (
     <div>
       <h3 className="mb-4 text-base font-semibold text-foreground">File Activity</h3>
-      <div className="mb-4 flex gap-2">
+      <Tabs value={active_tab} onValueChange={(v) => on_tab_change(v as FileTab)}>
+        <TabsList>
+          {file_tabs.map((tab) => (
+            <TabsTrigger key={tab} value={tab}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <span className="text-xs opacity-70">({counts_by_tab[tab]})</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
         {file_tabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => on_tab_change(tab)}
-            className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-              active_tab === tab
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            <span className="ml-1.5 text-xs opacity-70">({counts_by_tab[tab]})</span>
-          </button>
+          <TabsContent key={tab} value={tab}>
+            <DataTable
+              columns={file_activity_columns}
+              data={(tab === "read" ? filtered_read : tab === "edit" ? filtered_edit : filtered_write).slice(0, 50)}
+              filter_column="name"
+              filter_placeholder="Search files..."
+            />
+          </TabsContent>
         ))}
-      </div>
-      <DataTable
-        columns={file_activity_columns}
-        data={active_file_list.slice(0, 50)}
-        filter_column="name"
-        filter_placeholder="Search files..."
-      />
+      </Tabs>
     </div>
   );
 }

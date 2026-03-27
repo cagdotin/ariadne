@@ -8,8 +8,9 @@ import { QmdLogsToolbar } from "@/components/qmd-logs/qmd-logs-toolbar";
 import { QmdLogsTable } from "@/components/qmd-logs/qmd-logs-table";
 import { QmdLogOutputDialog } from "@/components/qmd-logs/qmd-log-output-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { error_message } from "@/lib/utils";
-import { Terminal } from "lucide-react";
+import { Terminal, AlertTriangle } from "lucide-react";
 
 export function QmdLogs() {
   const { scope } = use_project_scope();
@@ -116,9 +117,11 @@ export function QmdLogs() {
 
   if (error) {
     return (
-      <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
-        Error: {error}
-      </div>
+      <Alert variant="destructive">
+        <AlertTriangle className="size-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     );
   }
 

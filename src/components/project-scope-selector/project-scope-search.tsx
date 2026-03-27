@@ -52,16 +52,10 @@ export function ProjectScopeSearch({
           onValueChange={on_filter_change}
           className="gap-0"
         >
-          <TabsList variant="line" className="h-7 gap-0 p-0">
-            <TabsTrigger value="all" className="h-7 px-2 text-xs">
-              All
-            </TabsTrigger>
-            <TabsTrigger value="recent" className="h-7 px-2 text-xs">
-              Recent
-            </TabsTrigger>
-            <TabsTrigger value="active" className="h-7 px-2 text-xs">
-              Active
-            </TabsTrigger>
+          <TabsList variant="line">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="recent">Recent</TabsTrigger>
+            <TabsTrigger value="active">Active</TabsTrigger>
           </TabsList>
         </Tabs>
 

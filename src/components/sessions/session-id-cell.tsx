@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import type { SessionSummary } from "@/schemas/session";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipTrigger,
@@ -17,8 +18,10 @@ export function SessionIdCell({ session }: SessionIdCellProps) {
   const preview = session.first_user_message;
 
   return (
-    <button
-      className="flex flex-col items-start gap-0.5 text-left w-full min-w-0 group"
+    <Button
+      variant="ghost"
+      size="sm"
+      className="flex flex-col items-start gap-0.5 text-left w-full min-w-0 h-auto py-1 group"
       onClick={() => navigate({ to: "/sessions/$id", params: { id: session.id } })}
     >
       <div className="flex items-center gap-2 min-w-0 w-full">
@@ -43,6 +46,6 @@ export function SessionIdCell({ session }: SessionIdCellProps) {
           {preview}
         </span>
       )}
-    </button>
+    </Button>
   );
 }

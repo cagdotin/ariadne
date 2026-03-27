@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { error_message } from "@/lib/utils";
-import { X } from "lucide-react";
 
 interface CreateIndexDialogProps {
   existing_names: string[];
@@ -54,17 +59,12 @@ export function CreateIndexDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Create Index</CardTitle>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={on_close}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <Dialog open onOpenChange={(open) => { if (!open) on_close(); }}>
+      <DialogContent className="sm:max-w-md" showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Create Index</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Name</label>
             <Input
@@ -106,14 +106,14 @@ export function CreateIndexDialog({
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={on_close}>Cancel</Button>
-            <Button onClick={handle_submit} disabled={!can_submit}>
-              {submitting ? "Creating..." : "Create Index"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={on_close}>Cancel</Button>
+          <Button onClick={handle_submit} disabled={!can_submit}>
+            {submitting ? "Creating..." : "Create Index"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

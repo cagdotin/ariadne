@@ -187,21 +187,21 @@ function IndicatorCircle({
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon-xs"
       onClick={(e) => {
         e.stopPropagation();
         on_click();
       }}
       className={cn(
-        "inline-flex items-center justify-center w-5 h-5 shrink-0 text-sm leading-none",
-        "hover:scale-125 transition-transform cursor-pointer",
+        "shrink-0 text-sm leading-none hover:scale-125",
         color_class,
       )}
       title={node.is_dir ? "Toggle all files in folder" : "Toggle inclusion"}
     >
       {symbol}
-    </button>
+    </Button>
   );
 }
 

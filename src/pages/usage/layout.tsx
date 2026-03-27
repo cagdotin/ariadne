@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import { Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import type { AnalyticsOverview, TimeBreakdown, ProjectFileStats } from "@/schemas/analytics";
 import {
   get_analytics_overview,
@@ -9,8 +9,9 @@ import {
 } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
 import { use_analytics_time_range } from "@/components/analytics-time-range-provider";
-import { cn, error_message } from "@/lib/utils";
+import { error_message } from "@/lib/utils";
 import { UsageProvider } from "./usage-context";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DollarSign,
   Wrench,
@@ -26,6 +27,7 @@ interface NavTab {
 
 function UsageNav({ project_path }: { project_path: string | undefined }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const pathname = location.pathname;
 
   const tabs: NavTab[] = [
@@ -37,29 +39,27 @@ function UsageNav({ project_path }: { project_path: string | undefined }) {
       : []),
   ];
 
+  const active_tab = tabs.find(
+    (tab) => pathname === tab.to || pathname.startsWith(tab.to + "/"),
+  )?.to ?? tabs[0].to;
+
   return (
-    <nav className="inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground h-8 bg-muted">
-      {tabs.map((tab) => {
-        const is_active = pathname === tab.to || pathname.startsWith(tab.to + "/");
-        const Icon = tab.icon;
-        return (
-          <Link
-            key={tab.to}
-            to={tab.to}
-            className={cn(
-              "relative inline-flex h-[calc(100%-1px)] items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap transition-all",
-              "[&_svg]:pointer-events-none [&_svg]:shrink-0",
-              is_active
-                ? "bg-background text-foreground shadow-sm dark:border-input dark:bg-input/30"
-                : "text-foreground/60 hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground",
-            )}
-          >
-            <Icon className="size-3.5" />
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <Tabs
+      value={active_tab}
+      onValueChange={(value) => navigate({ to: value })}
+    >
+      <TabsList>
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <TabsTrigger key={tab.to} value={tab.to}>
+              <Icon className="size-3.5" />
+              {tab.label}
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
+    </Tabs>
   );
 }
 

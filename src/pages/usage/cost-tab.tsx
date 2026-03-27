@@ -5,6 +5,7 @@ import { ModelDistribution } from "@/components/model-distribution";
 import { MiniStat } from "./mini-stat";
 import { use_usage_context } from "./usage-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -73,12 +74,12 @@ function TokenBreakdown({ overview }: { overview: AnalyticsOverview }) {
                   </span>
                 </div>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{ width: `${width}%`, backgroundColor: cat.color }}
-                />
-              </div>
+              <Progress
+                value={width}
+                className="gap-0"
+                trackClassName="h-1.5"
+                indicatorStyle={{ backgroundColor: cat.color }}
+              />
             </div>
           );
         })}

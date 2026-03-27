@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use std::collections::{HashMap, HashSet};
 
 use crate::models::session::{SessionSummary, SessionEntriesResponse};
-use crate::models::analytics::{AnalyticsOverview, ProjectSummary, DayCount, DayCost, ModelAggregate, ToolAggregate, NameCount, ToolDetailResponse, ProjectToolSummary, ProjectFileStats, DirectoryStat, TimeBreakdown, WeekdayStat, TimeOfDayStat, FileInsightRecord, FileSizeResult};
+use crate::models::analytics::{AnalyticsOverview, ProjectSummary, DayCount, DayCost, ModelAggregate, ToolAggregate, NameCount, ToolDetailResponse, ProjectToolSummary, ProjectFileStats, DirectoryStat, TimeBreakdown, WeekdayStat, TimeOfDayStat, HourCount, FileInsightRecord, FileSizeResult};
 use crate::parser::discovery::discover_session_files;
 use crate::parser::session::parse_session_file;
 
@@ -193,7 +193,9 @@ impl SessionCache {
         
         for session in &all_sessions {
             if let Ok(parsed_time) = DateTime::parse_from_rfc3339(&session.started_at) {
-                let date = parsed_time.format("%Y-%m-%d").to_string();
+                // Use local timezone so dates align with the user's calendar
+                let dt_local = parsed_time.with_timezone(&chrono::Local);
+                let date = dt_local.format("%Y-%m-%d").to_string();
                 *sessions_by_date_map.entry(date.clone()).or_insert(0) += 1;
                 *cost_by_date_map.entry(date).or_insert(0.0) += session.total_cost;
             }
@@ -467,7 +469,8 @@ impl SessionCache {
                 continue;
             }
             if let Ok(dt) = DateTime::parse_from_rfc3339(&s.started_at) {
-                let date = dt.format("%Y-%m-%d").to_string();
+                let dt_local = dt.with_timezone(&chrono::Local);
+                let date = dt_local.format("%Y-%m-%d").to_string();
                 *date_map.entry(date).or_insert(0) += day_total;
             }
         }
@@ -598,7 +601,8 @@ impl SessionCache {
         let mut date_map: HashMap<String, u32> = HashMap::new();
         for s in &project_sessions {
             if let Ok(dt) = DateTime::parse_from_rfc3339(&s.started_at) {
-                let date = dt.format("%Y-%m-%d").to_string();
+                let dt_local = dt.with_timezone(&chrono::Local);
+                let date = dt_local.format("%Y-%m-%d").to_string();
                 *date_map.entry(date).or_insert(0) += 1;
             }
         }
@@ -665,7 +669,7 @@ impl SessionCache {
     }
 
     pub async fn get_time_breakdown(&self, range_days: u32, project_path: Option<&str>) -> Result<TimeBreakdown, String> {
-        use chrono::{Datelike, Timelike};
+        use chrono::{Datelike, Timelike, Local};
 
         let sessions = self.get_or_init().await?;
 
@@ -696,16 +700,20 @@ impl SessionCache {
         let mut daily_sessions_map: HashMap<String, u32> = HashMap::new();
         let mut daily_cost_map: HashMap<String, f64> = HashMap::new();
 
+        // Hourly (populated only when range_days == 1)
+        let mut hourly_sessions_arr = [0u32; 24];
+
         for s in &filtered {
             if let Ok(dt) = DateTime::parse_from_rfc3339(&s.started_at) {
-                let dt_utc = dt.with_timezone(&Utc);
+                // Use local timezone so dates/hours align with the user's clock
+                let dt_local = dt.with_timezone(&Local);
                 // weekday: chrono weekday Mon=0..Sun=6 via num_days_from_monday
-                let wd = dt_utc.weekday().num_days_from_monday() as usize;
+                let wd = dt_local.weekday().num_days_from_monday() as usize;
                 weekday_sessions[wd] += 1;
                 weekday_cost[wd] += s.total_cost;
 
                 // time of day
-                let hour = dt_utc.hour();
+                let hour = dt_local.hour();
                 for (i, (_label, h_start, h_end)) in time_buckets.iter().enumerate() {
                     if hour >= *h_start && hour <= *h_end {
                         tod_sessions[i] += 1;
@@ -714,10 +722,15 @@ impl SessionCache {
                     }
                 }
 
-                // daily
-                let date = dt_utc.format("%Y-%m-%d").to_string();
+                // daily — use local date so it matches the user's calendar
+                let date = dt_local.format("%Y-%m-%d").to_string();
                 *daily_sessions_map.entry(date.clone()).or_insert(0) += 1;
                 *daily_cost_map.entry(date).or_insert(0.0) += s.total_cost;
+
+                // hourly — accumulate for "today" view
+                if range_days == 1 {
+                    hourly_sessions_arr[hour as usize] += 1;
+                }
             }
         }
 
@@ -754,6 +767,17 @@ impl SessionCache {
             .collect();
         daily_cost.sort_by(|a, b| a.date.cmp(&b.date));
 
+        // Build hourly_sessions: all 24 hours when range_days == 1, empty otherwise
+        let hourly_sessions: Vec<HourCount> = if range_days == 1 {
+            let now_hour = Local::now().hour() as usize;
+            (0..=now_hour).map(|h| HourCount {
+                hour: format!("{:02}", h),
+                count: hourly_sessions_arr[h],
+            }).collect()
+        } else {
+            Vec::new()
+        };
+
         Ok(TimeBreakdown {
             range_days,
             total_sessions,
@@ -764,6 +788,7 @@ impl SessionCache {
             by_time_of_day,
             daily_sessions,
             daily_cost,
+            hourly_sessions,
         })
     }
 

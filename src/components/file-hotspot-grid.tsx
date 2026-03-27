@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { NameCount } from "@/schemas/analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { format_number } from "@/lib/format";
 import { strip_project_prefix } from "@/lib/path-utils";
 
@@ -147,13 +148,14 @@ function SortHeader({
   const arrow = active ? (current_dir === "desc" ? " ↓" : " ↑") : "";
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={() => on_sort(sort_key)}
-      className={`text-xs font-medium text-muted-foreground hover:text-foreground transition-colors text-center cursor-pointer select-none ${className ?? ""} ${active ? "text-foreground" : ""}`}
+      className={`text-xs font-medium ${className ?? ""} ${active ? "text-foreground" : "text-muted-foreground"}`}
     >
       {label}{arrow}
-    </button>
+    </Button>
   );
 }
 
@@ -326,22 +328,22 @@ export function FileHotspotGrid({
               {format_number(clamped_page * PAGE_SIZE + 1)}–{format_number(Math.min((clamped_page + 1) * PAGE_SIZE, sorted.length))} of {format_number(sorted.length)}
             </span>
             <div className="flex gap-1">
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={clamped_page === 0}
                 onClick={() => set_page((p) => p - 1)}
-                className="px-2.5 py-1 text-xs rounded-md border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
               >
                 Prev
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={clamped_page >= total_pages - 1}
                 onClick={() => set_page((p) => p + 1)}
-                className="px-2.5 py-1 text-xs rounded-md border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
               >
                 Next
-              </button>
+              </Button>
             </div>
           </div>
         )}

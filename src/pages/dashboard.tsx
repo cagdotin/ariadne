@@ -14,6 +14,8 @@ import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { DailyTrend } from "@/components/daily-trend";
 import { TopProjects } from "@/components/top-projects";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import { error_message } from "@/lib/utils";
 
 export function Dashboard() {
@@ -105,9 +107,11 @@ export function Dashboard() {
 
   if (error) {
     return (
-      <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
-        Error: {error}
-      </div>
+      <Alert variant="destructive">
+        <AlertTriangle className="size-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     );
   }
 

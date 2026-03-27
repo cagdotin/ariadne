@@ -121,27 +121,18 @@ export function SessionViewer({
         <aside className="w-[340px] min-w-[320px] max-w-[420px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden">
           <Tabs defaultValue="tree" className="flex flex-col h-full gap-0">
             {/* Tab header — pr-10 reserves space for the absolute toggle button */}
-            <div className="flex items-center px-2 pr-10 border-b border-border shrink-0 h-9">
-              <TabsList className="h-9 bg-transparent p-0 gap-0">
-                <TabsTrigger
-                  value="tree"
-                  className="relative h-9 px-3 text-[11px] font-medium rounded-none bg-transparent border-b border-transparent text-muted-foreground hover:text-foreground data-active:border-foreground data-active:text-foreground data-active:bg-transparent data-active:shadow-none gap-1.5 transition-colors"
-                >
+            <div className="flex items-center px-2 pr-10 border-b border-border shrink-0">
+              <TabsList variant="line">
+                <TabsTrigger value="tree">
                   <GitBranch className="size-3" />
                   Tree
                 </TabsTrigger>
-                <TabsTrigger
-                  value="details"
-                  className="relative h-9 px-3 text-[11px] font-medium rounded-none bg-transparent border-b border-transparent text-muted-foreground hover:text-foreground data-active:border-foreground data-active:text-foreground data-active:bg-transparent data-active:shadow-none gap-1.5 transition-colors"
-                >
+                <TabsTrigger value="details">
                   <Info className="size-3" />
                   Details
                 </TabsTrigger>
                 {session_summary && (
-                  <TabsTrigger
-                    value="analytics"
-                    className="relative h-9 px-3 text-[11px] font-medium rounded-none bg-transparent border-b border-transparent text-muted-foreground hover:text-foreground data-active:border-foreground data-active:text-foreground data-active:bg-transparent data-active:shadow-none gap-1.5 transition-colors"
-                  >
+                  <TabsTrigger value="analytics">
                     <BarChart3 className="size-3" />
                     Analytics
                   </TabsTrigger>

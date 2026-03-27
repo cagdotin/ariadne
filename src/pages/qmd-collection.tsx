@@ -24,15 +24,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription, AlertAction } from "@/components/ui/alert";
 import { format_number, format_date_relative } from "@/lib/format";
 import { error_message } from "@/lib/utils";
-import { RefreshCw, Zap, Trash2, FolderTree, Settings, MessageSquare } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { RefreshCw, Zap, Trash2, FolderTree, Settings, MessageSquare, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 import { use_qmd_operation } from "@/hooks/use-qmd-operation";
-import { cn } from "@/lib/utils";
 
 const LAST_INDEX_KEY = "ariadne:qmd:last-index";
-
-type TabId = "files" | "settings" | "contexts";
 
 export function QmdCollection() {
   const { index: index_name, collection: collection_name } = useParams({ strict: false }) as {
@@ -46,7 +45,7 @@ export function QmdCollection() {
   const [error, set_error] = useState<string | null>(null);
   const [action_loading, set_action_loading] = useState<string | null>(null);
   const [confirm_remove, set_confirm_remove] = useState(false);
-  const [active_tab, set_active_tab] = useState<TabId>("files");
+  const [active_tab, set_active_tab] = useState("files");
   const { state: op_state, start_operation, clear_operation } = use_qmd_operation();
 
   // File tree data (loaded separately, can be slow)
@@ -208,9 +207,11 @@ export function QmdCollection() {
           on_rename={() => {}}
           disabled={op_state.is_busy}
         />
-        <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
-          Error: {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertTriangleIcon className="size-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -219,12 +220,6 @@ export function QmdCollection() {
 
   const { collection } = detail;
   const needs_embedding = collection.active_doc_count - collection.embedded_count;
-
-  const tabs: { id: TabId; label: string; icon: typeof FolderTree }[] = [
-    { id: "files", label: "Files", icon: FolderTree },
-    { id: "settings", label: "Settings", icon: Settings },
-    { id: "contexts", label: "Contexts", icon: MessageSquare },
-  ];
 
   return (
     <div className="space-y-4">
@@ -277,9 +272,8 @@ export function QmdCollection() {
           ) : (
             <Button
               size="sm"
-              variant="outline"
+              variant="destructive"
               onClick={() => set_confirm_remove(true)}
-              className="text-destructive hover:text-destructive"
               disabled={op_state.is_busy}
             >
               <Trash2 className="h-3.5 w-3.5 mr-1" />
@@ -290,12 +284,16 @@ export function QmdCollection() {
 
       {/* Error banner */}
       {error && (
-        <div className="rounded-md bg-destructive/20 border border-destructive p-3 text-destructive text-sm">
-          {error}
-          <Button size="sm" variant="ghost" className="ml-2 h-6 text-xs" onClick={() => set_error(null)}>
-            Dismiss
-          </Button>
-        </div>
+        <Alert variant="destructive">
+          <AlertTriangleIcon className="size-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+          <AlertAction>
+            <Button size="sm" variant="ghost" onClick={() => set_error(null)}>
+              Dismiss
+            </Button>
+          </AlertAction>
+        </Alert>
       )}
 
       {/* Progress */}
@@ -330,142 +328,134 @@ export function QmdCollection() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-border">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => set_active_tab(tab.id)}
-              className={cn(
-                "flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors",
-                "border-b-2 -mb-px",
-                active_tab === tab.id
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-              {tab.id === "contexts" && collection.contexts.length > 0 && (
-                <Badge variant="secondary" className="text-[10px] h-4 px-1 ml-1">
-                  {collection.contexts.length}
-                </Badge>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <Tabs value={active_tab} onValueChange={set_active_tab}>
+        <TabsList variant="line">
+          <TabsTrigger value="files">
+            <FolderTree className="size-4" />
+            Files
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Settings className="size-4" />
+            Settings
+          </TabsTrigger>
+          <TabsTrigger value="contexts">
+            <MessageSquare className="size-4" />
+            Contexts
+            {collection.contexts.length > 0 && (
+              <Badge variant="secondary">{collection.contexts.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Tab Content */}
-      {active_tab === "files" && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <InfoTip title="File Tree" side="bottom" align="start">
+        <TabsContent value="files">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <InfoTip title="File Tree" side="bottom" align="start">
+                <div className="space-y-2">
+                  <p>This tree shows all files matching the collection's glob pattern. Click files or folders to toggle them in or out of the index.</p>
+                  <p className="font-medium text-foreground">Status indicators:</p>
+                  <ul className="space-y-1 ml-1">
+                    <li><span className="font-mono text-foreground">●</span> — Fully indexed</li>
+                    <li><span className="font-mono text-foreground">◐</span> — Partially indexed (some children)</li>
+                    <li><span className="font-mono text-foreground">○</span> — Not indexed</li>
+                    <li><span className="font-mono text-yellow-500">◉</span> — Pending add (will be indexed)</li>
+                    <li><span className="font-mono text-yellow-500">◎</span> — Pending remove (will be unindexed)</li>
+                  </ul>
+                  <p>Changes are staged until you click <strong>Apply Changes</strong>.</p>
+                </div>
+              </InfoTip>
+            </div>
+            {tree_loading ? (
               <div className="space-y-2">
-                <p>This tree shows all files matching the collection's glob pattern. Click files or folders to toggle them in or out of the index.</p>
-                <p className="font-medium text-foreground">Status indicators:</p>
-                <ul className="space-y-1 ml-1">
-                  <li><span className="font-mono text-foreground">●</span> — Fully indexed</li>
-                  <li><span className="font-mono text-foreground">◐</span> — Partially indexed (some children)</li>
-                  <li><span className="font-mono text-foreground">○</span> — Not indexed</li>
-                  <li><span className="font-mono text-yellow-500">◉</span> — Pending add (will be indexed)</li>
-                  <li><span className="font-mono text-yellow-500">◎</span> — Pending remove (will be unindexed)</li>
-                </ul>
-                <p>Changes are staged until you click <strong>Apply Changes</strong>.</p>
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-[400px]" />
               </div>
-            </InfoTip>
+            ) : tree_error ? (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  {tree_error}
+                </CardContent>
+              </Card>
+            ) : fs_paths && indexed_paths ? (
+              <CollectionFileTree
+                filesystem_paths={fs_paths}
+                indexed_paths={indexed_paths}
+                collection_name={collection_name}
+                repo_root={collection.path}
+                on_apply={handle_apply_toggle}
+              />
+            ) : null}
           </div>
-          {tree_loading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-[400px]" />
-            </div>
-          ) : tree_error ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                {tree_error}
-              </CardContent>
-            </Card>
-          ) : fs_paths && indexed_paths ? (
-            <CollectionFileTree
-              filesystem_paths={fs_paths}
-              indexed_paths={indexed_paths}
-              collection_name={collection_name}
-              repo_root={collection.path}
-              on_apply={handle_apply_toggle}
-            />
-          ) : null}
-        </div>
-      )}
+        </TabsContent>
 
-      {active_tab === "settings" && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Collection Settings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Path</p>
-                <p className="text-foreground font-mono text-xs break-all">{collection.path}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
-                  Glob Pattern
-                  <InfoTip title="Glob Pattern" side="bottom" align="start">
-                    <div className="space-y-1.5">
-                      <p>A pattern that determines which files QMD will discover in this collection's directory.</p>
-                      <p className="font-medium text-foreground">Common patterns:</p>
-                      <ul className="space-y-0.5 ml-1">
-                        <li><code className="bg-muted px-1 rounded text-[11px]">**/*.md</code> — All markdown files, any depth</li>
-                        <li><code className="bg-muted px-1 rounded text-[11px]">docs/**/*.md</code> — Only in the docs folder</li>
-                        <li><code className="bg-muted px-1 rounded text-[11px]">*.md</code> — Only top-level markdown files</li>
-                      </ul>
-                    </div>
-                  </InfoTip>
-                </p>
-                <p className="text-foreground font-mono text-xs">{collection.pattern}</p>
-              </div>
-              {collection.ignore_patterns.length > 0 && (
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Collection Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Ignore Patterns</p>
-                  <div className="flex flex-wrap gap-1">
-                    {collection.ignore_patterns.map((p) => (
-                      <Badge key={p} variant="secondary" className="text-xs font-mono">{p}</Badge>
-                    ))}
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Path</p>
+                  <p className="text-foreground font-mono text-xs break-all">{collection.path}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+                    Glob Pattern
+                    <InfoTip title="Glob Pattern" side="bottom" align="start">
+                      <div className="space-y-1.5">
+                        <p>A pattern that determines which files QMD will discover in this collection's directory.</p>
+                        <p className="font-medium text-foreground">Common patterns:</p>
+                        <ul className="space-y-0.5 ml-1">
+                          <li><code className="bg-muted px-1 rounded text-[11px]">**/*.md</code> — All markdown files, any depth</li>
+                          <li><code className="bg-muted px-1 rounded text-[11px]">docs/**/*.md</code> — Only in the docs folder</li>
+                          <li><code className="bg-muted px-1 rounded text-[11px]">*.md</code> — Only top-level markdown files</li>
+                        </ul>
+                      </div>
+                    </InfoTip>
+                  </p>
+                  <p className="text-foreground font-mono text-xs">{collection.pattern}</p>
+                </div>
+                {collection.ignore_patterns.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Ignore Patterns</p>
+                    <div className="flex flex-wrap gap-1">
+                      {collection.ignore_patterns.map((p) => (
+                        <Badge key={p} variant="secondary" className="font-mono">{p}</Badge>
+                      ))}
+                    </div>
                   </div>
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+                    Include by Default
+                    <InfoTip title="Include by Default" side="bottom" align="start">
+                      <p>When enabled, all files matching the glob pattern are automatically included in the index. When disabled, you must manually toggle individual files on in the Files tab. Useful for large repos where you only want to index specific documents.</p>
+                    </InfoTip>
+                  </p>
+                  <Badge variant={collection.include_by_default ? "default" : "secondary"}>
+                    {collection.include_by_default ? "Yes" : "No"}
+                  </Badge>
                 </div>
-              )}
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
-                  Include by Default
-                  <InfoTip title="Include by Default" side="bottom" align="start">
-                    <p>When enabled, all files matching the glob pattern are automatically included in the index. When disabled, you must manually toggle individual files on in the Files tab. Useful for large repos where you only want to index specific documents.</p>
-                  </InfoTip>
-                </p>
-                <Badge variant={collection.include_by_default ? "default" : "secondary"}>
-                  {collection.include_by_default ? "Yes" : "No"}
-                </Badge>
+                {collection.update_command && (
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Update Command</p>
+                    <p className="text-foreground font-mono text-xs">{collection.update_command}</p>
+                  </div>
+                )}
               </div>
-              {collection.update_command && (
-                <div className="sm:col-span-2">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Update Command</p>
-                  <p className="text-foreground font-mono text-xs">{collection.update_command}</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {active_tab === "contexts" && (
-        <ContextEditor
-          contexts={collection.contexts}
-          onAdd={handle_add_context}
-          onRemove={handle_remove_context}
-        />
-      )}
+        <TabsContent value="contexts">
+          <ContextEditor
+            contexts={collection.contexts}
+            onAdd={handle_add_context}
+            onRemove={handle_remove_context}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ResolvedToolCall } from "../types";
 import { extract_text } from "../utils";
 import { get_tool_handler } from "./tool-registry";
+import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronDown, AlertCircle } from "lucide-react";
 
 interface ToolCallRendererProps {
@@ -19,9 +20,11 @@ export function ToolCallRenderer({ tool }: ToolCallRendererProps) {
 
   return (
     <div className="my-0.5">
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={has_body ? () => set_expanded(!expanded) : undefined}
-        className={`flex items-center gap-1.5 text-[11px] py-0.5 transition-colors w-full text-left ${
+        className={`w-full justify-start text-[11px] font-normal ${
           has_body ? "cursor-pointer" : "cursor-default"
         } ${
           is_error
@@ -43,7 +46,7 @@ export function ToolCallRenderer({ tool }: ToolCallRendererProps) {
         {is_error && (
           <AlertCircle className="size-3 shrink-0 text-destructive ml-1" />
         )}
-      </button>
+      </Button>
       {expanded && has_body && (
         <div className="pl-[18px] pt-1 pb-1">{body}</div>
       )}

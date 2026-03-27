@@ -23,6 +23,13 @@ pub struct TimeOfDayStat {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
+pub struct HourCount {
+    pub hour: String,   // "00", "01", ..., "23"
+    pub count: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct TimeBreakdown {
     pub range_days: u32,
     pub total_sessions: u32,
@@ -33,6 +40,7 @@ pub struct TimeBreakdown {
     pub by_time_of_day: Vec<TimeOfDayStat>,
     pub daily_sessions: Vec<DayCount>,
     pub daily_cost: Vec<DayCost>,
+    pub hourly_sessions: Vec<HourCount>,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -39,16 +39,16 @@ function FilterPopover({
   return (
     <Popover>
       <PopoverTrigger
-        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
-      >
-        <Filter className="size-3 text-muted-foreground" />
-        {label}
-        {count > 0 && (
-          <span className="rounded-full bg-primary px-1.5 py-px text-[10px] leading-tight text-primary-foreground font-semibold">
-            {count}
-          </span>
-        )}
-      </PopoverTrigger>
+        render={
+          <Button variant="outline" size="sm">
+            <Filter className="size-3 text-muted-foreground" />
+            {label}
+            {count > 0 && (
+              <Badge variant="default">{count}</Badge>
+            )}
+          </Button>
+        }
+      />
       <PopoverContent align="start" className="w-56 p-1">
         <div className="max-h-64 overflow-y-auto">
           {items.length === 0 ? (
@@ -59,11 +59,12 @@ function FilterPopover({
             items.map((item) => {
               const is_selected = selected.has(item);
               return (
-                <button
+                <Button
                   key={item}
-                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => on_toggle(item)}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                  className="w-full justify-start gap-2"
                 >
                   <span
                     className={`flex size-4 shrink-0 items-center justify-center rounded border transition-colors ${
@@ -75,7 +76,7 @@ function FilterPopover({
                     {is_selected && <Check className="size-3" />}
                   </span>
                   <span className="truncate">{item}</span>
-                </button>
+                </Button>
               );
             })
           )}
@@ -111,16 +112,17 @@ export function SessionToolbar({
             placeholder="Search sessions..."
             value={search}
             onChange={(e) => on_search_change(e.target.value)}
-            className="pl-8 h-8 text-sm"
+            className="pl-8"
           />
           {search.length > 0 && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => on_search_change("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-1 top-1/2 -translate-y-1/2"
             >
               <X className="size-3.5" />
-            </button>
+            </Button>
           )}
         </div>
 
@@ -139,13 +141,8 @@ export function SessionToolbar({
         />
 
         {has_active_filters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={on_clear_all}
-            className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <X className="size-3 mr-1" />
+          <Button variant="ghost" size="sm" onClick={on_clear_all}>
+            <X className="size-3" />
             Clear
           </Button>
         )}
@@ -161,13 +158,13 @@ export function SessionToolbar({
       {(selected_tools.size > 0 || selected_models.size > 0) && (
         <div className="flex flex-wrap items-center gap-1.5">
           {[...selected_tools].map((tool) => (
-            <Badge key={`tool-${tool}`} variant="secondary" className="gap-1 pr-1 cursor-pointer" onClick={() => on_toggle_tool(tool)}>
+            <Badge key={`tool-${tool}`} variant="secondary" className="cursor-pointer" onClick={() => on_toggle_tool(tool)}>
               {tool}
               <X className="size-3" />
             </Badge>
           ))}
           {[...selected_models].map((model) => (
-            <Badge key={`model-${model}`} variant="secondary" className="gap-1 pr-1 cursor-pointer" onClick={() => on_toggle_model(model)}>
+            <Badge key={`model-${model}`} variant="secondary" className="cursor-pointer" onClick={() => on_toggle_model(model)}>
               {model}
               <X className="size-3" />
             </Badge>

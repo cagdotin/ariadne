@@ -1,5 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import type { SessionEntry, MessageEntry } from "../types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { SessionTreeNode } from "./session-tree-node";
 import {
   build_tree,
@@ -151,12 +153,14 @@ export function SessionTree({ entries, leaf_id, on_navigate }: SessionTreeProps)
             className="w-full bg-input border border-border rounded-md pl-7 pr-7 py-1 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
           {search_query && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => set_search_query("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-2 top-1/2 -translate-y-1/2"
             >
               <X className="size-3" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -164,18 +168,14 @@ export function SessionTree({ entries, leaf_id, on_navigate }: SessionTreeProps)
       {/* Filter buttons */}
       <div className="flex flex-wrap gap-1 px-3 py-2">
         {FILTER_BUTTONS.map((fb) => (
-          <button
+          <Badge
             key={fb.mode}
-            title={fb.title}
+            variant={filter_mode === fb.mode ? "default" : "outline"}
+            className="cursor-pointer"
             onClick={() => set_filter_mode(fb.mode)}
-            className={`px-2 py-0.5 text-[10px] font-medium rounded border transition-colors ${
-              filter_mode === fb.mode
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-transparent text-muted-foreground border-border hover:text-foreground hover:border-foreground"
-            }`}
           >
             {fb.label}
-          </button>
+          </Badge>
         ))}
       </div>
 

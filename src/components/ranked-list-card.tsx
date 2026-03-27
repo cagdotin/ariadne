@@ -2,6 +2,7 @@ import type { NameCount } from "@/schemas/analytics";
 import { format_number } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 interface RankedListCardProps {
   title: string;
@@ -27,7 +28,7 @@ export function RankedListCard({
         ) : (
           <div className="space-y-2">
             {items.slice(0, 10).map((item) => {
-              const width = (item.count / max_count) * 100;
+              const pct = (item.count / max_count) * 100;
 
               return (
                 <div key={item.name} className="flex items-center justify-between gap-2">
@@ -36,16 +37,14 @@ export function RankedListCard({
                       <span className="truncate font-mono text-xs" title={item.name}>
                         {item.name}
                       </span>
-                      <Badge variant="secondary" className="h-4 px-1 py-0 text-xs">
-                        {format_number(item.count)}
-                      </Badge>
+                      <Badge variant="secondary">{format_number(item.count)}</Badge>
                     </div>
-                    <div className="h-1 w-full rounded-sm bg-muted">
-                      <div
-                        className="h-full rounded-sm bg-blue-500 transition-all duration-300"
-                        style={{ width: `${width}%` }}
-                      />
-                    </div>
+                    <Progress
+                      value={pct}
+                      className="gap-0"
+                      trackClassName="h-1"
+                      indicatorClassName="bg-blue-500"
+                    />
                   </div>
                 </div>
               );

@@ -2,6 +2,7 @@ import { DirectoryHotspots } from "@/components/directory-hotspots";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { FileActivityTabs } from "./file-activity-tabs";
 import { ToolDistributionCard } from "./tool-distribution-card";
 import { use_scoped_file_analytics } from "./use-scoped-file-analytics";
@@ -22,7 +23,6 @@ export function ScopedFileAnalytics({ project_path }: ScopedFileAnalyticsProps) 
     filtered_write,
     filtered_dirs,
     hidden_count,
-    active_file_list,
     set_exclude_paths,
     set_active_tab,
   } = use_scoped_file_analytics(project_path);
@@ -62,9 +62,7 @@ export function ScopedFileAnalytics({ project_path }: ScopedFileAnalyticsProps) 
           className="min-w-0 flex-1"
         />
         {hidden_count > 0 && (
-          <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
-            {hidden_count} hidden
-          </span>
+          <Badge variant="secondary">{hidden_count} hidden</Badge>
         )}
       </div>
 
@@ -84,7 +82,6 @@ export function ScopedFileAnalytics({ project_path }: ScopedFileAnalyticsProps) 
         filtered_read={filtered_read}
         filtered_edit={filtered_edit}
         filtered_write={filtered_write}
-        active_file_list={active_file_list}
         on_tab_change={set_active_tab}
       />
     </div>

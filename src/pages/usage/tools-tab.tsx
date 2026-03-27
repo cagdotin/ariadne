@@ -5,6 +5,7 @@ import { ToolDetailBreakdown } from "@/components/tool-detail-breakdown";
 import { MiniStat } from "./mini-stat";
 import { use_usage_context } from "./usage-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 
 interface ToolsTabProps {
   overview: AnalyticsOverview;
@@ -63,12 +64,12 @@ function ToolErrorRates({ overview }: ToolsTabProps) {
                 </span>
               </div>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-destructive/70 transition-all duration-300"
-                style={{ width: `${(tool.rate / max_rate) * 100}%` }}
-              />
-            </div>
+            <Progress
+              value={(tool.rate / max_rate) * 100}
+              className="gap-0"
+              trackClassName="h-1.5"
+              indicatorClassName="bg-destructive/70"
+            />
           </div>
         ))}
       </div>

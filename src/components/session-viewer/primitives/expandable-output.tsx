@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface ExpandableOutputProps {
@@ -8,6 +9,18 @@ interface ExpandableOutputProps {
   max_lines?: number;
   language?: string;
   className?: string;
+}
+
+function ToggleButton({ expanded, remaining }: { expanded: boolean; remaining: number }) {
+  return (
+    <Button variant="ghost" size="sm" className="text-[10px] text-muted-foreground mt-1">
+      {expanded ? (
+        <><ChevronDown className="size-3" /> collapse</>
+      ) : (
+        <><ChevronRight className="size-3" /> {remaining} more lines</>
+      )}
+    </Button>
+  );
 }
 
 export function ExpandableOutput({
@@ -52,22 +65,7 @@ export function ExpandableOutput({
           >
             {display_text}
           </SyntaxHighlighter>
-          {is_truncated && !expanded && (
-            <button
-              className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1 hover:text-foreground transition-colors"
-            >
-              <ChevronRight className="size-3" />
-              <span>{remaining} more lines</span>
-            </button>
-          )}
-          {is_truncated && expanded && (
-            <button
-              className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1 hover:text-foreground transition-colors"
-            >
-              <ChevronDown className="size-3" />
-              <span>collapse</span>
-            </button>
-          )}
+          {is_truncated && <ToggleButton expanded={expanded} remaining={remaining} />}
         </div>
       </div>
     );
@@ -83,18 +81,7 @@ export function ExpandableOutput({
         <pre className="rounded-[var(--radius)] bg-input p-2 px-3 text-xs font-mono text-muted-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap break-words">
           {display_text}
         </pre>
-        {is_truncated && !expanded && (
-          <button className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1 hover:text-foreground transition-colors">
-            <ChevronRight className="size-3" />
-            <span>{remaining} more lines</span>
-          </button>
-        )}
-        {is_truncated && expanded && (
-          <button className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1 hover:text-foreground transition-colors">
-            <ChevronDown className="size-3" />
-            <span>collapse</span>
-          </button>
-        )}
+        {is_truncated && <ToggleButton expanded={expanded} remaining={remaining} />}
       </div>
     </div>
   );

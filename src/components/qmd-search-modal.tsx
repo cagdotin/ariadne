@@ -1,13 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { qmd_search } from "@/api/qmd";
 import { error_message } from "@/lib/utils";
 import {
   Search,
-  X,
   Loader2,
   ChevronDown,
   ChevronRight,
@@ -61,13 +67,10 @@ function ExpandedQueryPills({ queries }: { queries: QmdExpandedQuery[] }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {queries.map((q, i) => (
-        <span
-          key={i}
-          className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-mono ${query_type_color(q.type)}`}
-        >
+        <Badge key={i} variant="outline" className={`font-mono ${query_type_color(q.type)}`}>
           <span className="font-semibold">{q.type}:</span>
           <span className="truncate max-w-[240px]">{q.query}</span>
-        </span>
+        </Badge>
       ))}
     </div>
   );
@@ -125,22 +128,19 @@ function CollectionFilter({ collections, selected, on_toggle }: {
   if (collections.length <= 1) return null;
 
   return (
-    <div className="flex flex-wrap gap-1.5">
-      <span className="text-xs text-muted-foreground self-center mr-1">Collections:</span>
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-xs text-muted-foreground mr-1">Collections:</span>
       {collections.map((col) => {
         const is_selected = selected.has(col.name);
         return (
-          <button
+          <Badge
             key={col.name}
+            variant={is_selected ? "default" : "outline"}
+            className="cursor-pointer"
             onClick={() => on_toggle(col.name)}
-            className={`rounded-md border px-2 py-0.5 text-xs transition-colors ${
-              is_selected
-                ? "bg-primary/10 text-primary border-primary/30"
-                : "bg-muted/50 text-muted-foreground border-transparent hover:border-border"
-            }`}
           >
             {col.name}
-          </button>
+          </Badge>
         );
       })}
     </div>
@@ -224,9 +224,9 @@ function ResultCard({ hit, is_expanded, on_toggle }: {
       <div className="p-3 space-y-1.5">
         <div className="flex items-start gap-2">
           {/* Score badge */}
-          <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-mono font-semibold ${score_color(hit.score)}`}>
+          <Badge variant="secondary" className={`shrink-0 font-mono font-semibold ${score_color(hit.score)}`}>
             {hit.score.toFixed(2)}
-          </span>
+          </Badge>
 
           <div className="flex-1 min-w-0">
             {/* Title + docid */}
@@ -258,13 +258,17 @@ function ResultCard({ hit, is_expanded, on_toggle }: {
       </div>
 
       {/* Expand toggle */}
-      <button
-        onClick={on_toggle}
-        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 border-t transition-colors"
-      >
-        {is_expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        {is_expanded ? "Hide details" : "Show details"}
-      </button>
+      <div className="border-t">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={on_toggle}
+          className="w-full justify-start rounded-none"
+        >
+          {is_expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+          {is_expanded ? "Hide details" : "Show details"}
+        </Button>
+      </div>
 
       {/* Expanded detail */}
       {is_expanded && (
@@ -339,16 +343,6 @@ export function QmdSearchModal({
     return () => { unlisten?.(); };
   }, [open]);
 
-  // Handle escape key
-  useEffect(() => {
-    if (!open) return;
-    const handle_keydown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") on_close();
-    };
-    window.addEventListener("keydown", handle_keydown);
-    return () => window.removeEventListener("keydown", handle_keydown);
-  }, [open, on_close]);
-
   const toggle_collection = useCallback((name: string) => {
     set_selected_collections((prev) => {
       const next = new Set(prev);
@@ -402,23 +396,13 @@ export function QmdSearchModal({
     setTimeout(() => set_copied(false), 2000);
   }, [search_result]);
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh] bg-black/50"
-      onClick={(e) => { if (e.target === e.currentTarget) on_close(); }}
-    >
-      <Card className="w-full max-w-3xl mx-4 max-h-[82vh] flex flex-col overflow-hidden">
+    <Dialog open={open} onOpenChange={(o) => { if (!o) on_close(); }}>
+      <DialogContent className="sm:max-w-3xl max-h-[82vh] flex flex-col overflow-hidden p-0" showCloseButton={false}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Search — {index_name}</h2>
-          </div>
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={on_close}>
-            <X className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-2 px-4 pt-4 pb-0">
+          <Search className="size-4 text-muted-foreground" />
+          <DialogTitle>Search — {index_name}</DialogTitle>
         </div>
 
         {/* Input + collection filter */}
@@ -444,9 +428,8 @@ export function QmdSearchModal({
               size="sm"
               onClick={handle_search}
               disabled={!query.trim() || searching}
-              className="shrink-0"
             >
-              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
             </Button>
           </div>
 
@@ -474,30 +457,32 @@ export function QmdSearchModal({
 
           {/* Error */}
           {error && (
-            <div className="rounded-md bg-destructive/15 border border-destructive/30 p-3 text-sm text-destructive">
-              {error}
-              <Button
-                size="sm"
-                variant="ghost"
-                className="ml-2 h-6 text-xs"
-                onClick={() => { set_error(null); handle_search(); }}
-              >
-                Retry
-              </Button>
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>
+                {error}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-2"
+                  onClick={() => { set_error(null); handle_search(); }}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Loading skeleton */}
           {searching && !search_result && !error && (
             <div className="space-y-3 pt-2">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="rounded-lg border bg-card p-3 space-y-2 animate-pulse">
+                <div key={i} className="rounded-lg border bg-card p-3 space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-10 rounded bg-muted" />
-                    <div className="h-4 w-48 rounded bg-muted" />
+                    <Skeleton className="h-5 w-10" />
+                    <Skeleton className="h-4 w-48" />
                   </div>
-                  <div className="h-3 w-64 rounded bg-muted" />
-                  <div className="h-16 rounded bg-muted/60" />
+                  <Skeleton className="h-3 w-64" />
+                  <Skeleton className="h-16" />
                 </div>
               ))}
             </div>
@@ -530,7 +515,7 @@ export function QmdSearchModal({
           {/* Initial empty state */}
           {!searching && !search_result && !error && (
             <div className="text-center py-12 space-y-2">
-              <Search className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+              <Search className="size-8 text-muted-foreground/40 mx-auto" />
               <p className="text-sm text-muted-foreground">
                 Type a query and press Enter to search.
               </p>
@@ -549,18 +534,13 @@ export function QmdSearchModal({
               {" · "}
               {format_ms(search_result.timing.total_ms)}
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs gap-1.5"
-              onClick={handle_copy}
-            >
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            <Button size="sm" variant="ghost" onClick={handle_copy}>
+              {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
               {copied ? "Copied" : "Copy JSON"}
             </Button>
           </div>
         )}
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

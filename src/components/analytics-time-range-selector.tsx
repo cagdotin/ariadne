@@ -34,11 +34,7 @@ export function AnalyticsTimeRangeSelector() {
       >
         <TabsList>
           {RANGE_OPTIONS.map((opt) => (
-            <TabsTrigger
-              key={opt.value}
-              value={String(opt.value)}
-              className="text-xs px-2"
-            >
+            <TabsTrigger key={opt.value} value={String(opt.value)}>
               {opt.label}
             </TabsTrigger>
           ))}

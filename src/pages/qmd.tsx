@@ -32,9 +32,10 @@ import { InfoTip } from "@/components/info-tip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription, AlertAction } from "@/components/ui/alert";
 import { format_number, format_file_size } from "@/lib/format";
 import { error_message } from "@/lib/utils";
-import { RefreshCw, Plus, Zap, Trash2, Search, ScrollText } from "lucide-react";
+import { RefreshCw, Plus, Zap, Trash2, Search, ScrollText, AlertTriangle } from "lucide-react";
 import { use_qmd_operation } from "@/hooks/use-qmd-operation";
 import { QmdSearchModal } from "@/components/qmd-search-modal";
 
@@ -241,9 +242,11 @@ export function Qmd() {
 
   if (error && !availability) {
     return (
-      <div className="rounded-md bg-destructive/20 border border-destructive p-4 text-destructive">
-        Error: {error}
-      </div>
+      <Alert variant="destructive">
+        <AlertTriangle className="size-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     );
   }
 
@@ -360,12 +363,16 @@ export function Qmd() {
       )}
 
       {error && (
-        <div className="rounded-md bg-destructive/20 border border-destructive p-3 text-destructive text-sm">
-          {error}
-          <Button size="sm" variant="ghost" className="ml-2 h-6 text-xs" onClick={() => set_error(null)}>
-            Dismiss
-          </Button>
-        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+          <AlertAction>
+            <Button size="sm" variant="ghost" onClick={() => set_error(null)}>
+              Dismiss
+            </Button>
+          </AlertAction>
+        </Alert>
       )}
 
       {banner_state && <QmdHealthBanner state={banner_state} />}

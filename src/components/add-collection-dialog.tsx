@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InfoTip } from "@/components/info-tip";
 import { error_message } from "@/lib/utils";
-import { X, FolderOpen } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 
 interface AddCollectionDialogProps {
   onAdd: (name: string, path: string, pattern?: string) => Promise<void>;
@@ -28,7 +34,6 @@ export function AddCollectionDialog({ onAdd, onClose }: AddCollectionDialogProps
       });
       if (selected) {
         set_path(selected);
-        // Auto-derive name from folder name if name is empty
         if (!name.trim()) {
           const folder_name = selected.split("/").filter(Boolean).pop();
           if (folder_name) set_name(folder_name);
@@ -55,17 +60,12 @@ export function AddCollectionDialog({ onAdd, onClose }: AddCollectionDialogProps
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Add Collection</CardTitle>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-md" showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Add Collection</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Name</label>
             <Input
@@ -90,7 +90,7 @@ export function AddCollectionDialog({ onAdd, onClose }: AddCollectionDialogProps
                 onClick={handle_browse}
                 title="Browse for folder"
               >
-                <FolderOpen className="h-4 w-4" />
+                <FolderOpen className="size-4" />
               </Button>
             </div>
           </div>
@@ -119,14 +119,14 @@ export function AddCollectionDialog({ onAdd, onClose }: AddCollectionDialogProps
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={handle_submit} disabled={submitting}>
-              {submitting ? "Adding..." : "Add Collection"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handle_submit} disabled={submitting}>
+            {submitting ? "Adding..." : "Add Collection"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -141,6 +141,12 @@ export const TimeOfDayStatSchema = z.object({
 });
 export type TimeOfDayStat = z.infer<typeof TimeOfDayStatSchema>;
 
+export const HourCountSchema = z.object({
+  hour: z.string(),
+  count: z.number(),
+});
+export type HourCount = z.infer<typeof HourCountSchema>;
+
 export const TimeBreakdownSchema = z.object({
   range_days: z.number(),
   total_sessions: z.number(),
@@ -151,6 +157,7 @@ export const TimeBreakdownSchema = z.object({
   by_time_of_day: z.array(TimeOfDayStatSchema),
   daily_sessions: z.array(DayCountSchema),
   daily_cost: z.array(DayCostSchema),
+  hourly_sessions: z.array(HourCountSchema),
 });
 export type TimeBreakdown = z.infer<typeof TimeBreakdownSchema>;
 
