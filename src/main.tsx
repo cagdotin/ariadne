@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./router";
 import { ProjectScopeProvider } from "./components/project-scope-provider";
+import { AnalyticsTimeRangeProvider } from "./components/analytics-time-range-provider";
 import "./styles/global.css";
 
 // Keyboard shortcuts for navigation (macOS standard: Cmd+[ = back, Cmd+] = forward)
@@ -20,7 +21,9 @@ document.addEventListener('keydown', (e) => {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ProjectScopeProvider>
-      <RouterProvider router={router} />
+      <AnalyticsTimeRangeProvider>
+        <RouterProvider router={router} />
+      </AnalyticsTimeRangeProvider>
     </ProjectScopeProvider>
   </React.StrictMode>,
 );
