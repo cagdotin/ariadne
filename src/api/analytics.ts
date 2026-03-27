@@ -24,8 +24,11 @@ export async function get_session_detail(session_id: string): Promise<SessionSum
   return SessionSummarySchema.parse(raw);
 }
 
-export async function get_all_sessions(project_path?: string): Promise<SessionSummary[]> {
-  const raw = await invoke("get_all_sessions", { projectPath: project_path ?? null });
+export async function get_all_sessions(project_path?: string, range_days?: number): Promise<SessionSummary[]> {
+  const raw = await invoke("get_all_sessions", {
+    projectPath: project_path ?? null,
+    rangeDays: range_days ?? null,
+  });
   return z.array(SessionSummarySchema).parse(raw);
 }
 
@@ -55,10 +58,12 @@ export async function get_session_entries(session_id: string): Promise<SessionEn
 export async function get_tool_details(
   tool_name: string,
   project_path?: string,
+  range_days?: number,
 ): Promise<ToolDetailResponse> {
   const raw = await invoke("get_tool_details", {
     toolName: tool_name,
     projectPath: project_path ?? null,
+    rangeDays: range_days ?? null,
   });
   return ToolDetailResponseSchema.parse(raw);
 }

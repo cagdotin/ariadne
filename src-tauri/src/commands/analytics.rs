@@ -24,8 +24,9 @@ pub async fn get_session_detail(cache: State<'_, SessionCache>, session_id: Stri
 pub async fn get_all_sessions(
     cache: State<'_, SessionCache>,
     project_path: Option<String>,
+    range_days: Option<u32>,
 ) -> Result<Vec<SessionSummary>, String> {
-    cache.get_all_sessions(project_path.as_deref()).await
+    cache.get_all_sessions(project_path.as_deref(), range_days.unwrap_or(0)).await
 }
 
 #[tauri::command]
@@ -60,8 +61,9 @@ pub async fn get_tool_details(
     cache: State<'_, SessionCache>,
     tool_name: String,
     project_path: Option<String>,
+    range_days: Option<u32>,
 ) -> Result<ToolDetailResponse, String> {
-    cache.get_tool_details(&tool_name, project_path.as_deref()).await
+    cache.get_tool_details(&tool_name, project_path.as_deref(), range_days.unwrap_or(0)).await
 }
 
 #[tauri::command]

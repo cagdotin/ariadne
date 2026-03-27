@@ -14,6 +14,44 @@ pub struct SessionCache {
     last_updated: Arc<RwLock<Option<DateTime<Utc>>>>,
 }
 
+/// Shared session filtering: returns true if a session matches the given
+/// optional project path and range_days constraints.
+/// `range_days == 0` means "all time" (no time filter).
+fn session_matches(
+    session: &SessionSummary,
+    project_path: Option<&str>,
+    range_days: u32,
+    now: &DateTime<Utc>,
+) -> bool {
+    if let Some(pp) = project_path {
+        if session.project_path != pp {
+            return false;
+        }
+    }
+    if range_days == 0 {
+        return true;
+    }
+    if let Ok(dt) = DateTime::parse_from_rfc3339(&session.started_at) {
+        let age = now.signed_duration_since(dt.with_timezone(&Utc));
+        age.num_days() < range_days as i64
+    } else {
+        false
+    }
+}
+
+/// Filter a slice of sessions by project_path + range_days.
+fn filter_sessions<'a>(
+    sessions: &'a [SessionSummary],
+    project_path: Option<&str>,
+    range_days: u32,
+) -> Vec<&'a SessionSummary> {
+    let now = Utc::now();
+    sessions
+        .iter()
+        .filter(|s| session_matches(s, project_path, range_days, &now))
+        .collect()
+}
+
 impl SessionCache {
     pub fn new() -> Self {
         Self {
@@ -94,25 +132,8 @@ impl SessionCache {
     /// Get analytics overview from cached data, optionally filtered by project path and time range
     pub async fn get_analytics_overview(&self, project_path: Option<&str>, range_days: u32) -> Result<AnalyticsOverview, String> {
         let all = self.get_or_init().await?;
-        let now = Utc::now();
-        let all_sessions: Vec<SessionSummary> = all.into_iter().filter(|s| {
-            // Project path filter
-            if let Some(pp) = project_path {
-                if s.project_path != pp {
-                    return false;
-                }
-            }
-            // Time range filter
-            if range_days == 0 {
-                return true;
-            }
-            if let Ok(dt) = DateTime::parse_from_rfc3339(&s.started_at) {
-                let age = now.signed_duration_since(dt.with_timezone(&Utc));
-                age.num_days() < range_days as i64
-            } else {
-                false
-            }
-        }).collect();
+        let refs = filter_sessions(&all, project_path, range_days);
+        let all_sessions: Vec<SessionSummary> = refs.into_iter().cloned().collect();
 
         // Aggregate data (same logic as before)
         let total_sessions = all_sessions.len() as u32;
@@ -334,14 +355,14 @@ impl SessionCache {
             .ok_or_else(|| format!("Session with id {} not found", session_id))
     }
 
-    /// Get all sessions, optionally filtered by project path
-    pub async fn get_all_sessions(&self, project_path: Option<&str>) -> Result<Vec<SessionSummary>, String> {
+    /// Get all sessions, optionally filtered by project path and time range
+    pub async fn get_all_sessions(&self, project_path: Option<&str>, range_days: u32) -> Result<Vec<SessionSummary>, String> {
         let all_sessions = self.get_or_init().await?;
 
-        let mut filtered: Vec<SessionSummary> = match project_path {
-            Some(pp) => all_sessions.into_iter().filter(|s| s.project_path == pp).collect(),
-            None => all_sessions,
-        };
+        let mut filtered: Vec<SessionSummary> = filter_sessions(&all_sessions, project_path, range_days)
+            .into_iter()
+            .cloned()
+            .collect();
 
         // Sort by started_at descending (newest first)
         filtered.sort_by(|a, b| b.started_at.cmp(&a.started_at));
@@ -349,21 +370,16 @@ impl SessionCache {
         Ok(filtered)
     }
 
-    /// Get detailed tool usage data, optionally filtered by project path
+    /// Get detailed tool usage data, optionally filtered by project path and time range
     pub async fn get_tool_details(
         &self,
         tool_name: &str,
         project_path: Option<&str>,
+        range_days: u32,
     ) -> Result<ToolDetailResponse, String> {
         let all_sessions = self.get_or_init().await?;
 
-        let filtered: Vec<&SessionSummary> = all_sessions
-            .iter()
-            .filter(|s| match project_path {
-                Some(pp) => s.project_path == pp,
-                None => true,
-            })
-            .collect();
+        let filtered = filter_sessions(&all_sessions, project_path, range_days);
 
         // Aggregate tool calls/errors
         let mut total_calls: u32 = 0;
@@ -474,25 +490,8 @@ impl SessionCache {
     /// Get file and tool analytics for a specific project, optionally filtered by time range
     pub async fn get_project_file_stats(&self, project_path: &str, range_days: u32) -> Result<ProjectFileStats, String> {
         let all_sessions = self.get_or_init().await?;
-        let now = Utc::now();
 
-        let project_sessions: Vec<_> = all_sessions
-            .iter()
-            .filter(|s| {
-                if s.project_path != project_path {
-                    return false;
-                }
-                if range_days == 0 {
-                    return true;
-                }
-                if let Ok(dt) = DateTime::parse_from_rfc3339(&s.started_at) {
-                    let age = now.signed_duration_since(dt.with_timezone(&Utc));
-                    age.num_days() < range_days as i64
-                } else {
-                    false
-                }
-            })
-            .collect();
+        let project_sessions = filter_sessions(&all_sessions, Some(project_path), range_days);
 
         let total_sessions = project_sessions.len() as u32;
 
@@ -670,25 +669,7 @@ impl SessionCache {
 
         let sessions = self.get_or_init().await?;
 
-        let now = Utc::now();
-        let filtered: Vec<&crate::models::session::SessionSummary> = sessions.iter().filter(|s| {
-            // Project path filter
-            if let Some(pp) = project_path {
-                if s.project_path != pp {
-                    return false;
-                }
-            }
-            // Time range filter
-            if range_days == 0 {
-                return true;
-            }
-            if let Ok(dt) = DateTime::parse_from_rfc3339(&s.started_at) {
-                let age = now.signed_duration_since(dt.with_timezone(&Utc));
-                age.num_days() < range_days as i64
-            } else {
-                false
-            }
-        }).collect();
+        let filtered = filter_sessions(&sessions, project_path, range_days);
 
         let total_sessions = filtered.len() as u32;
         let total_cost: f64 = filtered.iter().map(|s| s.total_cost).sum();
