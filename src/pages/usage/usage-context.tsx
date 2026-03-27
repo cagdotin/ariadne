@@ -6,7 +6,6 @@ export interface UsageContextValue {
   time_data: TimeBreakdown | null;
   file_stats: ProjectFileStats | null;
   range_days: number;
-  set_range_days: (days: number) => void;
   loading: boolean;
   error: string | null;
 }

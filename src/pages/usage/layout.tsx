@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import type { AnalyticsOverview, TimeBreakdown, ProjectFileStats } from "@/schemas/analytics";
 import {
@@ -7,7 +8,7 @@ import {
   get_project_file_stats,
 } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
-import { RangePicker } from "@/components/range-picker";
+import { use_analytics_time_range } from "@/components/analytics-time-range-provider";
 import { cn, error_message } from "@/lib/utils";
 import { UsageProvider } from "./usage-context";
 import {
@@ -16,14 +17,6 @@ import {
   Clock,
   FolderOpen,
 } from "lucide-react";
-
-const range_options = [
-  { label: "Today", value: 1 },
-  { label: "7d", value: 7 },
-  { label: "30d", value: 30 },
-  { label: "90d", value: 90 },
-  { label: "All", value: 0 },
-];
 
 interface NavTab {
   to: string;
@@ -72,26 +65,25 @@ function UsageNav({ project_path }: { project_path: string | undefined }) {
 
 export function UsageLayout() {
   const { scope } = use_project_scope();
+  const { range_days } = use_analytics_time_range();
   const project_path = scope?.project_path;
-  const location = useLocation();
 
   const [overview, set_overview] = useState<AnalyticsOverview | null>(null);
   const [time_data, set_time_data] = useState<TimeBreakdown | null>(null);
   const [file_stats, set_file_stats] = useState<ProjectFileStats | null>(null);
-  const [range_days, set_range_days] = useState(30);
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
 
-  const prev_project_path = useRef(project_path);
+  // Show the loading skeleton on the first load, then silently refresh in the
+  // background when only range_days or project_path changes.
+  const has_loaded = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
-    const scope_changed = prev_project_path.current !== project_path;
-    prev_project_path.current = project_path;
 
     const fetch_data = async () => {
       try {
-        if (scope_changed || !overview) set_loading(true);
+        if (!has_loaded.current) set_loading(true);
         set_error(null);
 
         const requests: [
@@ -112,6 +104,7 @@ export function UsageLayout() {
         set_overview(next_overview);
         set_time_data(next_time);
         set_file_stats(next_files);
+        has_loaded.current = true;
       } catch (err) {
         if (cancelled) return;
         set_error(error_message(err, "Failed to load usage data"));
@@ -124,20 +117,11 @@ export function UsageLayout() {
     return () => { cancelled = true; };
   }, [project_path, range_days]);
 
-  const is_tool_detail = /^\/usage\/tools\/[^/]+/.test(location.pathname);
-
   return (
-    <UsageProvider value={{ overview, time_data, file_stats, range_days, set_range_days, loading, error }}>
+    <UsageProvider value={{ overview, time_data, file_stats, range_days, loading, error }}>
       <div className="min-w-0 w-full">
-        <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-4 mb-4">
           <UsageNav project_path={project_path} />
-          {!is_tool_detail && (
-            <RangePicker
-              options={range_options}
-              value={range_days}
-              on_change={set_range_days}
-            />
-          )}
         </div>
         <Outlet />
       </div>
