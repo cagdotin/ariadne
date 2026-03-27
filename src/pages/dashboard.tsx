@@ -8,29 +8,21 @@ import {
   format_tokens,
 } from "@/lib/format";
 import { use_project_scope } from "@/components/project-scope-provider";
+import { use_analytics_time_range } from "@/components/analytics-time-range-provider";
 import { StatCard } from "@/components/stat-card";
 import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { DailyTrend } from "@/components/daily-trend";
 import { TopProjects } from "@/components/top-projects";
-import { RangePicker } from "@/components/range-picker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { error_message } from "@/lib/utils";
 
-const range_options = [
-  { label: "Today", value: 1 },
-  { label: "7d", value: 7 },
-  { label: "30d", value: 30 },
-  { label: "90d", value: 90 },
-  { label: "All", value: 0 },
-];
-
 export function Dashboard() {
   const { scope } = use_project_scope();
+  const { range_days } = use_analytics_time_range();
   const project_path = scope?.project_path;
 
   const [overview, set_overview] = useState<AnalyticsOverview | null>(null);
   const [time_data, set_time_data] = useState<TimeBreakdown | null>(null);
-  const [range_days, set_range_days] = useState(30);
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
 
@@ -128,10 +120,6 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-4 min-w-0">
-      <div className="flex items-center justify-end gap-4">
-        <RangePicker options={range_options} value={range_days} on_change={set_range_days} />
-      </div>
-
       <div className="flex flex-wrap gap-3">
         <StatCard
           label="Sessions"
