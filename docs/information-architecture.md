@@ -83,21 +83,47 @@ Session detail (`/sessions/:id`) provides full session timeline, tool calls, con
 
 ### 3. Usage (`/usage`)
 
-**Purpose**: Analytics deep-dive — tools, models, costs, time patterns, and project-scoped file analytics.
+**Purpose**: Analytics deep-dive — costs, tools, activity patterns, and project-scoped file analytics.
 
-Organized in clear card sections, 2-column grid where sensible. When a project is selected via the global scope, additional project-specific sections appear.
+Organized as a **4-tab layout** with a **global time range picker** (Today / 7d / 30d / 90d / All) that applies to all tabs. The time range is passed to backend endpoints so filtering happens server-side. When a project is selected via the global scope, a Files tab appears.
 
-| Section | Component | Scope | Description |
-|---|---|---|---|
-| Tools | `ToolUsageBar` | Global + scoped | Horizontal bar chart. Click bash/read/edit/write → tool detail |
-| Models | `ModelDistribution` | Global + scoped | Horizontal bar chart of model usage |
-| Cost breakdown | `CostBreakdown` | Global + scoped | Donut chart + legend (input/output/cache read/cache write) |
-| Time patterns | `TimePatterns` | Global + scoped | Weekday + time-of-day horizontal bars |
-| Tool details | `ToolDetailBreakdown` | Global + scoped | 4-card grid: top bash programs, most read/edited/written files |
-| Exclude filter | Input | Scoped only | Comma-separated path exclusions for file analytics |
-| Tool distribution | Horizontal bars | Scoped only | Per-project tool call counts |
-| Directory hotspots | `DirectoryHotspots` | Scoped only | Stacked R/E/W bars by directory |
-| File activity | `DataTable` with tabs | Scoped only | Read / Edit / Write tabs, each a sortable table |
+#### Tab 1: Cost — *"How much am I spending?"*
+
+| Section | Component | Description |
+|---|---|---|
+| Stat cards | `MiniStat` × 4 | Total Cost, Sessions, Avg/Session, Total Tokens |
+| Cost breakdown | `CostBreakdown` | Donut chart + legend (input/output/cache read/cache write) |
+| Token breakdown | `TokenBreakdown` | Horizontal bars showing input/output/cache token distribution + cache hit rate |
+| Cost over time | `CostTrend` | Area chart of daily cost |
+| Model distribution | `ModelDistribution` | Horizontal bar chart of model usage by message count |
+
+#### Tab 2: Tools — *"What is the agent doing?"*
+
+| Section | Component | Description |
+|---|---|---|
+| Stat cards | `MiniStat` × 4 | Total Calls, Errors, Error Rate, Unique Tools |
+| Tool usage | `ToolUsageBar` | Horizontal bar chart. Click bash/read/edit/write → tool detail |
+| Error rates | `ToolErrorRates` | Tools sorted by failure rate with bars |
+| Tool details | `ToolDetailBreakdown` | 4-card grid: top bash programs, most read/edited/written files |
+
+#### Tab 3: Patterns — *"When am I using agents?"*
+
+| Section | Component | Description |
+|---|---|---|
+| Stat cards | `MiniStat` × 4 | Sessions, Total Cost, Avg/Session, Total Tokens (range-labeled) |
+| Day of week | `WeekdayChart` | Horizontal bars |
+| Time of day | `TimeOfDayChart` | Horizontal bars |
+| Sessions over time | `SessionsTrend` | Area chart of daily session count |
+
+#### Tab 4: Files — *"What files are being touched?"* (scoped only)
+
+| Section | Component | Description |
+|---|---|---|
+| Stat cards | `MiniStat` × 4 | Sessions, Files Read, Files Edited, Files Written |
+| Exclude filter | Input | Comma-separated path exclusions for file analytics |
+| Tool distribution | `ToolDistribution` | Per-project tool call counts |
+| Directory hotspots | `DirectoryHotspots` | Stacked R/E/W bars by directory |
+| File activity | `DataTable` with tabs | Read / Edit / Write tabs, each a sortable table |
 
 ---
 
@@ -216,8 +242,8 @@ An **index** is a named, independent knowledge base. Each index has its own coll
 
 ## Future Considerations
 
-- **Cost Trends**: Cost over time chart (daily/weekly), cost by project trend
 - **Live Updates**: File watcher for new sessions, real-time dashboard updates
 - **Search**: Global search across sessions, projects, files
 - **Export**: Export analytics data as CSV/JSON
-- **Usage page reorganization**: Refine the scoped vs. global section layout after the Phase 2 migration stabilizes
+- **Session Efficiency Metrics**: Cost per turn, cache savings estimate, duration distributions
+- **Error Trends**: Error rate over time, most error-prone operations
