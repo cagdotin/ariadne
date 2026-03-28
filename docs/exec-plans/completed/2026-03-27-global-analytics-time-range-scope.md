@@ -1,6 +1,6 @@
 # Global analytics time range scope
 
-Status: Active
+Status: Complete
 Owner: coding-agent
 Created: 2026-03-27
 Spec: `docs/specs/2026-03-27-global-analytics-time-range-scope.md`
@@ -213,7 +213,7 @@ This work is acceptable when all of the following are true:
 
 Planning artifacts created for this work:
 - `docs/specs/2026-03-27-global-analytics-time-range-scope.md`
-- `docs/exec-plans/active/2026-03-27-global-analytics-time-range-scope.md`
+- `docs/exec-plans/completed/2026-03-27-global-analytics-time-range-scope.md`
 
 Primary implementation references:
 - `src/app.tsx`

@@ -3,6 +3,9 @@
 > Restructure Ariadne's frontend to match the [Information Architecture](../../information-architecture.md).
 > Move from 2-nav-item monolithic dashboard to 4-page architecture with proper navigation.
 
+Status: Complete (historical)
+Created: 2026-03-20
+
 ## Overview of Changes
 
 ### What's Changing

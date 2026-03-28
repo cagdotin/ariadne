@@ -1,6 +1,6 @@
 # Usage File Analytics Visualizations Execution Plan
 
-Status: Active
+Status: Complete
 Owner: coding-agent
 Created: 2026-03-27
 Spec: `docs/specs/2026-03-27-usage-file-analytics-visualizations.md`
@@ -257,7 +257,7 @@ Implementation is acceptable when all of the following are true:
 
 Planning artifacts created for this initiative:
 - `docs/specs/2026-03-27-usage-file-analytics-visualizations.md`
-- `docs/exec-plans/active/2026-03-27-usage-file-analytics-visualizations.md`
+- `docs/exec-plans/completed/2026-03-27-usage-file-analytics-visualizations.md`
 
 Key current implementation references:
 - `src/components/file-hotspot-treemap.tsx`

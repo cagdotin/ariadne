@@ -2,7 +2,7 @@
 
 This ExecPlan is a living document. Keep `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` current as work proceeds. Conforms to the plan standard in the `plan` skill's `PLAN.md`.
 
-Status: Active
+Status: Complete
 Created: 2026-03-25
 Spec: `docs/specs/2026-03-25-qmd-search.md`
 

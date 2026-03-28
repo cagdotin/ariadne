@@ -4,7 +4,7 @@ Status: Complete
 Owner: coding-agent
 Created: 2026-03-26
 Spec: `docs/specs/2026-03-26-global-project-scope-phase-2.md`
-Depends on: `docs/exec-plans/active/2026-03-26-global-project-scope-phase-1.md`
+Depends on: `docs/exec-plans/completed/2026-03-26-global-project-scope-phase-1.md`
 
 This ExecPlan is a living document and must be maintained in accordance with `/Users/cgn/git/dev/0xcgn/agents/skills/plan/PLAN.md`.
 

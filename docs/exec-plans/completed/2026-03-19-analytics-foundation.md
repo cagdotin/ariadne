@@ -1,6 +1,6 @@
 # Analytics Foundation — Execution Plan
 
-Status: Active
+Status: Complete
 Owner: agent
 Created: 2026-03-19
 Spec: `docs/specs/2026-03-19-analytics-foundation.md`
@@ -13,13 +13,13 @@ After this plan is complete, launching Ariadne shows an analytics dashboard with
 
 ## Progress
 
-- [ ] (2026-03-19) M1: Rust module structure + models
-- [ ] (2026-03-19) M2: Session discovery + parser
-- [ ] (2026-03-19) M3: Tauri commands (wire backend to frontend)
-- [ ] (2026-03-19) M4: Frontend schemas + API layer
-- [ ] (2026-03-19) M5: Dashboard page with components
-- [ ] (2026-03-19) M6: Projects page + project detail
-- [ ] (2026-03-19) M7: Styling + polish
+- [x] (2026-03-19) M1: Rust module structure + models
+- [x] (2026-03-19) M2: Session discovery + parser
+- [x] (2026-03-19) M3: Tauri commands (wire backend to frontend)
+- [x] (2026-03-19) M4: Frontend schemas + API layer
+- [x] (2026-03-19) M5: Dashboard page with components
+- [x] (2026-03-19) M6: Projects page + project detail
+- [x] (2026-03-19) M7: Styling + polish
 
 ## Surprises & Discoveries
 
