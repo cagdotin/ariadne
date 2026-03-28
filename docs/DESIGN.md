@@ -1,447 +1,372 @@
 # DESIGN
 
-Status: active
-Last updated: 2026-03-25
+Status: active  
+Last updated: 2026-03-28
 
-This document explains **how** each subsystem of Ariadne works, the design decisions behind them, and the data flows connecting them. For the high-level codemap, see `ARCHITECTURE.md`. For frontend page structure, see `information-architecture.md`.
+This document explains the **non-obvious design choices** in Ariadne.
 
----
+It is intentionally thinner than the code. It should answer:
+- why the system is shaped this way
+- what boundaries are deliberate
+- which flows are important to preserve
+- which tradeoffs are easy to miss when only reading files
 
-## 1. Session Parsing Pipeline
-
-Ariadne's core capability is parsing pi agent session logs and extracting structured analytics.
-
-### Data source
-
-Pi stores session logs as JSONL files at `~/.pi/agent/sessions/{encoded_project_dir}/{session_id}.jsonl`. Each project directory is a URL-encoded path. Each `.jsonl` file contains one JSON object per line representing a session event.
-
-### JSONL event types
-
-| Type | Description | Key fields |
-|---|---|---|
-| `session` | Header — first line of every file | `id`, `timestamp`, `cwd` |
-| `session_info` | Session metadata (set later) | `name` (title) |
-| `message` | Conversation entry | `message.role` (user/assistant/toolResult/bashExecution/custom) |
-| `model_change` | Model switch event | `provider`, `modelId` |
-| `compaction` | Context window compaction | `summary`, `tokensBefore` |
-| `branch_summary` | Branch summary after navigation | `summary`, `fromId` |
-| `custom` | Extension-generated event | `customType`, `data` |
-| `custom_message` | Extension-generated displayable message | `customType`, `content` |
-| `label` | Branch label | `targetId`, `label` |
-
-### Discovery (`parser/discovery.rs`)
-
-`discover_session_files()` walks `~/.pi/agent/sessions/` looking for `.jsonl` files. For each file it records the path, parent directory name (used as session_dir), filename, and file size. Results are sorted by filename for consistent ordering.
-
-### Parsing (`parser/session.rs`)
-
-`parse_session_file()` reads a single JSONL file line by line and builds a `SessionSummary`. The parser:
-
-1. **Extracts session metadata** from the `session` header (id, cwd, timestamp, project name)
-2. **Counts messages** by role (user, assistant, toolResult)
-3. **Extracts tool call parameters** from assistant message content blocks:
-   - `bash` → extracts first token as program name
-   - `read`/`Read` → extracts file path
-   - `edit`/`Edit` → extracts file path
-   - `write`/`Write` → extracts file path
-4. **Accumulates token and cost data** from `usage` objects on assistant messages
-5. **Tracks model usage** (model + provider pairs with message counts)
-6. **Counts compactions** as a signal of long sessions
-7. **Calculates duration** from first to last timestamp
-
-### Why parse in Rust?
-
-Pi session files can be large (100K+ lines). Parsing in Rust is fast and avoids sending raw JSONL over IPC. The Rust parser handles malformed lines gracefully — it logs warnings and continues, never failing the entire file.
+For the current architecture map, see `docs/ARCHITECTURE.md`.
 
 ---
 
-## 2. Session Cache (`cache.rs`)
+## 1. Parsing and analytics live in Rust on purpose
 
-All parsed session data lives in an in-memory cache behind a `tokio::RwLock<Option<Vec<SessionSummary>>>`.
+Ariadne's raw source material is not API data. It is a large set of append-only JSONL session logs under `~/.pi/agent/sessions/`.
 
-### Design
+The design choice is:
+- parse and aggregate in **Rust**
+- render in **React**
+- pass only structured summaries and replay payloads across IPC
 
-- **Lazy initialization** — the cache starts empty. `get_or_init()` checks if data exists; if not, it calls `resync()`.
-- **Full resync** — `resync()` re-parses every session file from disk. There's no incremental update; the assumption is that session files are append-only and reparse is fast enough (~1-2 seconds for hundreds of sessions).
-- **All aggregation in Rust** — the cache doesn't just store sessions. It computes analytics on demand: `get_analytics_overview()`, `get_project_file_stats()`, `get_time_breakdown()`, `get_tool_details()`. This keeps the frontend thin.
+### Why
 
-### Analytics computed
+This keeps the frontend from doing expensive work with raw session files and makes the Tauri boundary explicit.
 
-| Method | What it computes |
+The Rust side owns:
+- file discovery (`src-tauri/src/parser/discovery.rs`)
+- summary extraction (`src-tauri/src/parser/session.rs`)
+- analytics aggregation (`src-tauri/src/cache.rs`)
+- on-demand replay payload loading (`get_session_entries()`)
+
+The frontend owns:
+- route-driven data fetching (`src/api/*.ts`)
+- schema validation (`src/schemas/*.ts`)
+- presentation and interaction state
+
+### Important consequence
+
+Most analytics pages should be thought of as **views over `SessionCache`**, not as places that compute their own business logic.
+
+If analytics math changes, start in `src-tauri/src/cache.rs`, not in the page components.
+
+---
+
+## 2. Ariadne uses two different session representations
+
+Ariadne intentionally keeps **two levels of session data**:
+
+1. **`SessionSummary`** for analytics, tables, counts, tool breakdowns, and project-level aggregation
+2. **raw session entries** for the session replay UI
+
+### Why the split exists
+
+A summary is the right shape for analytics.
+A replay viewer needs the original event stream, including:
+- parent/child relationships
+- branching
+- tool call blocks
+- tool results
+- compactions
+- model changes
+- custom message blocks
+
+Trying to force replay through summary structs would either lose fidelity or create an overly broad analytics model.
+
+### Where it lives
+
+- summary model: `src-tauri/src/models/session.rs`
+- parser: `src-tauri/src/parser/session.rs`
+- replay fetch: `get_session_entries()` in `src-tauri/src/commands/analytics.rs`
+- replay UI: `src/components/session-viewer/`
+
+---
+
+## 3. `SessionCache` is a deliberate "parsed view" cache, not a database
+
+`SessionCache` in `src-tauri/src/cache.rs` is an in-memory cache of parsed sessions plus aggregation methods.
+
+### Why Ariadne does not persist a second local analytics database
+
+The source of truth already exists on disk in the session logs.
+The current product benefits more from:
+- fast startup after first parse
+- simple invalidation semantics
+- one place for aggregation logic
+than from adding a second persistence layer.
+
+### Important design traits
+
+- **lazy initialization** on first request
+- **full resync** when explicitly refreshed
+- **shared filtering helpers** (`session_matches()`, `filter_sessions()`) used across analytics methods
+- **on-demand replay loading** rather than caching every raw entry in memory
+
+### Why the shared filtering helpers matter
+
+The project-scope and time-range model is app-wide. Re-implementing date/project filtering per method caused drift risk, so the backend now centralizes the filtering rules.
+
+If a page appears inconsistent across Overview / Sessions / Usage / Tool Detail, the shared filter path in `cache.rs` is one of the first places to inspect.
+
+---
+
+## 4. Session replay is designed around branch navigation, not a flat transcript
+
+pi sessions can branch. Ariadne's viewer is therefore not a simple chronological chat renderer.
+
+### Current structure
+
+The replay subsystem lives in `src/components/session-viewer/` and is split by concern rather than by one monolithic renderer.
+
+Read that directory directly for the current decomposition. The important architectural point is not the exact folder list, but that branch navigation, conversation rendering, tool rendering, sidebar detail, and shaping utilities are intentionally separated so replay logic does not collapse into one giant component.
+
+### Key design choice
+
+The viewer computes a **current path from root to a selected leaf** and renders that path linearly, while keeping the full branch tree available in the sidebar.
+
+This gives the user two simultaneous models:
+- the whole branching structure
+- one readable conversation path at a time
+
+### Why this matters
+
+A flat transcript hides branch structure.
+A fully nested branch renderer is hard to read.
+The current design keeps branch awareness without making the main pane unreadable.
+
+### Related detail
+
+`ScopedSessionDetail` in `src/pages/scoped-session-detail.tsx` is intentionally a **thin scope guard** around the real `SessionDetail`. Scope-specific redirect behavior is kept outside the replay component so the replay UI itself stays scope-agnostic.
+
+---
+
+## 5. Global scope is first-class, but not everything should become global state
+
+Ariadne now has two app-level scopes:
+- **project scope** — `ProjectScopeProvider`
+- **analytics time range** — `AnalyticsTimeRangeProvider`
+
+Both are mounted in `src/main.tsx`.
+
+### Why these are global
+
+They affect multiple routes and should feel like durable context, not page-local filters.
+
+The user expectation is:
+- choose a project once
+- choose a time range once
+- move between Overview, Sessions, and Usage without reconfiguring the app every time
+
+### Why Ariadne still avoids a broad global store
+
+Not all shared data belongs at the app root.
+
+The Usage route owns a shared `UsageProvider` in `src/pages/usage/layout.tsx` because its data is:
+- shared across usage tabs
+- route-local
+- not useful to unrelated parts of the app
+
+This is an intentional split:
+- **global selections** live in providers near the app root
+- **route data** lives inside the route that owns it
+
+That keeps the mental model smaller than introducing a universal app store.
+
+---
+
+## 6. The app shell makes scope visible in the header, not inside pages
+
+`src/app.tsx` is not just layout glue. It encodes the navigation model.
+
+### Important design decisions in the shell
+
+- sidebar owns the four top-level destinations
+- breadcrumbs reflect route depth instead of pages rendering their own back buttons
+- project scope stays visible in the header
+- analytics time range appears only on routes where it has meaning
+- sync performs a full reload because provider re-initialization is load-bearing for scope validation
+
+### Why the full reload after sync is intentional
+
+`resync_sessions()` updates backend data, but the project scope provider also needs a clean startup pass to:
+- reload the project list
+- validate persisted scope
+- clear a scope whose `project_path` no longer exists
+
+That is why `handle_sync()` in `src/app.tsx` ends with `window.location.reload()`.
+It is not just convenience.
+
+---
+
+## 7. Usage is a route-local analytics workspace, not a pile of unrelated pages
+
+The Usage surface is organized as a layout route under `src/pages/usage/`.
+
+### Current pattern
+
+`src/pages/usage/layout.tsx`:
+- reads global project scope + global time range
+- fetches shared route data in one place
+- conditionally fetches file analytics only when a project is scoped
+- exposes the loaded payloads via `UsageProvider`
+
+The tab pages (`cost-tab.tsx`, `tools-tab.tsx`, `patterns-tab.tsx`, `files-tab.tsx`) are mostly presentational.
+
+### Why this design matters
+
+Without a route-level loader/context, each tab would either:
+- duplicate fetch logic
+- refetch the same analytics payloads independently
+- or push too much state into the app shell
+
+The current layout keeps data ownership aligned with route ownership.
+
+---
+
+## 8. File analytics was redesigned around a unified file-insight model
+
+The Usage Files tab used to rely mainly on separate read/edit/write arrays.
+
+It now has a more durable shared model in `src/lib/file-analytics.ts`:
+- `FileInsight`
+- `OperationLens`
+- helpers for lens values, intensity, percentages, and file-size enrichment
+
+### Why this matters
+
+The Files tab now drives multiple visualizations from one conceptual record:
+- treemap
+- imbalance chart
+- session breadth chart
+- size vs activity scatter
+- grid/table lookup
+
+This avoids re-deriving different file views in each component from scratch.
+
+### Important design choices
+
+- **operation lens** (`all | read | edit | write`) is owned by `files-tab.tsx`, not by individual charts
+- backend now returns **`file_insights` with `distinct_session_count`** so cross-session breadth is not reconstructed ad hoc in the frontend
+- file sizes are fetched separately via `get_file_sizes()` so the main analytics response stays fast
+
+### Consequence
+
+The Files tab is best thought of as a **small analytics workspace** with shared filters and multiple synchronized views, not as a single chart page.
+
+---
+
+## 9. QMD uses a hybrid backend on purpose
+
+Ariadne's QMD integration is intentionally split between:
+- **direct Rust SQLite reads** for status and dashboard-like reads
+- **a TypeScript sidecar** for mutations, search, and progress-aware operations
+
+### Why not do everything in Rust?
+
+The QMD SDK is TypeScript-native and exposes the write/search behaviors Ariadne needs.
+
+### Why not do everything through the sidecar?
+
+Some dashboard reads are simpler and cheaper to perform directly from SQLite in Rust.
+That keeps the UI responsive and avoids paying process / SDK overhead for every collection/status read.
+
+### Where the split lives
+
+- Rust read path: `src-tauri/src/commands/qmd.rs`
+- sidecar manager: `src-tauri/src/sidecar.rs`
+- sidecar implementation: `src-sidecar/qmd-bridge.ts`
+
+### Practical rule
+
+If you are changing:
+- **status, collection lists, index metadata** -> start in Rust/SQLite command code
+- **reindex, embed, search, file toggles, progress streaming** -> start in the sidecar path
+
+---
+
+## 10. Multi-index support is route-level, not process-level fan-out
+
+QMD indexes are modeled as named workspaces (`/qmd/:index`), but Ariadne still keeps **one sidecar process**.
+
+### Design choice
+
+The sidecar opens one index at a time and switches via `switch_index`.
+
+### Why
+
+This avoids:
+- process sprawl
+- duplicated model/runtime overhead
+- more complicated progress/event routing
+
+The router expresses the active index in the URL, while the sidecar expresses it as the currently opened db path.
+
+That separation is important:
+- the **URL** is the user-facing navigation state
+- the **sidecar current index** is the runtime execution state
+
+---
+
+## 11. QMD search is designed for observability, not just results
+
+The QMD search UI does not only return hits. It exposes the pipeline.
+
+### Current path
+
+- frontend trigger/modal: `src/components/qmd-search-modal.tsx`
+- frontend hook/event glue: `src/hooks/use-qmd-operation.ts`
+- backend command: `qmd_search` in `src-tauri/src/commands/qmd.rs`
+- sidecar implementation: `search` handler in `src-sidecar/qmd-bridge.ts`
+
+### Important design choice
+
+The sidecar emits progress stages for search expansion and search execution, then returns expanded queries, timing, and result traces.
+
+That matches Ariadne's product philosophy: the user should be able to see **how** the search happened, not just the final ranked list.
+
+---
+
+## 12. QMD logs is a separate observability pipeline, not a QMD dashboard add-on
+
+The `/qmd/logs` page is built from session logs, not from QMD's own database.
+
+### Why the separate cache exists
+
+Parsing session logs for QMD CLI calls is conceptually related to Ariadne's observation mission, but it is **not** part of Overview / Sessions / Usage startup.
+
+So Ariadne keeps:
+- `SessionCache` for analytics
+- `QmdLogCache` for QMD CLI observability
+
+### What the parser actually does
+
+`src-tauri/src/parser/qmd_logs.rs`:
+- scans assistant `bash` tool calls
+- detects `qmd` CLI invocations, including env-var-prefixed forms
+- correlates tool calls with later `toolResult` messages using the tool-call block `id` and the result `toolCallId`
+- extracts raw command text, subcommand guesses, collection/index hints, and output
+
+### Why this design is valuable
+
+It gives Ariadne a feedback loop about documentation and knowledge-base quality without requiring any new agent instrumentation.
+
+---
+
+## 13. Documentation should point to code boundaries, not duplicate them
+
+Ariadne's docs are now meant to follow the same design philosophy as the app:
+- `ARCHITECTURE.md` gives the map
+- `DESIGN.md` explains non-obvious choices
+- focused docs cover page structure or integrations
+- code remains the implementation source of truth
+
+When updating docs, read `docs/documentation-maintenance.md` first.
+
+---
+
+## High-value files to read next
+
+| Question | Read |
 |---|---|
-| `get_analytics_overview()` | Total stats, per-project summaries, sessions/cost by date, model/tool aggregates, top files/commands, recent sessions |
-| `get_project_sessions()` | Filtered + sorted sessions for one project |
-| `get_project_file_stats()` | Per-project tool distribution, file R/E/W counts, directory stats, activity timeline |
-| `get_time_breakdown()` | Time-range-filtered stats: weekday distribution, time-of-day buckets, daily sessions/cost |
-| `get_tool_details()` | Per-tool breakdown: total calls/errors, items list, by-project, by-date |
-| `get_session_entries()` | Raw JSONL entries for session replay (not cached — reads file on demand) |
-
-### Why not a database?
-
-Session data is derived (parsed from JSONL) and relatively small in aggregate. An in-memory cache avoids SQLite setup complexity and is fast for the read patterns we need. If session volume grows past ~10K sessions, we might need to add a persistent cache.
-
----
-
-## 3. Session Viewer
-
-The session viewer (`src/components/session-viewer/`) is the most complex frontend subsystem at ~2000 lines. It renders a full conversation tree from raw JSONL entries.
-
-### Architecture
-
-```
-SessionDetail (page)
-  └── SessionViewer
-       ├── SessionDetailHeader    stats bar (messages, tokens, cost, model)
-       ├── SessionTree            collapsible tree sidebar (left)
-       │   └── SessionTreeNode    individual tree node
-       └── MessageRenderer        message pane (right)
-            ├── UserMessage
-            ├── AssistantMessage
-            │   ├── ThinkingBlock
-            │   ├── MarkdownContent
-            │   └── ToolCallRenderer
-            ├── BashExecutionBlock
-            ├── CompactionBlock
-            ├── BranchSummaryBlock
-            ├── ModelChangeBlock
-            ├── CustomMessageBlock
-            └── RawEntryInspector
-```
-
-### Tree building
-
-Pi sessions support **branching** — the same parent entry can have multiple children (e.g., when the user retries a message). The session viewer:
-
-1. Builds a tree from `parentId` chains
-2. Resolves the current **path** from root to a chosen leaf
-3. Renders the path as a linear conversation in the message pane
-4. Shows the full tree structure in a collapsible sidebar
-5. Allows navigating to any branch by clicking tree nodes
-
-### Tool call resolution
-
-Tool calls in assistant messages are paired with their results. The viewer builds a `tool_result_map` (toolCallId → ToolResultMessage) so each tool call block can display its result inline.
-
-### Rendering pipeline
-
-`MessageRenderer` routes each entry to the correct component based on `type` and `message.role`. Special handling:
-
-- **Thinking blocks** — collapsible, rendered from `thinking` content blocks
-- **Bash execution** — shows command, exit code, output with expandable overflow
-- **Markdown content** — rendered with `react-markdown`, `remark-gfm`, `rehype-raw`, and `react-syntax-highlighter` for code blocks
-- **Compaction events** — shown as a divider with token reduction info
-- **Model changes** — inline badge showing provider → model switch
-
----
-
-## 4. QMD Integration
-
-QMD (Query Markup Documents) is a local semantic search engine for markdown files. Ariadne provides a full GUI for managing QMD indexes, collections, and search.
-
-### Hybrid architecture
-
-QMD's data lives in SQLite databases. Its SDK is TypeScript. Ariadne bridges this gap with two strategies:
-
-| Operation type | Strategy | Why |
-|---|---|---|
-| **Reads** (status, collections, documents) | Rust reads SQLite directly via `rusqlite` | Fast, no extra process needed |
-| **Writes** (add/remove collections, reindex, embed, search) | Sidecar process via JSON-RPC | QMD SDK is TypeScript-only; mutations need its internal APIs |
-
-### Sidecar (`src-sidecar/qmd-bridge.ts`)
-
-A long-lived child process spawned by the Rust backend:
-
-1. **Startup** — Rust finds the bridge script, detects runtime (Bun preferred, Node+tsx fallback), spawns with stdin/stdout pipes
-2. **macOS SQLite patch** — On macOS + Bun, patches in Homebrew's SQLite (Apple's system SQLite lacks extension loading needed for sqlite-vec)
-3. **Protocol** — Newline-delimited JSON-RPC over stdin/stdout. Each request has `{id, method, params}`, responses have `{id, result}` or `{id, error}`. Progress events have `{id, event, data}`.
-4. **Single store** — Keeps one QMD store open at a time. Switches via `switch_index` command.
-5. **Health check** — Rust sends `ping` after spawn and checks `{ok: true}` response.
-6. **Lifecycle** — Auto-respawn on crash. Clean shutdown on app exit (drops stdin, waits, kills).
-
-### Sidecar methods
-
-| Method | Purpose |
-|---|---|
-| `ping` | Health check |
-| `switch_index` | Close current store, open different database |
-| `create_index` | Create empty QMD store at path |
-| `add_collection` / `remove_collection` / `rename_collection` | Collection CRUD |
-| `add_context` / `remove_context` / `set_global_context` | Context management |
-| `update` | Scan filesystem, update document index (streams progress) |
-| `embed` | Generate vector embeddings for documents (streams progress) |
-| `cleanup` | Clear caches, orphaned data, vacuum |
-| `scan_filesystem` | Return file paths matching collection pattern |
-| `toggle_files` | Add/remove individual files from index |
-| `search` | Full hybrid search pipeline (expand → search → rerank) |
-
-### Multi-index support
-
-QMD supports multiple named indexes, each an independent SQLite database at `~/.cache/qmd/{name}.sqlite`. Ariadne:
-
-- Discovers indexes by scanning `~/.cache/qmd/*.sqlite`
-- Shows an index selector bar on all QMD pages
-- Routes as `/qmd/:index` and `/qmd/:index/:collection`
-- Stores last-visited index in `localStorage`
-- The "default" index maps to `index.sqlite` (historical convention)
-
-### Search pipeline
-
-The QMD search modal implements a multi-stage pipeline with live progress:
-
-1. **Query expansion** — LLM generates typed sub-queries (lex, vec, hyde)
-2. **Parallel search** — BM25 full-text + vector similarity, run in parallel
-3. **RRF fusion** — Reciprocal Rank Fusion merges results from all sub-queries
-4. **LLM reranking** — Fine-tuned reranker scores final relevance
-5. **Results** — Displayed with scores, snippets, collection tags, and expandable explain traces
-
-### File tree management
-
-Collections can have individual files toggled in/out. The UI shows a file tree with status indicators:
-
-| Indicator | Meaning |
-|---|---|
-| `●` accent | Fully indexed |
-| `◐` accent | Partially indexed (some descendants) |
-| `○` dim | Not indexed |
-| `◉` accent | Pending add |
-| `◎` warning | Pending remove |
-
-Changes are batched as pending operations and applied in one `toggle_files` call. The sidecar handles file reading, hashing, content insertion, and auto-embedding.
-
----
-
-## 5. Frontend Data Flow
-
-```
-                          ┌─────────────────────┐
-                          │    React Pages       │
-                          │  (dashboard, etc.)   │
-                          └────────┬────────────┘
-                                   │ calls
-                          ┌────────▼────────────┐
-                          │    src/api/*.ts      │
-                          │  invoke() + Zod      │
-                          └────────┬────────────┘
-                                   │ Tauri IPC
-                          ┌────────▼────────────┐
-                          │  commands/*.rs       │
-                          │  #[tauri::command]   │
-                          └────────┬────────────┘
-                                   │
-                    ┌──────────────┼──────────────┐
-                    │              │              │
-           ┌───────▼──────┐ ┌────▼─────┐ ┌─────▼──────┐
-           │ SessionCache │ │ rusqlite │ │ QmdSidecar │
-           │  (in-memory) │ │ (read)   │ │ (JSON-RPC) │
-           └───────┬──────┘ └────┬─────┘ └─────┬──────┘
-                   │             │              │
-           ┌───────▼──────┐ ┌───▼──────┐ ┌────▼──────┐
-           │   JSONL      │ │ QMD      │ │  Bun      │
-           │   files      │ │ SQLite   │ │  sidecar  │
-           └──────────────┘ └──────────┘ └───────────┘
-```
-
-### IPC pattern
-
-Every Tauri command follows the same pattern:
-
-1. **Frontend** calls `invoke("command_name", { camelCaseParams })` via `src/api/*.ts`
-2. **Tauri** auto-converts camelCase params to the Rust function's snake_case params
-3. **Rust command** accesses `State<SessionCache>` or `State<QmdSidecar>`, computes result
-4. **Rust** returns `Result<T, String>` where T is a `#[derive(Serialize)]` struct
-5. **Frontend** validates response with Zod schema, returns typed data
-
-### State management
-
-No external state library. Each page manages its own state with `useState` / `useEffect`. Data is fetched on mount and cached locally per page. The global "Sync" button in the header triggers `resync_sessions()` which clears the Rust cache and re-parses all files, then reloads the page.
-
----
-
-## 6. Frontend Sections
-
-### Overview (`/`)
-
-The landing page for daily pulse checks. Shows:
-- **7 stat cards** with time-range filtering (Today / 7d / 30d / 90d / All)
-- **Daily trend** area chart showing sessions and cost over time
-- **Top projects** cards ranked by activity
-- **Activity heatmap** 52-week GitHub-style contribution grid (always all-time)
-
-Stat cards respond to the range picker — they show range-filtered sessions/cost/tokens alongside all-time totals.
-
-### Sessions (`/sessions`)
-
-Session table scoped by the global project selector. Shows all sessions in all-projects mode, or the selected project's sessions when scoped. The project column is hidden when a single project is selected. Columns: Title, Project (all-projects only), Started, Duration, Cost, Tokens, Model, Tools. Links to session detail.
-
-### Session Detail (`/sessions/:id`)
-
-Full session replay viewer (see Section 3). Two-pane layout: tree sidebar + message pane. Supports branching navigation, tool call expansion, thinking block collapse, and raw JSON inspection.
-
-### Usage (`/usage`)
-
-Analytics deep-dive, scoped by the global project selector:
-- Tool usage horizontal bars (bash, read, edit, write, etc.)
-- Model distribution bars
-- Cost breakdown donut chart (input/output/cache read/cache write)
-- Time patterns (weekday + time-of-day distributions)
-- Tool detail cards (top bash commands, most read/edited/written files)
-
-When a project is selected, additional scoped-only sections appear:
-- Exclude-path filter (comma-separated patterns)
-- Per-project tool distribution bars
-- Directory hotspots (stacked R/E/W bars per directory)
-- File activity tables with Read/Edit/Write tabs
-
-### Tool Detail (`/tools/:tool_name`)
-
-Per-tool deep-dive, scoped by the global project selector:
-- Stat cards (total calls, errors, unique items)
-- Usage over time area chart
-- Items table (all files/programs with count bars)
-- By-project breakdown (all-projects mode only)
-
-### QMD (`/qmd/:index`)
-
-QMD index management:
-- Index selector bar (switch between indexes)
-- Health banner (warnings for missing install, stale data, unembedded docs)
-- Stat cards (documents, chunks, collections, DB size)
-- Global context editor
-- Collections table
-- Action buttons (search, add collection, reindex, embed, cleanup)
-- Search modal with pipeline visualization
-
-### QMD Collection (`/qmd/:index/:collection`)
-
-Collection management:
-- Settings display (path, pattern, ignore patterns)
-- Context editor (hierarchical path → description)
-- File tree with toggle checkboxes and status indicators
-- Action buttons (reindex, embed, rename, remove)
-
----
-
-## 7. Component Library
-
-Ariadne uses **shadcn/ui** components as the base layer, customized with Tailwind CSS v4.
-
-### Core components from shadcn/ui
-
-Button, Card, Table, Sidebar, Sheet, Dropdown Menu, Popover, Badge, Breadcrumb, Input, Separator, Skeleton, Tooltip.
-
-### Custom components
-
-| Component | Description |
-|---|---|
-| `DataTable` | Generic sortable/filterable table wrapping TanStack Table + shadcn Table |
-| `StatCard` | Compact metric display (label + value + optional sub-label + optional link) |
-| `ActivityHeatmap` | 52-week GitHub-style contribution heatmap using CSS grid |
-| `DailyTrend` | Recharts area chart with session/cost dual series |
-| `TopProjects` | Ranked project cards with activity metrics |
-| `ToolUsageBar` | Horizontal bar chart for tool call counts |
-| `ModelDistribution` | Horizontal bar chart for model usage |
-| `CostBreakdown` | Recharts pie/donut chart for cost categories |
-| `DirectoryHotspots` | Stacked horizontal bars (read/edit/write) per directory |
-| `QmdSearchModal` | Full search UI with expansion → search → results pipeline |
-| `QmdHealthBanner` | Warning banners for QMD state issues |
-| `CollectionFileTree` | Tree view with inclusion status indicators |
-| `IndexSelector` | Horizontal bar for switching QMD indexes |
-| `ContextEditor` | Key-value editor for collection/global contexts |
-| `PageHeader` | Breadcrumb navigation component |
-| `LabyrinthLogo` | Custom SVG logo |
-| `ModeToggle` | Dark/light theme switcher |
-| `InfoTip` | Tooltip-based info icons |
-| `QmdProgress` | Progress display for indexing/embedding operations |
-
----
-
-## 8. Schemas and Type Safety
-
-Types flow through three layers that must stay in sync:
-
-```
-Rust structs (src-tauri/src/models/)
-    ↕ serde serialize (snake_case)
-Tauri IPC JSON
-    ↕ Zod parse
-TypeScript types (src/schemas/)
-```
-
-### Pattern
-
-1. Rust defines `#[derive(Serialize)] #[serde(rename_all = "snake_case")]` structs
-2. Frontend defines Zod schemas that mirror the Rust shapes exactly
-3. `src/api/*.ts` wrappers call `invoke()` and parse with Zod before returning
-4. Pages receive fully typed, validated data
-
-### Why Zod at the boundary?
-
-Tauri `invoke()` returns `unknown`. Without validation, type assertions would mask runtime mismatches (e.g., after a Rust refactor). Zod catches these at the earliest possible point with clear error messages.
-
----
-
-## 9. Build and Development
-
-### Development
-
-```bash
-# Install frontend dependencies
-bun install
-
-# Install sidecar dependencies
-cd src-sidecar && bun install && cd ..
-
-# Run in dev mode (starts both Vite dev server and Tauri)
-bun run tauri dev
-```
-
-Tauri dev mode runs `bun run dev` (Vite) as the frontend, connects to `http://localhost:1420`, and enables HMR.
-
-### Production build
-
-```bash
-bun run tauri build
-```
-
-This runs `bun run build` (TypeScript check + Vite production build), then compiles the Rust backend and bundles everything into a native app.
-
-### Key scripts
-
-| Command | What it does |
-|---|---|
-| `bun run dev` | Start Vite dev server only (port 1420) |
-| `bun run build` | TypeScript check + Vite production build |
-| `bun run tauri dev` | Full development mode with HMR |
-| `bun run tauri build` | Production build → native app bundle |
-
----
-
-## 10. Design Decisions Log
-
-### Why Tauri over Electron?
-
-Tauri uses the system webview (WebKit on macOS) instead of bundling Chromium. This gives us:
-- ~10MB app size vs ~200MB for Electron
-- Lower memory usage
-- Native Rust backend with direct SQLite access
-- First-class sidecar support
-
-### Why a sidecar instead of WASM or direct FFI?
-
-QMD's SDK depends on `node-llama-cpp` for local LLM inference (embeddings, reranking, query expansion). This requires native Node.js addons that can't run in WASM or be called from Rust. The sidecar pattern (JSON-RPC over stdio) is the simplest bridge with minimal overhead.
-
-### Why in-memory cache instead of persistent storage?
-
-The analytics data is derived from JSONL files that are the source of truth. Caching in SQLite would add schema management complexity with minimal benefit — full reparse takes ~1-2 seconds. If this becomes a bottleneck, adding an incremental persistent cache is a straightforward optimization.
-
-### Why Zod over just TypeScript types?
-
-TypeScript types are erased at runtime. Tauri IPC returns `unknown`. Without runtime validation, a Rust refactor (e.g., renaming a field) would cause silent undefined values in the frontend rather than a clear parse error.
-
-### Why TanStack Router over React Router?
-
-TanStack Router provides type-safe routing with full TypeScript inference for route params. The `$id` and `$tool_name` params in routes like `/sessions/$id` and `/tools/$tool_name` are typed at the component level.
-
-### Why direct SQLite reads for QMD?
-
-Read operations are frequent (every page load) and latency-sensitive. Going through the sidecar would add ~5-10ms per call and require the sidecar to be running. Direct SQLite reads via `rusqlite` in read-only mode are near-instant and don't conflict with the sidecar's write operations (QMD uses WAL mode).
+| How are routes and shared shell behavior wired? | `src/router.tsx`, `src/app.tsx` |
+| How does project/time scope work? | `src/components/project-scope-provider.tsx`, `src/components/analytics-time-range-provider.tsx` |
+| How does Usage share data? | `src/pages/usage/layout.tsx`, `src/pages/usage/usage-context.tsx` |
+| How does session parsing/aggregation work? | `src-tauri/src/parser/session.rs`, `src-tauri/src/cache.rs` |
+| How does session replay work? | `src/components/session-viewer/` |
+| How does QMD integration work? | `src-tauri/src/commands/qmd.rs`, `src-tauri/src/sidecar.rs`, `src-sidecar/qmd-bridge.ts` |
+| How do QMD logs work? | `src-tauri/src/parser/qmd_logs.rs`, `src-tauri/src/qmd_log_cache.rs`, `src/pages/qmd-logs.tsx` |
