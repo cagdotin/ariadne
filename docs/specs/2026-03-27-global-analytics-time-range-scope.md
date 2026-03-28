@@ -1,8 +1,8 @@
 # Global Analytics Time Range Scope
 
-Status: Draft
+Status: Implemented
 Date: 2026-03-27
-Execution plan: `docs/exec-plans/active/2026-03-27-global-analytics-time-range-scope.md`
+Execution plan: `docs/exec-plans/completed/2026-03-27-global-analytics-time-range-scope.md`
 Related: `docs/specs/2026-03-26-global-project-scope-phase-1.md`, `docs/information-architecture.md`
 
 ## 1. Problem statement

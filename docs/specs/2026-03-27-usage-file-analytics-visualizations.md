@@ -1,8 +1,8 @@
 # Usage File Analytics Visualizations
 
-Status: Draft
+Status: Implemented
 Date: 2026-03-27
-Execution plan: `docs/exec-plans/active/2026-03-27-usage-file-analytics-visualizations.md`
+Execution plan: `docs/exec-plans/completed/2026-03-27-usage-file-analytics-visualizations.md`
 
 ## 1. Problem statement
 

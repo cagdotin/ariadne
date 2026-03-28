@@ -1,6 +1,6 @@
 # QMD v2 — Sidecar Bridge + File Tree with Inclusion Toggle
 
-Status: Draft
+Status: Implemented
 Date: 2026-03-20
 Depends on: `docs/specs/2026-03-20-qmd-integration.md` (v1, implemented)
 Knowledge doc: `docs/knowledge/qmd.md`

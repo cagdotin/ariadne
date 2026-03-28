@@ -1,8 +1,8 @@
 # Global Project Scope — Phase 2: Usage Consolidation and Projects Route Removal
 
-Status: Draft
+Status: Implemented
 Date: 2026-03-26
-Execution plan: `docs/exec-plans/active/2026-03-26-global-project-scope-phase-2.md`
+Execution plan: `docs/exec-plans/completed/2026-03-26-global-project-scope-phase-2.md`
 Depends on: `docs/specs/2026-03-26-global-project-scope-phase-1.md`
 
 ## 1. Problem statement

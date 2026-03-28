@@ -1,3 +1,7 @@
+> Status: superseded
+> Superseded by: `docs/specs/2026-03-19-analytics-foundation.md`, `docs/exec-plans/completed/2026-03-19-analytics-foundation.md`, `docs/information-architecture.md`
+> Last reviewed: 2026-03-28
+
 # Analytics Page — Plan
 
 ## Data Source

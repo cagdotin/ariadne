@@ -1,8 +1,8 @@
 # Analytics Foundation — Spec
 
-Status: Draft
+Status: Implemented
 Date: 2026-03-19
-Execution plan: `docs/exec-plans/active/2026-03-19-analytics-foundation.md`
+Execution plan: `docs/exec-plans/completed/2026-03-19-analytics-foundation.md`
 
 ## 1. Problem Statement
 

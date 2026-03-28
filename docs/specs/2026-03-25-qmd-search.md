@@ -1,8 +1,8 @@
 # QMD Search — In-App Hybrid Search for QMD Indexes
 
-Status: Draft
+Status: Implemented
 Date: 2026-03-25
-Execution plan: `docs/exec-plans/active/2026-03-25-qmd-search.md`
+Execution plan: `docs/exec-plans/completed/2026-03-25-qmd-search.md`
 
 ## 1. Problem Statement
 

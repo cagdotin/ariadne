@@ -1,8 +1,10 @@
 # QMD Integration — Spec
 
-Status: Draft
+Status: Implemented
 Date: 2026-03-20
 Knowledge doc: `docs/knowledge/qmd.md`
+
+> Note: this spec describes the original QMD integration milestone. Later work shipped the sidecar mutation path, multi-index support, in-app search, and QMD logs observability.
 
 ## 1. Problem Statement
 
@@ -63,7 +65,7 @@ Ariadne should provide a management UI for QMD: see what's indexed, manage colle
 | Collections table | `DataTable` | Columns: Name, Path, Pattern, Documents, Embedded, Last Updated, Default. Click → `/qmd/:name` |
 | Actions | Button group | "Add Collection" (dialog), "Re-index All", "Embed All", "Cleanup" |
 
-**Empty state**: If `qmd` CLI is not found, show a full-page message with install instructions (`npm install -g @tobilu/qmd`). If installed but no collections, show "Add your first collection" prompt.
+**Empty state**: If `qmd` CLI is not found, show a full-page message with install instructions (`bun add -g @tobilu/qmd`). If installed but no collections, show "Add your first collection" prompt.
 
 ### 4.2 Collection Detail (`/qmd/:name`)
 
@@ -421,7 +423,7 @@ const qmd_collection_route = createRoute({
 ### First Visit (QMD not installed)
 1. User clicks QMD in sidebar
 2. `qmd_check_availability()` returns `{ installed: false }`
-3. Full-page message: "QMD is not installed. Install with: `npm install -g @tobilu/qmd`"
+3. Full-page message: "QMD is not installed. Install with: `bun add -g @tobilu/qmd`"
 
 ### First Visit (installed, no collections)
 1. `qmd_check_availability()` returns `{ installed: true }`
