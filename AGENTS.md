@@ -16,6 +16,10 @@
 
 ## Architecture
 
+- **[Docs Map](docs/README.md)** — Documentation reading order and what each doc owns.
+- **[Architecture](docs/ARCHITECTURE.md)** — Codemap, subsystem boundaries, and invariants.
+- **[Design](docs/DESIGN.md)** — Subsystem rationale, important data flows, and design decisions.
+- **[Documentation Maintenance](docs/documentation-maintenance.md)** — Read before updating, reorganizing, or cleaning documentation.
 - **[Information Architecture](docs/information-architecture.md)** — Frontend page structure, navigation hierarchy, data grouping, and layout rules. All UI changes must align with this document.
 
 ## Git Rules

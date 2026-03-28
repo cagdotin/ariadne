@@ -35,10 +35,12 @@ bun run tauri dev
 
 ## Documentation
 
-- **[Architecture](docs/ARCHITECTURE.md)** — codemap, technology stack, boundaries, invariants
-- **[Design](docs/DESIGN.md)** — detailed design for every subsystem, data flows, implementation decisions
-- **[Information Architecture](docs/information-architecture.md)** — frontend page structure, navigation, layout rules
-- **[QMD Knowledge](docs/knowledge/qmd.md)** — QMD capabilities, schema, sidecar protocol reference
+- **[Docs Map](docs/README.md)** — reading order for the documentation set
+- **[Architecture](docs/ARCHITECTURE.md)** — system shape, subsystem boundaries, major entry points, and invariants
+- **[Design](docs/DESIGN.md)** — rationale, important flows, and non-obvious design decisions
+- **[Information Architecture](docs/information-architecture.md)** — frontend page structure, navigation, route ownership, and layout rules
+- **[Documentation Maintenance Guide](docs/documentation-maintenance.md)** — how to update docs and keep them clean
+- **[QMD Knowledge](docs/knowledge/qmd.md)** — current QMD integration model, constraints, and gotchas
 
 ## Project Structure
 
