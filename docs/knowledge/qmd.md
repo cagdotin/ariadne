@@ -1,188 +1,340 @@
 # QMD — Knowledge Base Integration
 
-> Reference document for Ariadne's QMD integration. Covers what QMD is, what version we target, its capabilities, and how we integrate.
+Status: active  
+Last updated: 2026-03-28
 
-## What Is QMD
+This document describes Ariadne's **current** QMD integration.
 
-QMD (Query Markup Documents) is an on-device hybrid search engine for markdown files by Tobi Lutke. It combines BM25 full-text search, vector semantic search, and LLM reranking — all running locally via `node-llama-cpp` with GGUF models.
+It is the reference for:
+- what Ariadne assumes about QMD
+- how reads, writes, search, and file toggles work today
+- where the boundary between Rust and the sidecar lives
+- what is important when changing the integration
 
-- **Package:** `@tobilu/qmd` v2.0.1
-- **License:** MIT
-- **Source:** https://github.com/tobi/qmd (our fork at `/Users/cgn/git/qmd-fork`)
-- **Runtime:** Node.js ≥22 or Bun ≥1.0
+For page-level navigation, see `docs/information-architecture.md`. For the current architecture map, see `docs/ARCHITECTURE.md`.
 
-## Current Capabilities (v2.0.1)
+---
 
-### Collection Management
-- Add/remove/rename collections (point at directories with glob patterns)
-- Ignore patterns per collection (e.g. `["node_modules/**", "*.test.ts"]`)
-- `includeByDefault` toggle — controls whether collection is searched by default
-- Update commands — bash command run during `qmd update --pull` (e.g. `git pull`)
-- Config stored in YAML (`~/.config/qmd/<index>.yml`) AND SQLite (`store_collections` table)
+## What QMD is in Ariadne
 
-### Context System
-- Hierarchical descriptive metadata per collection path
-- Context at `/` covers everything, `/api` covers that subtree
-- Global context applies across all collections
-- Improves search relevance and is returned alongside results
-- Stored in `store_collections.context` as JSON and in `store_config` for global
+QMD is the markdown knowledge-base engine Ariadne integrates with.
 
-### Search
-- **BM25 (lex):** Fast keyword search via FTS5. Supports exact phrases (`"rate limiter"`), negation (`-redis`), prefix matching.
-- **Vector (vec):** Semantic similarity via embeddinggemma-300M (~300MB model).
-- **Hyde:** Hypothetical document embedding — write what the answer looks like.
-- **Hybrid (query):** Full pipeline — query expansion (fine-tuned 1.7B model) → parallel BM25+vector → RRF fusion → LLM reranking (qwen3-reranker-0.6b).
-- **Intent:** Optional disambiguation signal that steers expansion and reranking.
+In Ariadne today, QMD provides:
+- named indexes backed by SQLite databases
+- collections with path/pattern/context metadata
+- hybrid search over indexed content
+- embedding / reindex / cleanup operations
+- file-level inclusion toggles inside a collection
 
-### Document Retrieval
-- Get by path, docid (`#abc123`), or batch via glob/comma-separated lists
-- Line-range slicing (`file.md:100 -l 50`)
-- Fuzzy matching suggests similar files on miss
+Ariadne adds:
+- a GUI for index and collection management
+- a GUI for hybrid search
+- progress-aware update/embed flows
+- file-tree inclusion controls
+- a separate `/qmd/logs` page that shows how agents used the QMD CLI during sessions
 
-### Indexing & Embedding
-- `update()` — scan filesystem, hash content, insert into FTS index
-- `embed()` — generate vector chunks (900 tokens, 15% overlap, smart markdown-aware breakpoints)
-- Progress callbacks for both operations
+---
 
-### Maintenance
-- Cleanup orphaned content/vectors
-- Clear LLM cache (query expansion, rerank scores)
-- Delete inactive documents
-- Vacuum SQLite database
+## Current integration model
 
-### Interfaces
-- **CLI:** `qmd` command with subcommands (collection, context, search, vsearch, query, get, multi-get, update, embed, status, cleanup)
-- **SDK:** TypeScript library — `createStore()` returns `QMDStore` with 20+ async methods
-- **MCP Server:** stdio or HTTP transport, 4 tools (query, get, multi_get, status)
-- **REST:** `POST /query` when HTTP server is running
+Ariadne uses a **hybrid backend**.
 
-## Multi-Index
+### Reads: Rust reads SQLite directly
 
-QMD supports named indexes — each is an independent SQLite database at `~/.cache/qmd/{name}.sqlite` with its own collections, documents, embeddings, and global context. They share only the models directory (`~/.cache/qmd/models/`).
+Rust reads QMD SQLite for dashboard-like state such as:
+- index discovery
+- index status
+- collection listings
+- collection details
+- indexed document paths
 
-### Naming Convention
+This logic lives primarily in:
+- `src-tauri/src/commands/qmd.rs`
+- `src-tauri/src/models/qmd.rs`
 
-| UI name | File stem | File path |
-|---------|-----------|-----------|
+### Writes and search: QMD sidecar
+
+Mutations and hybrid search go through a long-lived sidecar:
+- create index
+- add/remove/rename collection
+- add/remove context
+- set global context
+- reindex
+- embed
+- cleanup
+- filesystem scan
+- file toggles
+- hybrid search
+
+This path lives in:
+- `src-tauri/src/sidecar.rs`
+- `src-sidecar/qmd-bridge.ts`
+
+### Why the split exists
+
+Rust/SQLite reads are simple and fast for status screens.
+The QMD SDK is the authoritative path for write/search behavior, so Ariadne keeps those operations inside the sidecar instead of re-implementing them in Rust.
+
+---
+
+## Index model
+
+QMD indexes are modeled as named SQLite databases under the QMD cache directory.
+
+### Naming
+
+Ariadne presents the special `index.sqlite` database as **`default`**.
+
+| Display name | File stem | Typical file |
+|---|---|---|
 | `default` | `index` | `~/.cache/qmd/index.sqlite` |
 | `work` | `work` | `~/.cache/qmd/work.sqlite` |
 | `personal` | `personal` | `~/.cache/qmd/personal.sqlite` |
 
-The SDK function `getDefaultDbPath(indexName = "index")` resolves to `~/.cache/qmd/{indexName}.sqlite`.
+### Current app behavior
 
-### Index Management in Ariadne
+- indexes are discovered by scanning `~/.cache/qmd/*.sqlite`
+- the router uses `/qmd/:index`
+- one sidecar process is reused across indexes
+- the sidecar switches indexes with `switch_index`
+- the last visited index is stored in `ariadne:qmd:last-index`
 
-- **Discovery**: Rust scans `~/.cache/qmd/*.sqlite` to find all indexes
-- **Auto-create**: The `default` index is auto-created if no `index.sqlite` exists
-- **Create/Delete/Rename**: Supported via Tauri commands
-- **Single sidecar**: One sidecar process handles all indexes via `switch_index` command
-- **Route structure**: `/qmd/:index` for overview, `/qmd/:index/:collection` for detail
-- **Index selector**: Horizontal bar at top of all QMD pages for quick switching
-- **Last-visited**: Stored in `localStorage` key `ariadne:qmd:last-index`
+### Important constraint
 
-### Sidecar Index Switching
+Index selection is **route state** in the frontend and **opened-db state** in the sidecar. Those two must stay aligned.
 
-The sidecar keeps one `QMDStore` open at a time. Rust tracks `current_index` and sends `switch_index` before operations on a different index. Switch latency is ~50ms (SQLite reopen). Index switching is disabled while an operation is in progress.
+---
 
-## Data Storage
+## Collection model
 
-SQLite database at `~/.cache/qmd/index.sqlite` (or `~/.cache/qmd/{name}.sqlite` for named indexes):
+A collection is a named filesystem-backed slice of one index.
 
-| Table | Purpose |
-|-------|---------|
-| `store_collections` | Collection definitions (name, path, pattern, ignore, context, includeByDefault, update_command) |
-| `store_config` | Key-value metadata (config_hash, global_context) |
-| `content` | Content-addressable document storage (hash → full text) |
-| `documents` | File→content mapping (collection, path, title, hash, active flag, timestamps) |
-| `documents_fts` | FTS5 full-text index (filepath, title, body) |
-| `content_vectors` | Embedding chunks (hash, seq, pos, model) |
-| `vectors_vec` | sqlite-vec virtual table for vector similarity (cosine distance) |
-| `llm_cache` | Cached LLM responses |
+Ariadne currently surfaces these collection fields:
+- `name`
+- `path`
+- `pattern`
+- `ignore_patterns`
+- `include_by_default`
+- `update_command`
+- contexts
+- document / embedded counts
 
-### Key Indexes
-- `idx_documents_collection` — (collection, active)
-- `idx_documents_hash` — (hash)
-- `idx_documents_path` — (path, active)
+### Current collection flows
 
-## Local GGUF Models
+On the index page (`/qmd/:index`) Ariadne supports:
+- listing collections
+- adding a collection
+- entering global context
+- running index-wide update/embed/cleanup
 
-Auto-downloaded to `~/.cache/qmd/models/`:
+On the collection page (`/qmd/:index/:collection`) Ariadne supports:
+- viewing collection settings
+- adding/removing path contexts
+- scanning the collection filesystem
+- viewing indexed paths
+- toggling files/folders in or out of the index
 
-| Model | Purpose | Size |
-|-------|---------|------|
-| embeddinggemma-300M-Q8_0 | Vector embeddings | ~300MB |
-| qwen3-reranker-0.6b-q8_0 | Re-ranking | ~640MB |
-| qmd-query-expansion-1.7B-q4_k_m | Query expansion (fine-tuned) | ~1.1GB |
+---
 
-Custom embedding model override via `QMD_EMBED_MODEL` env var.
+## Sidecar model
 
-## Integration Approach
+The sidecar is a long-lived JSON-RPC process implemented in `src-sidecar/qmd-bridge.ts`.
 
-See [Integration Architecture](#integration-architecture) below and the spec at `docs/specs/2026-03-20-qmd-integration.md`.
+### Responsibilities
 
-### Integration Architecture
+It wraps the QMD SDK and owns the behaviorful parts of the integration:
+- index switching
+- collection/context mutation
+- reindex / embed / cleanup
+- filesystem scanning and file toggles
+- hybrid search and progress emission
 
-Ariadne is a Tauri app (Rust backend + React webview). The QMD SDK is TypeScript/Node.js — it cannot run in the browser webview or directly in Rust. We use a **hybrid approach**:
+Read `src-sidecar/qmd-bridge.ts` directly for the exact current method surface. The important documentation point is that this behavior lives in the sidecar rather than being reimplemented in Rust.
 
-**Reads → Rust reads QMD's SQLite directly**
-- Fast, no extra processes
-- Uses `rusqlite` to query `store_collections`, `documents`, `content_vectors`, `store_config`
-- Schema is stable and documented above
+### Process rules
 
-**Writes/Actions → Shell out to `qmd` CLI**
-- Collection CRUD: `qmd collection add/remove/rename`
-- Context CRUD: `qmd context add/rm`
-- Indexing: `qmd update`, `qmd embed`
-- Maintenance: `qmd cleanup`
-- These are infrequent operations where subprocess overhead doesn't matter
+- Ariadne keeps **one sidecar process** at a time
+- Rust ensures it is running before calling it
+- Rust switches indexes before operations on a different database
+- update/embed/search can emit progress through the same request path
+- if the process dies, Rust can recreate it
 
-**Future: Sidecar upgrade path**
-- If we need progress streaming (embed/update progress bars), search with reranking, or other SDK-only features, we can add a Node/Bun sidecar process
-- The sidecar would be a thin JSON-RPC bridge over stdio wrapping the QMD TypeScript SDK
-- Tauri has first-class sidecar support via `tauri-plugin-shell`
+### Progress path
 
-### v1 → v2 Evolution
+Long-running sidecar operations stream progress to Rust, which re-emits Tauri events consumed by the frontend.
 
-v1 used Rust SQLite reads + CLI subprocess for mutations. This had critical UX issues:
-- **No progress feedback** — reindex/embed are long-running but had no progress indication
-- **No double-spawn protection** — user clicked embed 3 times, spawned 3 parallel processes
-- **No file-level control** — couldn't see or toggle which files are indexed
+Current frontend listener:
+- `src/hooks/use-qmd-operation.ts`
 
-v2 replaces CLI mutations with a **sidecar bridge** — a Node/Bun child process wrapping the QMD TypeScript SDK. See `docs/specs/2026-03-20-qmd-v2-sidecar-and-tree.md`.
+Current event-backed UI:
+- `src/components/qmd-progress.tsx`
 
-### File Inclusion/Exclusion Model
+---
 
-The agents QMD extension (`/Users/cgn/git/dev/0xcgn/agents/extensions/qmd/`) established the pattern for file toggling:
+## Search model
 
-**It does NOT use ignore patterns.** Instead, it directly activates/deactivates individual documents via the QMD SDK's internal APIs:
-- **Remove**: `store.internal.deactivateDocument(collection, handelizedPath)`
-- **Add**: Read file → hash → `store.internal.insertContent()` + `store.internal.insertDocument()` → `store.embed()` for new content
-- **handelize_path**: QMD normalizes filesystem paths (lowercase, replace non-word chars with dashes, triple underscore → folder separator). Must use the same function.
+Ariadne's QMD search UI is index-scoped and sidecar-backed.
 
-**Visual indicators** (circles per file/folder):
-- `●` accent — fully indexed (file in QMD, or all dir descendants indexed)
-- `◐` accent — partially indexed (some descendants indexed)
-- `○` dim — not indexed
-- `◉` accent — pending add
-- `◎` warning — pending remove
+### Current search flow
 
-**Toggle flow**: Space/click toggles → changes are batched as pending → "Apply" commits all at once.
+1. frontend calls `qmd_search(index, query, collections?, limit?)`
+2. Rust ensures the correct index is open in the sidecar
+3. sidecar expands the query
+4. sidecar runs search with the expanded queries
+5. progress events are emitted during expansion/search
+6. the frontend renders:
+   - expanded queries
+   - timing
+   - ranked results
+   - explain traces when available
 
-**Key data structures** (ported from agents extension):
-- `ToggleState` — tracks `indexed_set`, `pending_adds`, `pending_removes`
-- `FileTreeNode` — tree node with `indexed`, `dir_index_status`
-- `build_file_tree(fs_paths, indexed_set)` — builds tree, marks status, collapses single-child dirs
-- `flatten_tree(roots, collapsed)` — for rendering
+### Current files involved
 
-### What to Watch For
+- frontend API: `src/api/qmd.ts`
+- frontend schema: `src/schemas/qmd.ts`
+- frontend UI: `src/components/qmd-search-modal.tsx`
+- Rust command: `qmd_search` in `src-tauri/src/commands/qmd.rs`
+- sidecar search handler: `search` in `src-sidecar/qmd-bridge.ts`
 
-| Concern | Details |
-|---------|---------|
-| **Schema changes** | If QMD updates its SQLite schema, our Rust reader needs updating. Pin to v2.x, check CHANGELOG on upgrades. |
-| **Database locking** | QMD uses WAL mode. Our Rust reads open in read-only mode to avoid contention. The sidecar opens in DB-only mode (read-write) for mutations. |
-| **Config sync** | QMD syncs YAML config → SQLite on startup (via config hash). The sidecar opens in DB-only mode, bypassing YAML entirely. This means changes made through Ariadne won't appear in the YAML config — they live only in SQLite. |
-| **Model downloads** | First `embed()` or `search()` triggers ~2GB model downloads. The sidecar can stream download progress but we need UI for this. |
-| **qmd availability** | The `@tobilu/qmd` package must be importable by the sidecar. Since QMD is installed globally, the sidecar should resolve it from the global node_modules. |
-| **handelize_path** | QMD normalizes paths before storing. When toggling files, we must apply the same normalization. The function is exported from the QMD SDK's internal store. |
-| **Sidecar process** | Must be killed on app close. If it crashes, Rust should respawn on next command. Health checked via `ping`. |
-| **Collection paths** | `qmd update` will deactivate ALL documents if the collection path doesn't exist on disk. The UI should warn about broken paths before allowing reindex. |
+### Important constraint
+
+Search is currently **one index at a time**. There is no cross-index search orchestration in Ariadne today.
+
+---
+
+## File inclusion model
+
+Ariadne's collection file-tree UI is built around the idea that indexed state is a set of active document paths inside one collection.
+
+### Current flow
+
+1. the frontend lazily scans the filesystem for collection-matching files
+2. it separately asks for currently indexed document paths
+3. it resolves indexed paths against filesystem paths into a tree model
+4. the user stages adds/removes
+5. Ariadne sends one `qmd_toggle_files()` request with the batch
+
+### Where this logic lives
+
+- scan/indexed-path commands: `src-tauri/src/commands/qmd.rs`
+- frontend resolution: `src/lib/qmd-tree.ts`
+- toggle-state helpers: `src/lib/toggle-state.ts`
+- UI: `src/components/collection-file-tree.tsx`
+
+### Sidecar details that matter
+
+The sidecar re-implements QMD's path normalization behavior via `handelize_path()` so file toggles line up with how QMD stores document paths.
+
+That path normalization is not optional. If it drifts, toggles will silently target the wrong rows or fail to match indexed documents.
+
+---
+
+## QMD logs surface
+
+Ariadne also has a QMD-adjacent observability page at `/qmd/logs`.
+
+This page is **not** powered by the QMD SQLite database.
+It is built from pi session logs and shows how agents invoked the QMD CLI during sessions.
+
+### Current backend path
+
+- parser: `src-tauri/src/parser/qmd_logs.rs`
+- cache: `src-tauri/src/qmd_log_cache.rs`
+- commands: `src-tauri/src/commands/qmd_logs.rs`
+
+### Current frontend path
+
+- API: `src/api/qmd-logs.ts`
+- schema: `src/schemas/qmd-logs.ts`
+- page: `src/pages/qmd-logs.tsx`
+- components: `src/components/qmd-logs/`
+
+### Important distinction
+
+QMD logs tells you **how agents used QMD**.
+The QMD index and collection pages tell you **what is in QMD right now**.
+
+Those are related, but they are different sources of truth.
+
+---
+
+## Current storage assumptions
+
+Ariadne currently assumes QMD data is discoverable under the standard cache location.
+
+### Important locations
+
+- indexes: `~/.cache/qmd/*.sqlite`
+- default index: `~/.cache/qmd/index.sqlite`
+- models: `~/.cache/qmd/models/`
+
+Ariadne's own code does not treat YAML config files as the primary read path. The dashboard reads index state from SQLite and performs mutations through the SDK sidecar.
+
+---
+
+## Important gotchas
+
+### 1. macOS + Bun needs a full SQLite build
+
+`src-sidecar/qmd-bridge.ts` patches Bun SQLite on macOS to use Homebrew SQLite before importing QMD.
+
+Why:
+- Apple's system SQLite lacks the extension-loading behavior QMD needs for sqlite-vec
+
+If QMD sidecar startup breaks on macOS, check this path first.
+
+### 2. Keep reads and writes in the right layer
+
+Do not casually move a sidecar-backed operation into direct SQLite mutation just because the table layout looks simple.
+
+The current contract is:
+- Rust reads state
+- sidecar performs behaviorful operations
+
+### 3. Index switching is stateful
+
+The sidecar has a current open db.
+If a new command targets another index, Rust must switch first.
+
+Bugs here usually show up as:
+- correct route, wrong data
+- mutation/search affecting the previously viewed index
+
+### 4. File toggles depend on path normalization
+
+Collection file toggles are only correct if Ariadne and QMD agree on document-path normalization. `handelize_path()` in the sidecar is load-bearing.
+
+### 5. QMD logs parsing uses tool-call block `id`
+
+In pi session JSONL, the assistant tool-call block uses `id`, while the matching tool-result message uses `toolCallId`. The QMD log parser relies on that pairing.
+
+### 6. QMD CLI detection must handle env-var prefixes
+
+Session bash commands may look like:
+- `qmd query ...`
+- `cd repo && qmd query ...`
+- `BUN_INSTALL="" qmd query ...`
+
+`src-tauri/src/parser/qmd_logs.rs` explicitly handles these forms.
+
+---
+
+## When changing the integration, start here
+
+| Change | Start in |
+|---|---|
+| Add/remove index fields on dashboards | `src-tauri/src/models/qmd.rs`, `src/schemas/qmd.ts` |
+| Change collection/status reads | `src-tauri/src/commands/qmd.rs` |
+| Change mutation behavior | `src-sidecar/qmd-bridge.ts` |
+| Change sidecar process lifecycle | `src-tauri/src/sidecar.rs` |
+| Change search payloads or explain traces | `src-sidecar/qmd-bridge.ts`, `src/schemas/qmd.ts` |
+| Change file-tree inclusion behavior | `src/lib/qmd-tree.ts`, `src/lib/toggle-state.ts`, `src/components/collection-file-tree.tsx`, sidecar toggle logic |
+| Change QMD logs observability | `src-tauri/src/parser/qmd_logs.rs`, `src-tauri/src/qmd_log_cache.rs`, `src/pages/qmd-logs.tsx` |
+
+---
+
+## Historical note
+
+Earlier planning docs described a shell-out-per-command mutation model. That is **not** Ariadne's current implementation.
+
+Today, Ariadne uses a **long-lived sidecar** for QMD mutations and search.
