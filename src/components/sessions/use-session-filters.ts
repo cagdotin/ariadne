@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import type { SessionSummary } from "@/schemas/session";
+import type { SessionSummary } from "@contracts/sessions/summary";
 
 export interface SessionFilters {
   search: string;

@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import type { SessionSummary } from "@/schemas/session";
+import type { SessionSummary } from "@contracts/sessions/summary";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,

@@ -1,5 +1,5 @@
 import { ColumnDef } from "@tanstack/react-table";
-import { SessionSummary } from "@/schemas/session";
+import { SessionSummary } from "@contracts/sessions/summary";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { SessionIdCell } from "./session-id-cell";
 import { format_duration, format_cost, format_tokens } from "@/lib/format";

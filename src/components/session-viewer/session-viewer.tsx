@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { SessionHeader, SessionEntry, ToolResultMessage } from "./types";
-import type { SessionSummary } from "@/schemas/session";
+import type { SessionSummary } from "@contracts/sessions/summary";
 import { get_path, build_tool_result_map } from "./utils";
 import { SessionTree } from "./tree/session-tree";
 import { SessionSidebarDetails } from "./sidebar/session-sidebar-details";

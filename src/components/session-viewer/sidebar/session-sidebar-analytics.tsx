@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { SessionSummary, ToolCallSummary } from "@/schemas/session";
+import type { SessionSummary, ToolCallSummary } from "@contracts/sessions/summary";
 import { format_number } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel, EmptyState, ToolRow, DetailSection } from "./sidebar-primitives";
