@@ -1,10 +1,7 @@
 import { FolderGit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  ComboboxTrigger,
-  ComboboxTriggerIcon,
-} from "@/components/ui/combobox";
+import { ComboboxTrigger } from "@/components/ui/combobox";
 
 interface ProjectScopeTriggerProps {
   loading: boolean;
@@ -38,7 +35,6 @@ export function ProjectScopeTrigger({
         <span className="hidden truncate text-xs leading-3 text-muted-foreground lg:block">
           {loading ? "" : description}
         </span>
-        <ComboboxTriggerIcon />
       </div>
     </ComboboxTrigger>
   );
