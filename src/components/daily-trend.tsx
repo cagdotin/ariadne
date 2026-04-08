@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { TimeBreakdown } from "@contracts/analytics/time";
 import type { DayCount } from "@contracts/shared";
 import { format_cost } from "@/lib/format";
@@ -63,6 +63,11 @@ function format_hour_label(hour_str: string): string {
   return `${h - 12}p`;
 }
 
+function format_trend_label(value: ReactNode, is_today: boolean): ReactNode {
+  if (typeof value !== "string") return value;
+  return is_today ? format_hour_label(value) : value.slice(5);
+}
+
 interface DailyTrendProps {
   data: TimeBreakdown | null;
   range_days: number;
@@ -81,8 +86,12 @@ export function DailyTrend({ data, range_days }: DailyTrendProps) {
     [data, is_today],
   );
 
-  const chart_data = is_today ? hourly_sessions : filled_sessions;
-  const data_key = is_today ? "hour" : "date";
+  const chart_data = useMemo(
+    () => (is_today
+      ? hourly_sessions.map((entry) => ({ date: entry.hour, count: entry.count }))
+      : filled_sessions),
+    [filled_sessions, hourly_sessions, is_today],
+  );
 
   const total_sessions =
     data?.daily_sessions.reduce((s: number, d: { count: number }) => s + d.count, 0) ?? 0;
@@ -111,12 +120,11 @@ export function DailyTrend({ data, range_days }: DailyTrendProps) {
             <AreaChart data={chart_data}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
-                dataKey={data_key}
-                tickFormatter={
-                  is_today
-                    ? (v: string) => format_hour_label(v)
-                    : (v: string) => v.slice(5)
-                }
+                dataKey="date"
+                tickFormatter={(value) => {
+                  if (typeof value !== "string") return String(value ?? "");
+                  return is_today ? format_hour_label(value) : value.slice(5);
+                }}
                 interval="preserveStartEnd"
                 tick={{ fontSize: 11 }}
               />
@@ -130,11 +138,7 @@ export function DailyTrend({ data, range_days }: DailyTrendProps) {
               <ChartTooltip
                 content={
                   <ChartTooltipContent
-                    labelFormatter={
-                      is_today
-                        ? (v: string) => format_hour_label(v)
-                        : undefined
-                    }
+                    labelFormatter={(value) => format_trend_label(value, is_today)}
                   />
                 }
               />

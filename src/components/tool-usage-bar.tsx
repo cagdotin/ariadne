@@ -64,7 +64,9 @@ export function ToolUsageBar({ tools }: ToolUsageBarProps) {
             layout="vertical"
             margin={{ left: 8, right: 8 }}
             onClick={(event) => {
-              if (event?.activeLabel) handle_click({ name: event.activeLabel });
+              if (typeof event?.activeLabel === "string") {
+                handle_click({ name: event.activeLabel });
+              }
             }}
             style={{ cursor: "pointer" }}
           >
@@ -74,8 +76,14 @@ export function ToolUsageBar({ tools }: ToolUsageBarProps) {
               dataKey="name"
               width={110}
               interval={0}
-              tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => {
-                const is_clickable = clickable_tools.has(payload.value);
+              tick={(props) => {
+                const value = typeof props.payload?.value === "string"
+                  ? props.payload.value
+                  : String(props.payload?.value ?? "");
+                const x = typeof props.x === "number" ? props.x : Number(props.x ?? 0);
+                const y = typeof props.y === "number" ? props.y : Number(props.y ?? 0);
+                const is_clickable = clickable_tools.has(value);
+
                 return (
                   <text
                     x={x}
@@ -86,10 +94,10 @@ export function ToolUsageBar({ tools }: ToolUsageBarProps) {
                     fill={is_clickable ? "var(--chart-1)" : "var(--muted-foreground)"}
                     style={{ cursor: is_clickable ? "pointer" : "default" }}
                     onClick={() => {
-                      if (is_clickable) navigate({ to: `/usage/tools/${payload.value}` });
+                      if (is_clickable) navigate({ to: `/usage/tools/${value}` });
                     }}
                   >
-                    {payload.value}
+                    {value}
                   </text>
                 );
               }}

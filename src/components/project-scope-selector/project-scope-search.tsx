@@ -28,6 +28,7 @@ export function ProjectScopeSearch({
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <ComboboxInput
           autoFocus
+          showTrigger={false}
           aria-label="Search projects"
           placeholder="Search project name or path…"
           className="pl-8 pr-8"

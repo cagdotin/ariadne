@@ -23,6 +23,7 @@ interface FileHotspotTreemapProps {
 }
 
 interface TreeNode {
+  [key: string]: unknown;
   name: string;
   reads: number;
   edits: number;
