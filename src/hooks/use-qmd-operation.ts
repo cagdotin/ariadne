@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { subscribe, unsubscribe } from "@/platform/events";
 
 export interface UpdateProgress {
   collection: string;
@@ -21,7 +21,7 @@ export interface QmdOperationState {
   is_busy: boolean;
 }
 
-// Tauri event payloads use camelCase from Rust
+// Event payloads use camelCase from the backend
 interface RawUpdateProgress {
   collection: string;
   file: string;
@@ -48,52 +48,44 @@ export function use_qmd_operation(): {
   });
 
   useEffect(() => {
-    const unlisten_fns: UnlistenFn[] = [];
+    const sub_ids: string[] = [];
 
-    const setup = async () => {
-      const unlisten_update = await listen<RawUpdateProgress>(
-        "qmd:update-progress",
-        (event) => {
-          const p = event.payload;
-          set_state((prev) => ({
-            ...prev,
-            operation: "update",
-            is_busy: true,
-            progress: {
-              collection: p.collection,
-              file: p.file,
-              current: p.current,
-              total: p.total,
-            } as UpdateProgress,
-          }));
-        }
-      );
+    sub_ids.push(
+      subscribe("qmd:update-progress", (payload) => {
+        const p = payload as RawUpdateProgress;
+        set_state((prev) => ({
+          ...prev,
+          operation: "update",
+          is_busy: true,
+          progress: {
+            collection: p.collection,
+            file: p.file,
+            current: p.current,
+            total: p.total,
+          } as UpdateProgress,
+        }));
+      }),
+    );
 
-      const unlisten_embed = await listen<RawEmbedProgress>(
-        "qmd:embed-progress",
-        (event) => {
-          const p = event.payload;
-          set_state((prev) => ({
-            ...prev,
-            operation: "embed",
-            is_busy: true,
-            progress: {
-              chunks_embedded: p.chunksEmbedded,
-              total_chunks: p.totalChunks,
-              bytes_processed: p.bytesProcessed,
-              total_bytes: p.totalBytes,
-            } as EmbedProgress,
-          }));
-        }
-      );
-
-      unlisten_fns.push(unlisten_update, unlisten_embed);
-    };
-
-    setup();
+    sub_ids.push(
+      subscribe("qmd:embed-progress", (payload) => {
+        const p = payload as RawEmbedProgress;
+        set_state((prev) => ({
+          ...prev,
+          operation: "embed",
+          is_busy: true,
+          progress: {
+            chunks_embedded: p.chunksEmbedded,
+            total_chunks: p.totalChunks,
+            bytes_processed: p.bytesProcessed,
+            total_bytes: p.totalBytes,
+          } as EmbedProgress,
+        }));
+      }),
+    );
 
     return () => {
-      unlisten_fns.forEach((fn) => fn());
+      sub_ids.forEach((id) => unsubscribe(id));
     };
   }, []);
 

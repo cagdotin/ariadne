@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { subscribe, unsubscribe } from "@/platform/events";
 import {
   Dialog,
   DialogContent,
@@ -326,21 +326,20 @@ export function QmdSearchModal({
     }
   }, [open]);
 
-  // Listen for search progress events from Tauri
+  // Listen for search progress events
   useEffect(() => {
     if (!open) return;
-    let unlisten: UnlistenFn | null = null;
 
-    listen<SearchProgress>("qmd:search-progress", (event) => {
-      const payload = event.payload;
+    const sub_id = subscribe("qmd:search-progress", (raw) => {
+      const payload = raw as SearchProgress;
       set_search_progress(payload);
       // Capture expanded queries when they arrive
       if (payload.stage === "expanded" && payload.queries) {
         set_expanded_queries(payload.queries);
       }
-    }).then((fn) => { unlisten = fn; });
+    });
 
-    return () => { unlisten?.(); };
+    return () => { unsubscribe(sub_id); };
   }, [open]);
 
   const toggle_collection = useCallback((name: string) => {

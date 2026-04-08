@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { commands } from "@/platform/ipc";
 import { z } from "zod";
 import {
   session_summary_schema,
@@ -32,12 +32,12 @@ import {
 import type { SessionEntriesResponse } from "../components/session-viewer/types";
 
 export async function list_projects(): Promise<ProjectSummary[]> {
-  const raw = await invoke("list_projects");
+  const raw = await commands.analytics.list_projects();
   return z.array(project_summary_schema).parse(raw);
 }
 
 export async function get_analytics_overview(project_path?: string, range_days?: number): Promise<AnalyticsOverview> {
-  const raw = await invoke("get_analytics_overview", {
+  const raw = await commands.analytics.get_analytics_overview({
     projectPath: project_path ?? null,
     rangeDays: range_days ?? null,
   });
@@ -45,12 +45,12 @@ export async function get_analytics_overview(project_path?: string, range_days?:
 }
 
 export async function get_session_detail(session_id: string): Promise<SessionSummary> {
-  const raw = await invoke("get_session_detail", { sessionId: session_id });
+  const raw = await commands.analytics.get_session_detail({ sessionId: session_id });
   return session_summary_schema.parse(raw);
 }
 
 export async function get_all_sessions(project_path?: string, range_days?: number): Promise<SessionSummary[]> {
-  const raw = await invoke("get_all_sessions", {
+  const raw = await commands.analytics.get_all_sessions({
     projectPath: project_path ?? null,
     rangeDays: range_days ?? null,
   });
@@ -58,12 +58,12 @@ export async function get_all_sessions(project_path?: string, range_days?: numbe
 }
 
 export async function resync_sessions(): Promise<AnalyticsOverview> {
-  const raw = await invoke("resync_sessions");
+  const raw = await commands.analytics.resync_sessions();
   return analytics_overview_schema.parse(raw);
 }
 
 export async function get_project_file_stats(project_path: string, range_days?: number): Promise<ProjectFileStats> {
-  const raw = await invoke("get_project_file_stats", {
+  const raw = await commands.analytics.get_project_file_stats({
     projectPath: project_path,
     rangeDays: range_days ?? null,
   });
@@ -71,12 +71,12 @@ export async function get_project_file_stats(project_path: string, range_days?: 
 }
 
 export async function get_time_breakdown(range_days: number, project_path?: string): Promise<TimeBreakdown> {
-  const raw = await invoke("get_time_breakdown", { rangeDays: range_days, projectPath: project_path ?? null });
+  const raw = await commands.analytics.get_time_breakdown({ rangeDays: range_days, projectPath: project_path ?? null });
   return time_breakdown_schema.parse(raw);
 }
 
 export async function get_session_entries(session_id: string): Promise<SessionEntriesResponse> {
-  const raw = await invoke("get_session_entries", { sessionId: session_id });
+  const raw = await commands.analytics.get_session_entries({ sessionId: session_id });
   // Validate wire structure with permissive contract schema
   session_entries_response_schema.parse(raw);
   // Return with detailed component-level types (downstream components narrow by entry.type)
@@ -88,7 +88,7 @@ export async function get_tool_details(
   project_path?: string,
   range_days?: number,
 ): Promise<ToolDetailResponse> {
-  const raw = await invoke("get_tool_details", {
+  const raw = await commands.analytics.get_tool_details({
     toolName: tool_name,
     projectPath: project_path ?? null,
     rangeDays: range_days ?? null,
@@ -97,6 +97,6 @@ export async function get_tool_details(
 }
 
 export async function get_file_sizes(paths: string[]): Promise<FileSizeResult[]> {
-  const raw = await invoke("get_file_sizes", { paths });
+  const raw = await commands.analytics.get_file_sizes({ paths });
   return z.array(file_size_result_schema).parse(raw);
 }

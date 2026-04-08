@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { pick_directory } from "@/platform/dialog";
 import {
   Dialog,
   DialogContent,
@@ -27,9 +27,7 @@ export function AddCollectionDialog({ onAdd, onClose }: AddCollectionDialogProps
 
   const handle_browse = async () => {
     try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
+      const selected = await pick_directory({
         title: "Select folder to index",
       });
       if (selected) {
