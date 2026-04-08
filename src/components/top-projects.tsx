@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { ProjectSummary } from "@/schemas/analytics";
+import type { ProjectSummary } from "@contracts/shared";
 import { use_project_scope } from "./project-scope-provider";
 import { format_cost, format_date_relative, format_number } from "@/lib/format";
 import { Card } from "@/components/ui/card";

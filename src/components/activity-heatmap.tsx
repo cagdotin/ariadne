@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { subWeeks, formatISO } from "date-fns";
-import type { DayCount } from "../schemas/analytics";
+import type { DayCount } from "@contracts/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ContributionGraph,

@@ -1,4 +1,5 @@
-import type { NameCount, FileInsightRecord, FileSizeResult } from "@/schemas/analytics";
+import type { NameCount } from "@contracts/shared";
+import type { FileInsightRecord, FileSizeResult } from "@contracts/analytics/files";
 
 // ── Operation Lens ─────────────────────────────────────────────────────
 

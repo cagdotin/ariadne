@@ -1,4 +1,4 @@
-import type { NameCount } from "@/schemas/analytics";
+import type { NameCount } from "@contracts/shared";
 import { format_number } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

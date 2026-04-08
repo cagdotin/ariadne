@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { ModelAggregate } from "@/schemas/analytics";
+import type { ModelAggregate } from "@contracts/analytics/overview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,

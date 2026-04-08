@@ -1,4 +1,4 @@
-import type { NameCount } from "@/schemas/analytics";
+import type { NameCount } from "@contracts/shared";
 import { RankedListCard } from "@/components/ranked-list-card";
 
 interface ToolDetailBreakdownProps {

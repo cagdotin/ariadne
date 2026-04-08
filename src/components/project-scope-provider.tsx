@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import type { ProjectSummary } from "@/schemas/analytics";
+import type { ProjectSummary } from "@contracts/shared";
 import { list_projects } from "@/api/analytics";
 
 const STORAGE_KEY = "ariadne:project-scope";

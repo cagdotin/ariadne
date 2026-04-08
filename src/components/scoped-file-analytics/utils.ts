@@ -1,8 +1,5 @@
-import type {
-  DirectoryStat,
-  NameCount,
-  ProjectFileStats,
-} from "@/schemas/analytics";
+import type { DirectoryStat, ProjectFileStats } from "@contracts/analytics/files";
+import type { NameCount } from "@contracts/shared";
 import type { FileTab } from "./types";
 
 export function parse_excludes(raw: string): string[] {

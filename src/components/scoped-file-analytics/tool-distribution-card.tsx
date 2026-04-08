@@ -1,4 +1,4 @@
-import type { NameCount } from "@/schemas/analytics";
+import type { NameCount } from "@contracts/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ToolDistributionCardProps {

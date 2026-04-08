@@ -1,5 +1,5 @@
 import { ColumnDef } from "@tanstack/react-table";
-import { NameCount } from "@/schemas/analytics";
+import { NameCount } from "@contracts/shared";
 import { DataTableColumnHeader } from "@/components/data-table";
 
 export const file_activity_columns: ColumnDef<NameCount>[] = [

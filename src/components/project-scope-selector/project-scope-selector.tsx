@@ -1,4 +1,4 @@
-import type { ProjectSummary } from "@/schemas/analytics";
+import type { ProjectSummary } from "@contracts/shared";
 import {
   Combobox,
   ComboboxContent,

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { ToolAggregate } from "@/schemas/analytics";
+import type { ToolAggregate } from "@contracts/analytics/overview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,

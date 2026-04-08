@@ -1,7 +1,7 @@
 import { DataTable } from "@/components/data-table";
 import { file_activity_columns } from "@/components/columns/file-activity-columns";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import type { NameCount } from "@/schemas/analytics";
+import type { NameCount } from "@contracts/shared";
 import type { FileTab } from "./types";
 
 interface FileActivityTabsProps {

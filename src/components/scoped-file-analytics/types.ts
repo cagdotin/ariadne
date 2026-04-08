@@ -1,8 +1,5 @@
-import type {
-  DirectoryStat,
-  NameCount,
-  ProjectFileStats,
-} from "@/schemas/analytics";
+import type { DirectoryStat, ProjectFileStats } from "@contracts/analytics/files";
+import type { NameCount } from "@contracts/shared";
 
 export type FileTab = "read" | "edit" | "write";
 

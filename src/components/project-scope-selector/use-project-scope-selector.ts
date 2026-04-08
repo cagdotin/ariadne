@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import type { ProjectSummary } from "@/schemas/analytics";
+import type { ProjectSummary } from "@contracts/shared";
 import { format_number } from "@/lib/format";
 import { use_project_scope } from "@/components/project-scope-provider";
 import type { ProjectFilterMode, ProjectGroup } from "./types";

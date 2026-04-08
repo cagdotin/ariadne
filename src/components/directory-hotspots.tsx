@@ -1,4 +1,4 @@
-import type { DirectoryStat } from "../schemas/analytics";
+import type { DirectoryStat } from "@contracts/analytics/files";
 
 interface DirectoryHotspotsProps {
   stats: DirectoryStat[];

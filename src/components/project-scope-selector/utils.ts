@@ -1,4 +1,4 @@
-import type { ProjectSummary } from "@/schemas/analytics";
+import type { ProjectSummary } from "@contracts/shared";
 import { format_date_relative, format_number } from "@/lib/format";
 import type { ProjectFilterMode, ProjectGroup } from "./types";
 

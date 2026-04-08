@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import type { TimeBreakdown, DayCount } from "@/schemas/analytics";
+import type { TimeBreakdown } from "@contracts/analytics/time";
+import type { DayCount } from "@contracts/shared";
 import { format_cost } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {

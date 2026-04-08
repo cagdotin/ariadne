@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { NameCount } from "@/schemas/analytics";
+import type { NameCount } from "@contracts/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
