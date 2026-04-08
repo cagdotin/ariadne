@@ -25,6 +25,6 @@
       "@contracts/*": ["./contracts/*"]
     }
   },
-  "include": ["src", "contracts"],
+  "include": ["src", "contracts", "electron/preload/ariadne.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

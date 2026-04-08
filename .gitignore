@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .pi/
+
+# Electron build output
+electron/main/dist/
+electron/preload/dist/
+release/
+
+# Backend build output
+backend/dist/

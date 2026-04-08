@@ -1,0 +1,22 @@
+appId: com.ariadne.app
+productName: Ariadne
+directories:
+  output: release
+files:
+  - dist/**/*
+  - electron/main/dist/**/*
+  - electron/preload/dist/**/*
+  - node_modules/**/*
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.developer-tools
+win:
+  target:
+    - nsis
+    - zip
+linux:
+  target:
+    - AppImage
+    - deb
