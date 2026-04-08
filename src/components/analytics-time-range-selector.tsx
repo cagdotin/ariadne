@@ -32,9 +32,9 @@ export function AnalyticsTimeRangeSelector() {
         onValueChange={(v) => set_range_days(Number(v) as RangeDays)}
         className="hidden lg:flex shrink-0"
       >
-        <TabsList>
+        <TabsList className="h-6 p-0.5">
           {RANGE_OPTIONS.map((opt) => (
-            <TabsTrigger key={opt.value} value={String(opt.value)}>
+            <TabsTrigger key={opt.value} value={String(opt.value)} className="text-[11px] px-1.5 h-5">
               {opt.label}
             </TabsTrigger>
           ))}

@@ -264,6 +264,22 @@
   font-weight: 600;
 }
 
+/* Electron frameless window drag regions */
+.app-drag-region {
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+
+/* Offset sidebar below the titlebar */
+[data-slot="sidebar-container"] {
+  top: var(--titlebar-h) !important;
+  height: calc(100svh - var(--titlebar-h)) !important;
+}
+
 /* Slim scrollbars with gutter spacing */
 ::-webkit-scrollbar {
   width: 10px;
