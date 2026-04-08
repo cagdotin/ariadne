@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { VisibilityState } from "@tanstack/react-table";
-import type { QmdLogEntry } from "@/schemas/qmd-logs";
+import type { QmdLogEntry } from "@contracts/qmd-logs";
 import { DataTable } from "@/components/data-table";
 import { create_qmd_log_columns } from "./qmd-log-columns";
 

@@ -1,5 +1,5 @@
 import { ColumnDef } from "@tanstack/react-table";
-import type { QmdLogEntry } from "@/schemas/qmd-logs";
+import type { QmdLogEntry } from "@contracts/qmd-logs";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { format_date_relative } from "@/lib/format";

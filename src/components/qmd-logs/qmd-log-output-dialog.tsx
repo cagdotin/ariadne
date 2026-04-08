@@ -6,7 +6,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import type { QmdLogEntry } from "@/schemas/qmd-logs";
+import type { QmdLogEntry } from "@contracts/qmd-logs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format_date } from "@/lib/format";

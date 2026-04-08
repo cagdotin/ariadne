@@ -1,6 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Link } from "@tanstack/react-router";
-import type { QmdCollection } from "@/schemas/qmd";
+import type { QmdCollection } from "@contracts/qmd";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { format_number, format_date_relative } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";

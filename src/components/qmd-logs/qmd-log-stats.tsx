@@ -1,4 +1,4 @@
-import type { QmdLogStats } from "@/schemas/qmd-logs";
+import type { QmdLogStats } from "@contracts/qmd-logs";
 import { StatCard } from "@/components/stat-card";
 import { format_number } from "@/lib/format";
 

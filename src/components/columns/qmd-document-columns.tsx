@@ -1,5 +1,5 @@
 import { ColumnDef } from "@tanstack/react-table";
-import type { QmdDocument } from "@/schemas/qmd";
+import type { QmdDocument } from "@contracts/qmd";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { format_date_relative } from "@/lib/format";
 

@@ -22,7 +22,7 @@ import {
   Zap,
   FileText,
 } from "lucide-react";
-import type { QmdCollection, QmdSearchResult, QmdSearchHit, QmdExpandedQuery } from "@/schemas/qmd";
+import type { QmdCollection, QmdSearchResult, QmdSearchHit, QmdExpandedQuery } from "@contracts/qmd";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

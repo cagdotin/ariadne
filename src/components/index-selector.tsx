@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import type { QmdIndex } from "@/schemas/qmd";
+import type { QmdIndex } from "@contracts/qmd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InfoTip } from "@/components/info-tip";

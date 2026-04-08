@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { QmdContext } from "@/schemas/qmd";
+import type { QmdContext } from "@contracts/qmd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

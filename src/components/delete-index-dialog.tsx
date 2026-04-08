@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { QmdIndex } from "@/schemas/qmd";
+import type { QmdIndex } from "@contracts/qmd";
 import {
   Dialog,
   DialogContent,
