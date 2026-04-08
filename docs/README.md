@@ -15,10 +15,10 @@ When updating, reorganizing, or cleaning documentation, read `documentation-main
 | `information-architecture.md` | Frontend page structure, navigation, route ownership, layout rules | Medium — update when pages or routes change |
 | `documentation-maintenance.md` | Rules and recipe for contributing to docs and keeping them clean | High — update when documentation process changes |
 | `knowledge/` | Current integration/reference docs (QMD, etc.) | Medium — update when contracts or operational behavior change |
-| `specs/` | Feature specs and decision records; `specs/rebuild/` is historical rebuild material | Medium — update when planning starts, scope changes, or shipped status changes |
+| `analysis/` | Point-in-time audits and reviews; useful context, but not the current system-of-record | Low — keep only when still informative |
+| `tasks/` | Task briefs and handoff docs for larger workstreams; `tasks/README.md` owns priority order | Medium — mark completed vs ready honestly |
 | `exec-plans/` | Workstream state split into `active/`, `pending/`, and `completed/` | Medium — keep status and placement aligned with reality |
 | `agents-directory-map.md` | Reference map of the agents pi package repo | Low — external reference |
-| `analytics-page-plan.md` | Early planning doc for the analytics foundation | Low — historical |
 
 ## Reading Order
 
@@ -29,4 +29,4 @@ When updating, reorganizing, or cleaning documentation, read `documentation-main
 | `information-architecture.md` | Before modifying any frontend page or route | Page structure, navigation, route ownership, layout rules |
 | `documentation-maintenance.md` | Before adding, rewriting, or reorganizing docs | What belongs where, how to keep docs trustworthy |
 | `knowledge/qmd.md` | Before working on QMD integration | Current QMD integration model, constraints, and gotchas |
-| `specs/` | When starting medium+ work | Implementation specs for specific features |
+| `tasks/README.md` | Before starting one of the queued follow-up implementations | Priority order, dependencies, and which task to hand off next |

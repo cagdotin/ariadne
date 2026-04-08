@@ -1,62 +1,119 @@
 # DESIGN
 
 Status: active  
-Last updated: 2026-03-28
+Last updated: 2026-04-08
 
-This document explains the **non-obvious design choices** in Ariadne.
+This document explains the non-obvious design choices in Ariadne.
 
-It is intentionally thinner than the code. It should answer:
+It should answer:
 - why the system is shaped this way
 - what boundaries are deliberate
 - which flows are important to preserve
 - which tradeoffs are easy to miss when only reading files
 
-For the current architecture map, see `docs/ARCHITECTURE.md`.
+For the current system map, see `docs/ARCHITECTURE.md`.
 
 ---
 
-## 1. Parsing and analytics live in Rust on purpose
+## 1. Ariadne uses Electron, but the shell is intentionally small
 
-Ariadne's raw source material is not API data. It is a large set of append-only JSONL session logs under `~/.pi/agent/sessions/`.
+Moving to the current Electron runtime did **not** mean flattening the app into Electron main.
 
-The design choice is:
-- parse and aggregate in **Rust**
-- render in **React**
-- pass only structured summaries and replay payloads across IPC
+Ariadne now uses:
+- a renderer in `src/`
+- a preload bridge in `electron/preload/`
+- a thin shell in `electron/main/`
+- a dedicated backend process in `backend/`
 
 ### Why
 
-This keeps the frontend from doing expensive work with raw session files and makes the Tauri boundary explicit.
+Electron main is good at:
+- app lifecycle
+- window creation
+- dialogs
+- wiring IPC boundaries
+- supervising child processes
 
-The Rust side owns:
-- file discovery (`src-tauri/src/parser/discovery.rs`)
-- summary extraction (`src-tauri/src/parser/session.rs`)
-- analytics aggregation (`src-tauri/src/cache.rs`)
-- on-demand replay payload loading (`get_session_entries()`)
+It is not the right place for:
+- session parsing
+- analytics aggregation
+- QMD SQL queries
+- provider-limit probing
 
-The frontend owns:
-- route-driven data fetching (`src/api/*.ts`)
-- schema validation (`src/schemas/*.ts`)
-- presentation and interaction state
-
-### Important consequence
-
-Most analytics pages should be thought of as **views over `SessionCache`**, not as places that compute their own business logic.
-
-If analytics math changes, start in `src-tauri/src/cache.rs`, not in the page components.
+That work lives in the backend service so it stays restartable, testable, and easier for TypeScript-oriented agents to own.
 
 ---
 
-## 2. Ariadne uses two different session representations
+## 2. Renderer capabilities are intentionally explicit
 
-Ariadne intentionally keeps **two levels of session data**:
+The renderer does not get a generic `ipcRenderer` escape hatch.
 
-1. **`SessionSummary`** for analytics, tables, counts, tool breakdowns, and project-level aggregation
-2. **raw session entries** for the session replay UI
+Instead, preload exposes a named `window.ariadne` surface with grouped namespaces:
+- `commands.analytics`
+- `commands.qmd`
+- `commands.qmd_logs`
+- `commands.provider_limits`
+- `dialogs`
+- `events`
 
-### Why the split exists
+### Why
 
-A summary is the right shape for analytics.
+This keeps the desktop boundary understandable and reviewable.
+
+The mental model is:
+- renderer code imports from `src/platform/*`
+- preload exposes a limited capability surface
+- Electron main routes requests
+- backend handles business logic
+
+That is much easier to audit than a generic `invoke(anything)` pattern.
+
+---
+
+## 3. Session analytics still revolve around a parsed in-memory view
+
+Ariadne's raw source material is still a large append-only set of JSONL logs under `~/.pi/agent/sessions/`.
+
+The current choice is still:
+- parse and aggregate in the backend
+- render in React
+- pass structured summaries or replay payloads over the desktop boundary
+
+### Where it lives now
+
+- discovery: `backend/analytics/discovery.ts`
+- parsing: `backend/analytics/session-parser.ts`
+- cache: `backend/analytics/session-cache.ts`
+- aggregations: `backend/analytics/aggregations/`
+
+### Why Ariadne still does not use a separate local analytics database
+
+The source of truth already exists on disk.
+
+The current product benefits more from:
+- simple invalidation semantics
+- parity with the original runtime behavior
+- one shared place for aggregation logic
+
+than from introducing a second persistence layer.
+
+### Important current tradeoff
+
+The worker-thread follow-up has not landed yet. Heavy analytics parsing still happens inside the backend process rather than a dedicated worker thread.
+
+That is acceptable for current correctness, but it remains one of the clearest post-migration performance improvements.
+
+---
+
+## 4. Ariadne still uses two session representations on purpose
+
+Ariadne intentionally keeps:
+1. **session summaries** for analytics and tables
+2. **raw session entries** for replay
+
+### Why
+
+A summary is the right shape for aggregate views.
 A replay viewer needs the original event stream, including:
 - parent/child relationships
 - branching
@@ -64,298 +121,210 @@ A replay viewer needs the original event stream, including:
 - tool results
 - compactions
 - model changes
-- custom message blocks
 
-Trying to force replay through summary structs would either lose fidelity or create an overly broad analytics model.
+Trying to collapse both into one model would either lose fidelity or create an overly broad contract.
 
-### Where it lives
+### Important current detail
 
-- summary model: `src-tauri/src/models/session.rs`
-- parser: `src-tauri/src/parser/session.rs`
-- replay fetch: `get_session_entries()` in `src-tauri/src/commands/analytics.rs`
-- replay UI: `src/components/session-viewer/`
+`get_session_entries()` is only partially validated today. The wire shape is validated with permissive Zod schemas, but entry bodies are still intentionally passthrough to preserve parity.
+
+That is a conscious migration tradeoff, not a finished ideal.
 
 ---
 
-## 3. `SessionCache` is a deliberate "parsed view" cache, not a database
+## 5. Session replay is branch-aware, not a flat transcript
 
-`SessionCache` in `src-tauri/src/cache.rs` is an in-memory cache of parsed sessions plus aggregation methods.
-
-### Why Ariadne does not persist a second local analytics database
-
-The source of truth already exists on disk in the session logs.
-The current product benefits more from:
-- fast startup after first parse
-- simple invalidation semantics
-- one place for aggregation logic
-than from adding a second persistence layer.
-
-### Important design traits
-
-- **lazy initialization** on first request
-- **full resync** when explicitly refreshed
-- **shared filtering helpers** (`session_matches()`, `filter_sessions()`) used across analytics methods
-- **on-demand replay loading** rather than caching every raw entry in memory
-
-### Why the shared filtering helpers matter
-
-The project-scope and time-range model is app-wide. Re-implementing date/project filtering per method caused drift risk, so the backend now centralizes the filtering rules.
-
-If a page appears inconsistent across Overview / Sessions / Usage / Tool Detail, the shared filter path in `cache.rs` is one of the first places to inspect.
-
----
-
-## 4. Session replay is designed around branch navigation, not a flat transcript
-
-pi sessions can branch. Ariadne's viewer is therefore not a simple chronological chat renderer.
+pi sessions can branch, so Ariadne's viewer is not just a chronological message list.
 
 ### Current structure
 
-The replay subsystem lives in `src/components/session-viewer/` and is split by concern rather than by one monolithic renderer.
+The replay subsystem lives in `src/components/session-viewer/`.
 
-Read that directory directly for the current decomposition. The important architectural point is not the exact folder list, but that branch navigation, conversation rendering, tool rendering, sidebar detail, and shaping utilities are intentionally separated so replay logic does not collapse into one giant component.
-
-### Key design choice
-
-The viewer computes a **current path from root to a selected leaf** and renders that path linearly, while keeping the full branch tree available in the sidebar.
-
-This gives the user two simultaneous models:
-- the whole branching structure
-- one readable conversation path at a time
+The important design point is not the exact folder structure, but that the viewer keeps two simultaneous models available:
+- the full branch tree
+- one readable path from root to the selected leaf
 
 ### Why this matters
 
 A flat transcript hides branch structure.
 A fully nested branch renderer is hard to read.
-The current design keeps branch awareness without making the main pane unreadable.
-
-### Related detail
-
-`ScopedSessionDetail` in `src/pages/scoped-session-detail.tsx` is intentionally a **thin scope guard** around the real `SessionDetail`. Scope-specific redirect behavior is kept outside the replay component so the replay UI itself stays scope-agnostic.
+The current design preserves both comprehensibility and fidelity.
 
 ---
 
-## 5. Global scope is first-class, but not everything should become global state
+## 6. Global scope is first-class, but route data is not app-global
 
-Ariadne now has two app-level scopes:
-- **project scope** — `ProjectScopeProvider`
-- **analytics time range** — `AnalyticsTimeRangeProvider`
+Ariadne has two app-level scopes:
+- **project scope**
+- **analytics time range**
 
-Both are mounted in `src/main.tsx`.
+Both are mounted near the root and are meant to persist while moving between routes.
 
 ### Why these are global
 
-They affect multiple routes and should feel like durable context, not page-local filters.
-
-The user expectation is:
+The intended user experience is:
 - choose a project once
 - choose a time range once
-- move between Overview, Sessions, and Usage without reconfiguring the app every time
+- move between Overview, Sessions, and Usage without reconfiguring every page
 
-### Why Ariadne still avoids a broad global store
+### Why Ariadne still avoids a universal store
 
-Not all shared data belongs at the app root.
+Not everything belongs at the app root.
 
-The Usage route owns a shared `UsageProvider` in `src/pages/usage/layout.tsx` because its data is:
+The Usage workspace keeps route-local shared data in `UsageProvider` because that data is:
 - shared across usage tabs
-- route-local
-- not useful to unrelated parts of the app
+- not useful to unrelated routes
+- naturally owned by the `/usage` route family
 
-This is an intentional split:
-- **global selections** live in providers near the app root
-- **route data** lives inside the route that owns it
-
-That keeps the mental model smaller than introducing a universal app store.
+This split keeps the mental model smaller than introducing one global data store for everything.
 
 ---
 
-## 6. The app shell makes scope visible in the header, not inside pages
+## 7. The app shell keeps scope and sync visible on purpose
 
-`src/app.tsx` is not just layout glue. It encodes the navigation model.
+`src/app.tsx` is not just layout glue.
 
-### Important design decisions in the shell
-
-- sidebar owns the four top-level destinations
-- breadcrumbs reflect route depth instead of pages rendering their own back buttons
-- project scope stays visible in the header
-- analytics time range appears only on routes where it has meaning
-- sync performs a full reload because provider re-initialization is load-bearing for scope validation
+It encodes important product decisions:
+- sidebar owns top-level navigation
+- breadcrumbs come from the shell rather than page-local back buttons
+- project scope is visible globally
+- analytics time range only appears where it matters
+- sync ends with a full reload
 
 ### Why the full reload after sync is intentional
 
-`resync_sessions()` updates backend data, but the project scope provider also needs a clean startup pass to:
-- reload the project list
+`resync_sessions()` refreshes backend data, but frontend providers also need a fresh startup pass to:
+- reload project lists
 - validate persisted scope
-- clear a scope whose `project_path` no longer exists
+- clear a stale scope if the backing project disappeared
 
-That is why `handle_sync()` in `src/app.tsx` ends with `window.location.reload()`.
-It is not just convenience.
+So the full reload is deliberate, not just expedient.
 
 ---
 
-## 7. Usage is a route-local analytics workspace, not a pile of unrelated pages
+## 8. Usage is a route-local analytics workspace, not a pile of tabs
 
 The Usage surface is organized as a layout route under `src/pages/usage/`.
 
-### Current pattern
+`src/pages/usage/layout.tsx` owns:
+- tab navigation
+- shared loading
+- route-level context
+- conditional file-stats loading when a project is scoped
 
-`src/pages/usage/layout.tsx`:
-- reads global project scope + global time range
-- fetches shared route data in one place
-- conditionally fetches file analytics only when a project is scoped
-- exposes the loaded payloads via `UsageProvider`
-
-The tab pages (`cost-tab.tsx`, `tools-tab.tsx`, `patterns-tab.tsx`, `files-tab.tsx`) are mostly presentational.
-
-### Why this design matters
+### Why this matters
 
 Without a route-level loader/context, each tab would either:
 - duplicate fetch logic
-- refetch the same analytics payloads independently
-- or push too much state into the app shell
+- refetch the same payloads
+- or force unrelated state upward into the app shell
 
 The current layout keeps data ownership aligned with route ownership.
 
 ---
 
-## 8. File analytics was redesigned around a unified file-insight model
+## 9. QMD is still intentionally hybrid
 
-The Usage Files tab used to rely mainly on separate read/edit/write arrays.
+Ariadne's QMD integration remains split between:
+- direct backend SQLite reads for dashboard-like state
+- a managed QMD bridge process for write/search behavior
 
-It now has a more durable shared model in `src/lib/file-analytics.ts`:
-- `FileInsight`
-- `OperationLens`
-- helpers for lens values, intensity, percentages, and file-size enrichment
+### Why not move everything into the backend process?
 
-### Why this matters
+The QMD SDK behavior already exists in TypeScript and is more naturally preserved in a dedicated process.
 
-The Files tab now drives multiple visualizations from one conceptual record:
-- treemap
-- imbalance chart
-- session breadth chart
-- size vs activity scatter
-- grid/table lookup
+### Why not move everything through the bridge?
 
-This avoids re-deriving different file views in each component from scratch.
+Some reads are cheaper and more transparent to perform directly from SQLite:
+- index discovery
+- status
+- collection metadata
+- indexed paths
 
-### Important design choices
-
-- **operation lens** (`all | read | edit | write`) is owned by `files-tab.tsx`, not by individual charts
-- backend now returns **`file_insights` with `distinct_session_count`** so cross-session breadth is not reconstructed ad hoc in the frontend
-- file sizes are fetched separately via `get_file_sizes()` so the main analytics response stays fast
-
-### Consequence
-
-The Files tab is best thought of as a **small analytics workspace** with shared filters and multiple synchronized views, not as a single chart page.
+That split keeps status views fast while preserving SDK-native behavior for operations that actually mutate or search.
 
 ---
 
-## 9. QMD uses a hybrid backend on purpose
+## 10. One active QMD bridge process is still the right model
 
-Ariadne's QMD integration is intentionally split between:
-- **direct Rust SQLite reads** for status and dashboard-like reads
-- **a TypeScript sidecar** for mutations, search, and progress-aware operations
-
-### Why not do everything in Rust?
-
-The QMD SDK is TypeScript-native and exposes the write/search behaviors Ariadne needs.
-
-### Why not do everything through the sidecar?
-
-Some dashboard reads are simpler and cheaper to perform directly from SQLite in Rust.
-That keeps the UI responsive and avoids paying process / SDK overhead for every collection/status read.
-
-### Where the split lives
-
-- Rust read path: `src-tauri/src/commands/qmd.rs`
-- sidecar manager: `src-tauri/src/sidecar.rs`
-- sidecar implementation: `src-sidecar/qmd-bridge.ts`
-
-### Practical rule
-
-If you are changing:
-- **status, collection lists, index metadata** -> start in Rust/SQLite command code
-- **reindex, embed, search, file toggles, progress streaming** -> start in the sidecar path
-
----
-
-## 10. Multi-index support is route-level, not process-level fan-out
-
-QMD indexes are modeled as named workspaces (`/qmd/:index`), but Ariadne still keeps **one sidecar process**.
-
-### Design choice
-
-The sidecar opens one index at a time and switches via `switch_index`.
+Ariadne keeps one managed bridge process and switches indexes inside it.
 
 ### Why
 
 This avoids:
 - process sprawl
-- duplicated model/runtime overhead
-- more complicated progress/event routing
+- duplicated runtime overhead
+- harder progress routing
+- more complicated lifecycle management
 
-The router expresses the active index in the URL, while the sidecar expresses it as the currently opened db path.
-
-That separation is important:
-- the **URL** is the user-facing navigation state
-- the **sidecar current index** is the runtime execution state
-
----
-
-## 11. QMD search is designed for observability, not just results
-
-The QMD search UI does not only return hits. It exposes the pipeline.
-
-### Current path
-
-- frontend trigger/modal: `src/components/qmd-search-modal.tsx`
-- frontend hook/event glue: `src/hooks/use-qmd-operation.ts`
-- backend command: `qmd_search` in `src-tauri/src/commands/qmd.rs`
-- sidecar implementation: `search` handler in `src-sidecar/qmd-bridge.ts`
-
-### Important design choice
-
-The sidecar emits progress stages for search expansion and search execution, then returns expanded queries, timing, and result traces.
-
-That matches Ariadne's product philosophy: the user should be able to see **how** the search happened, not just the final ranked list.
+The URL expresses user-facing index state.
+The bridge expresses runtime execution state.
+Those are related, but they are not the same thing.
 
 ---
 
-## 12. QMD logs is a separate observability pipeline, not a QMD dashboard add-on
+## 11. QMD search is designed to show the pipeline, not only the result
 
-The `/qmd/logs` page is built from session logs, not from QMD's own database.
+Ariadne's QMD search UI does not just return hits.
+
+It also exposes:
+- expanded queries
+- progress stages
+- timings
+- traces when available
+
+### Why
+
+Ariadne is an observation layer. Showing how a search happened is part of the product value, not just an implementation detail.
+
+That is why progress events and pipeline metadata are important to preserve.
+
+---
+
+## 12. QMD logs is a separate observability pipeline
+
+The `/qmd/logs` page is built from pi session logs, not from QMD's database.
 
 ### Why the separate cache exists
 
-Parsing session logs for QMD CLI calls is conceptually related to Ariadne's observation mission, but it is **not** part of Overview / Sessions / Usage startup.
+QMD CLI observability is related to Ariadne's mission, but it should not increase the startup cost of Overview, Sessions, or Usage.
 
 So Ariadne keeps:
-- `SessionCache` for analytics
-- `QmdLogCache` for QMD CLI observability
+- `session_cache` for analytics
+- `qmd_log_cache` for QMD CLI observability
 
-### What the parser actually does
+### Why this matters
 
-`src-tauri/src/parser/qmd_logs.rs`:
-- scans assistant `bash` tool calls
-- detects `qmd` CLI invocations, including env-var-prefixed forms
-- correlates tool calls with later `toolResult` messages using the tool-call block `id` and the result `toolCallId`
-- extracts raw command text, subcommand guesses, collection/index hints, and output
-
-### Why this design is valuable
-
-It gives Ariadne a feedback loop about documentation and knowledge-base quality without requiring any new agent instrumentation.
+It gives Ariadne a way to inspect agent knowledge-work behavior without requiring new instrumentation in pi or QMD.
 
 ---
 
-## 13. Documentation should point to code boundaries, not duplicate them
+## 13. Provider limits is intentionally not "just more analytics"
 
-Ariadne's docs are now meant to follow the same design philosophy as the app:
-- `ARCHITECTURE.md` gives the map
-- `DESIGN.md` explains non-obvious choices
-- focused docs cover page structure or integrations
-- code remains the implementation source of truth
+Provider limits is a live-state subsystem.
 
-When updating docs, read `docs/documentation-maintenance.md` first.
+It answers a different question from session analytics:
+- analytics asks what happened in past sessions
+- provider limits asks what quota remains right now
+
+### Consequence
+
+It has its own cache, source-confidence model, freshness model, and fallback behavior.
+
+That is why it lives in `backend/provider-limits/` rather than inside analytics.
+
+---
+
+## 14. Migration-era parity artifacts are still valuable, but they are historical
+
+Ariadne still keeps migration fixtures, goldens, and parity tests because they are useful as regression protection and historical context.
+
+But they are no longer the current runtime architecture.
+
+### Important documentation rule
+
+Current docs should describe the Electron + TypeScript backend as the live system.
+Legacy migration material should stay clearly historical or be removed when it stops helping.
 
 ---
 
@@ -364,9 +333,11 @@ When updating docs, read `docs/documentation-maintenance.md` first.
 | Question | Read |
 |---|---|
 | How are routes and shared shell behavior wired? | `src/router.tsx`, `src/app.tsx` |
-| How does project/time scope work? | `src/components/project-scope-provider.tsx`, `src/components/analytics-time-range-provider.tsx` |
+| How does the desktop boundary work? | `src/platform/*`, `electron/preload/index.ts`, `electron/main/ipc-router.ts` |
+| How does backend supervision work? | `electron/main/backend-supervisor.ts`, `backend/runtime/protocol.ts` |
+| How does session parsing/aggregation work? | `backend/analytics/session-parser.ts`, `backend/analytics/session-cache.ts` |
+| How does replay loading work? | `backend/analytics/replay-loader.ts`, `src/components/session-viewer/` |
 | How does Usage share data? | `src/pages/usage/layout.tsx`, `src/pages/usage/usage-context.tsx` |
-| How does session parsing/aggregation work? | `src-tauri/src/parser/session.rs`, `src-tauri/src/cache.rs` |
-| How does session replay work? | `src/components/session-viewer/` |
-| How does QMD integration work? | `src-tauri/src/commands/qmd.rs`, `src-tauri/src/sidecar.rs`, `src-sidecar/qmd-bridge.ts` |
-| How do QMD logs work? | `src-tauri/src/parser/qmd_logs.rs`, `src-tauri/src/qmd_log_cache.rs`, `src/pages/qmd-logs.tsx` |
+| How does QMD integration work? | `backend/qmd/sqlite-read-service.ts`, `backend/qmd/bridge/`, `src-sidecar/qmd-bridge.ts` |
+| How do QMD logs work? | `backend/qmd-logs/parser.ts`, `backend/qmd-logs/cache.ts`, `src/pages/qmd-logs.tsx` |
+| How do provider limits work? | `backend/provider-limits/cache.ts`, `backend/provider-limits/codex.ts` |

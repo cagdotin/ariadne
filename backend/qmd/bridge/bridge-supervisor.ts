@@ -1,6 +1,6 @@
 // ---- BridgeSupervisor: manages the QMD bridge child process lifecycle -------
 //
-// Faithful port of QmdSidecar from src-tauri/src/sidecar.rs.
+// Faithful port of the prior QMD bridge supervisor from the legacy QMD bridge supervisor.
 // Ensures one active bridge process, handles index switching, and delegates
 // JSON-RPC calls through the BridgeClient.
 
@@ -73,7 +73,7 @@ export class BridgeSupervisor {
 
   /**
    * Ensure the bridge process is running. Spawns it if not.
-   * Matches Rust QmdSidecar::ensure_running.
+   * Matches Rust the prior QMD bridge supervisor::ensure_running.
    */
   async ensure_running(): Promise<void> {
     // Check if existing client is still alive
@@ -120,7 +120,7 @@ export class BridgeSupervisor {
   /**
    * Ensure the bridge has the specified index open.
    * Sends switch_index if the current index differs.
-   * Matches Rust QmdSidecar::ensure_index.
+   * Matches Rust the prior QMD bridge supervisor::ensure_index.
    */
   async ensure_index(db_path: string): Promise<void> {
     await this.ensure_running();
@@ -133,7 +133,7 @@ export class BridgeSupervisor {
 
   /**
    * Send a JSON-RPC call to the bridge and return the result.
-   * Matches Rust QmdSidecar::call_blocking.
+   * Matches Rust the prior QMD bridge supervisor::call_blocking.
    */
   async call(
     method: string,
@@ -145,7 +145,7 @@ export class BridgeSupervisor {
 
   /**
    * Send a JSON-RPC call with progress event forwarding.
-   * Matches Rust QmdSidecar::call_with_progress_blocking.
+   * Matches Rust the prior QMD bridge supervisor::call_with_progress_blocking.
    */
   async call_with_progress(
     method: string,
@@ -162,7 +162,7 @@ export class BridgeSupervisor {
 
   /**
    * Shutdown the bridge process.
-   * Matches Rust QmdSidecar::shutdown.
+   * Matches Rust the prior QMD bridge supervisor::shutdown.
    */
   shutdown(): void {
     if (this.client) {

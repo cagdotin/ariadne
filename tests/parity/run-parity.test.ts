@@ -1,9 +1,9 @@
 /**
- * Parity comparison harness for the Tauri → Electron migration.
+ * Parity comparison harness for the current backend.
  *
- * Each test compares the Node backend output against golden files
- * produced by the Rust backend. All tests are skipped until the
- * corresponding backend module is ported.
+ * Each test compares current Node backend output against frozen legacy goldens.
+ * Most subsystems now run by default; QMD SQLite parity remains skipped under
+ * Bun because better-sqlite3 does not load in Bun's test runner.
  */
 
 import { describe, test, expect, beforeAll } from "bun:test";
@@ -18,7 +18,7 @@ import {
 } from "./normalize";
 
 // ─── Backend readiness flags ─────────────────────────────────────────────────
-// When a backend module is ported, change the corresponding flag to true.
+// QMD remains runtime-gated because better-sqlite3 cannot run under Bun tests.
 
 // better-sqlite3 is a Node native addon that doesn't load under Bun's test runner.
 // QMD SQLite tests must run under Node, or be skipped in Bun.

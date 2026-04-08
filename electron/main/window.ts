@@ -1,36 +1,54 @@
 import { BrowserWindow } from "electron";
-import path from "node:path";
+import {
+  is_dev,
+  get_preload_path,
+  get_renderer_dev_url,
+  get_renderer_index_path,
+} from "./paths.js";
 
-const is_dev = process.env.NODE_ENV === "development";
+const should_open_devtools = process.env.ARIADNE_OPEN_DEVTOOLS === "1";
 
 let main_window: BrowserWindow | null = null;
 
-export function create_window(): BrowserWindow {
-  const preload_path = path.join(
-    __dirname,
-    "..",
-    "..",
-    "preload",
-    "dist",
-    "index.js",
-  );
+function is_allowed_navigation(url: string): boolean {
+  if (is_dev) {
+    return url.startsWith(get_renderer_dev_url());
+  }
 
+  return url.startsWith("file://");
+}
+
+export function create_window(): BrowserWindow {
   main_window = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      preload: preload_path,
+      preload: get_preload_path(),
     },
   });
 
+  main_window.once("ready-to-show", () => {
+    main_window?.show();
+  });
+
+  main_window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  main_window.webContents.on("will-navigate", (event, url) => {
+    if (!is_allowed_navigation(url)) {
+      event.preventDefault();
+    }
+  });
+
   if (is_dev) {
-    main_window.loadURL("http://localhost:1420");
-    main_window.webContents.openDevTools();
+    main_window.loadURL(get_renderer_dev_url());
+    if (should_open_devtools) {
+      main_window.webContents.openDevTools();
+    }
   } else {
-    main_window.loadFile(path.join(__dirname, "..", "..", "dist", "index.html"));
+    main_window.loadFile(get_renderer_index_path());
   }
 
   main_window.on("closed", () => {

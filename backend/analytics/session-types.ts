@@ -1,6 +1,6 @@
 /**
  * TypeScript types for session analytics, faithfully ported from
- * src-tauri/src/models/session.rs.
+ * the shared session summary model.
  *
  * These types are structurally compatible with the Zod schemas in
  * contracts/sessions/summary.ts.

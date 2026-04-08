@@ -1,7 +1,7 @@
 // ---- BridgeClient: JSON-RPC over stdin/stdout with a child process ----------
 //
 // Faithful port of the send_and_read / send_and_read_with_progress methods
-// from src-tauri/src/sidecar.rs.
+// from the legacy QMD bridge supervisor.
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface, type Interface as ReadlineInterface } from "node:readline";
@@ -31,7 +31,7 @@ export class BridgeClient {
 
   /**
    * Spawn the bridge child process.
-   * Matches the Rust spawn logic in QmdSidecar::ensure_running.
+   * Matches the Rust spawn logic in the prior QMD bridge supervisor::ensure_running.
    */
   spawn(
     script_path: string,

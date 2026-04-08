@@ -1,6 +1,6 @@
 /**
  * Session filtering — faithful port of
- * src-tauri/src/cache.rs :: session_matches() / filter_sessions()
+ * the legacy analytics cache implementation :: session_matches() / filter_sessions()
  */
 
 import type { SessionSummary } from "./session-types.js";

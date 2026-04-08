@@ -1,6 +1,6 @@
 /**
  * Session replay loader — faithful port of
- * src-tauri/src/cache.rs :: SessionCache::get_session_entries()
+ * the analytics session cache.::get_session_entries()
  */
 
 import * as fs from "node:fs";

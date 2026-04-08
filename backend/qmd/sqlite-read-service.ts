@@ -1,4 +1,4 @@
-// ---- QMD SQLite read service (ported from src-tauri/src/commands/qmd.rs) ----
+// ---- QMD SQLite read service (ported from the legacy QMD command layer) ----
 
 import fs from "node:fs";
 import path from "node:path";

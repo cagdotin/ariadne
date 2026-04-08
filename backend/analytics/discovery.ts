@@ -1,6 +1,6 @@
 /**
  * Session file discovery — faithful port of
- * src-tauri/src/parser/discovery.rs :: discover_session_files()
+ * the session-file discovery logic.
  */
 
 import * as fs from "node:fs";

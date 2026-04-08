@@ -1,6 +1,6 @@
 /**
  * Project file stats aggregation — faithful port of
- * src-tauri/src/cache.rs :: SessionCache::get_project_file_stats()
+ * the file-stats aggregation logic.
  */
 
 import * as path from "node:path";

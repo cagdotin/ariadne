@@ -1,6 +1,6 @@
 /**
  * QMD command detection and parsing — faithful port of
- * src-tauri/src/parser/qmd_logs.rs command-related functions.
+ * the QMD command parsing helpers.
  */
 
 /** Known QMD subcommands. */

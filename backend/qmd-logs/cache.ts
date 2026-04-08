@@ -1,6 +1,6 @@
 /**
  * QMD log cache — faithful port of
- * src-tauri/src/qmd_log_cache.rs :: QmdLogCache
+ * the QMD log cache implementation.
  */
 
 import type { QmdLogEntry, QmdLogStats } from "../../contracts/qmd-logs/entries.js";

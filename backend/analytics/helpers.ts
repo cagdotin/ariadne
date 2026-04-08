@@ -1,6 +1,6 @@
 /**
  * Static helpers — faithful port of utility functions from
- * src-tauri/src/cache.rs
+ * the legacy analytics cache implementation
  */
 
 import * as fs from "node:fs";

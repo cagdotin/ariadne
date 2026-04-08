@@ -1,6 +1,6 @@
 /**
  * Analytics overview aggregation — faithful port of
- * src-tauri/src/cache.rs :: SessionCache::get_analytics_overview()
+ * the analytics-overview aggregation logic.
  */
 
 import type { SessionSummary } from "../session-types.js";

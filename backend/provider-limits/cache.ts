@@ -1,4 +1,4 @@
-// ---- Provider limits cache (faithful port of src-tauri/src/provider_limits/cache.rs) ----
+// ---- Provider limits cache (faithful port of the legacy provider-limits cache) ----
 
 import type {
   ProviderLimitSnapshot,

@@ -1,6 +1,6 @@
 # Parity Test Harness
 
-Temporary parity harness for the Tauri to Electron migration. Compares Node backend output against golden files produced by the Rust backend to ensure behavioral equivalence.
+Parity harness for the current backend. It compares Node backend output against frozen legacy goldens to guard against regressions.
 
 ## Running
 
@@ -16,33 +16,29 @@ TZ=UTC bun test tests/parity/
 
 ## Status
 
-All tests are **skipped** until the corresponding backend modules are ported. Each subsystem has a readiness flag in `run-parity.test.ts`:
+Current status in `run-parity.test.ts`:
 
-```typescript
-const BACKEND_READY = {
-  analytics: false,
-  replay: false,
-  qmd: false,
-  qmd_logs: false,
-  provider_limits: false,
-};
-```
+- analytics: enabled
+- replay: enabled
+- qmd-logs: enabled
+- provider-limits: enabled
+- qmd: skipped under Bun because `better-sqlite3` does not load in Bun's test runner
 
-To enable tests for a subsystem, set its flag to `true`.
+So `bun run test:parity` currently validates most backend surfaces, while QMD SQLite parity remains a runtime-specific gap.
 
 ## How it works
 
 1. Each test calls the Node backend function with the same parameters used to generate the golden file.
-2. Both the actual output and the golden file are normalized (key sorting, unstable field redaction) using identical logic ported from `src-tauri/tests/golden_capture.rs`.
+2. Both the actual output and the golden file are normalized using the same rules that were used when the original goldens were recorded.
 3. The test asserts deep equality between normalized actual and normalized golden.
 4. Each test also validates the backend response against its Zod schema from `contracts/`.
 
 ## Related
 
 - [Migration Contract Freeze and Parity Harness spec](../../docs/specs/2026-03-28-migration-contract-freeze-and-parity-harness.md)
-- [Rust golden capture](../../src-tauri/tests/golden_capture.rs)
+- Frozen goldens and fixture manifest under `fixtures/migration/golden/`
 - [Golden files](../../fixtures/migration/golden/)
 
 ## When to delete
 
-After the Electron migration is complete and the Tauri backend is removed, this entire `tests/parity/` directory can be deleted.
+This harness is still useful as a regression suite for the current backend. Remove it only if it is replaced by a more permanent backend test layer.

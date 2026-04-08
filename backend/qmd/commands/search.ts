@@ -1,6 +1,6 @@
 // ---- QMD search command: hybrid search via bridge with progress streaming ----
 //
-// Faithful port of qmd_search from src-tauri/src/commands/qmd.rs.
+// Faithful port of qmd_search from the legacy QMD command layer.
 
 import { register_handler } from "../../runtime/request-router.js";
 import { resolve_index_db_path } from "../index-paths.js";

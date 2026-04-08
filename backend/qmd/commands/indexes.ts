@@ -1,4 +1,4 @@
-// ---- QMD index management commands (ported from src-tauri/src/commands/qmd.rs)
+// ---- QMD index management commands (ported from the legacy QMD command layer)
 
 import fs from "node:fs";
 

@@ -1,9 +1,9 @@
 /**
  * Normalization helpers for parity testing.
  *
- * These functions are a faithful TypeScript port of the Rust normalizations
- * in `src-tauri/tests/golden_capture.rs`. They must produce identical output
- * so that golden file comparisons succeed.
+ * These functions mirror the normalization rules used when the frozen golden
+ * files were recorded. They must produce identical output so that golden file
+ * comparisons succeed.
  */
 
 // ─── Primitives ──────────────────────────────────────────────────────────────

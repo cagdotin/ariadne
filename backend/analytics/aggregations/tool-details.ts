@@ -1,6 +1,6 @@
 /**
  * Tool detail aggregation — faithful port of
- * src-tauri/src/cache.rs :: SessionCache::get_tool_details()
+ * the tool-details aggregation logic.
  */
 
 import type { SessionSummary } from "../session-types.js";

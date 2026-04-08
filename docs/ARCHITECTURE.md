@@ -1,69 +1,72 @@
 # ARCHITECTURE
 
 Status: active  
-Last updated: 2026-03-28
+Last updated: 2026-04-08
 
-This document explains Ariadne's **system shape**.
+This document explains Ariadne's current system shape.
 
 Use it to answer:
-- what the major subsystems are
-- how data flows through the app
-- where important boundaries live
+- what the major runtime surfaces are
+- where the important boundaries live
+- how data moves through the app
 - which invariants are worth protecting
 
-It should **not** mirror the file tree. Agents and contributors can inspect the current tree directly with code tools.
-
-For design rationale, see `docs/DESIGN.md`. For page structure and navigation, see `docs/information-architecture.md`.
+For design rationale, see `docs/DESIGN.md`. For route/page structure, see `docs/information-architecture.md`.
 
 ---
 
 ## Bird's-eye view
 
-Ariadne is a **desktop observation layer for AI coding agents**.
+Ariadne is an **Electron desktop application** for observing AI coding-agent activity.
 
-It is a **Tauri v2 application** with:
-- a **Rust backend** that discovers and parses pi session logs, aggregates analytics, reads QMD SQLite state, and manages a QMD sidecar process
-- a **React frontend** that renders analytics, session replay, QMD management, and QMD logs observability
-- a **TypeScript sidecar** that wraps the QMD SDK for mutations, search, progress streaming, and file-level index control
+It currently ships with five meaningful runtime layers:
+- a **React renderer** in `src/`
+- an **Electron preload bridge** in `electron/preload/`
+- a **thin Electron main process** in `electron/main/`
+- a **Node/TypeScript backend service** in `backend/`
+- a **QMD bridge child process** in `src-sidecar/`
 
 ### Current product surfaces
 
-Ariadne currently ships four major surfaces:
-- **Overview** — high-level session / cost / token / project pulse
-- **Sessions** — browsable session list plus full session replay
+Ariadne currently exposes:
+- **Overview** — high-level session, cost, token, and project pulse
+- **Sessions** — session browsing plus full replay
 - **Usage** — cost, tools, patterns, and scoped file analytics
-- **QMD** — index / collection management, search, and QMD CLI observability via `/qmd/logs`
+- **QMD** — index / collection management and hybrid search
+- **QMD Logs** — observability over agent QMD CLI usage
+- **Provider limits** — sidebar and page-level quota snapshots
 
 ### Core data sources
 
 - **pi session JSONL files** under `~/.pi/agent/sessions/**/*.jsonl`
 - **QMD SQLite indexes** under `~/.cache/qmd/*.sqlite`
-- **filesystem paths** referenced by QMD collections and file analytics
+- **Codex session/app-server data** under `~/.codex`
+- **filesystem paths** referenced by collections and file analytics
 
 ---
 
 ## Runtime model
 
 ```text
-React frontend
-  -> calls typed IPC wrappers
-  -> validates responses with Zod
-  -> renders route surfaces and interaction state
-
-Rust backend
-  -> discovers and parses session logs
-  -> aggregates analytics in memory
-  -> serves session replay payloads
-  -> reads QMD SQLite directly for dashboard/state reads
-  -> manages one long-lived QMD sidecar for writes/search/progress
-  -> builds a separate lazy cache for QMD log observability
-
-QMD sidecar
-  -> wraps the QMD TypeScript SDK
-  -> opens one index at a time
-  -> handles mutation/search/file-toggle behavior
-  -> streams progress back through Tauri events
+React renderer
+  -> src/platform/* adapters
+  -> window.ariadne preload API
+  -> Electron ipcMain bridge
+  -> Node backend child process
+       -> analytics/session modules
+       -> QMD SQLite read service
+       -> QMD log cache
+       -> provider limits cache
+       -> QMD bridge child process for write/search operations
 ```
+
+### Ownership split
+
+- **Renderer** owns fetching, Zod validation, UI state, and presentation
+- **Preload** owns the explicit desktop capability surface exposed to the renderer
+- **Electron main** owns lifecycle, windows, dialogs, backend supervision, and event fan-out
+- **Backend** owns parsing, aggregation, SQLite reads, provider-limit fetching, and cache lifecycles
+- **QMD bridge** owns SDK-native QMD mutations, search, and progress-aware operations
 
 ---
 
@@ -71,110 +74,130 @@ QMD sidecar
 
 ### 1. App shell and navigation
 
-The app shell lives at the root of the frontend and owns:
-- sidebar navigation
-- header controls
-- breadcrumbs
-- global project scope
-- global analytics time range
-
-Start with:
+The app shell lives in:
 - `src/app.tsx`
 - `src/router.tsx`
 
-### 2. Analytics pipeline
+It owns:
+- sidebar navigation
+- breadcrumbs
+- global project scope
+- global analytics time range
+- sync action
+- provider limits sidebar card
+
+### 2. Desktop boundary
+
+The renderer never talks directly to Electron or Node primitives.
+
+The boundary is:
+- renderer adapters: `src/platform/`
+- preload API: `electron/preload/index.ts`
+- main-process router: `electron/main/ipc-router.ts`
+
+Start here when changing desktop capabilities:
+- `electron/preload/index.ts`
+- `electron/preload/ariadne.d.ts`
+- `electron/main/ipc-router.ts`
+- `contracts/channels.ts`
+
+### 3. Backend process model
+
+Electron main supervises one backend child process.
+
+Start here:
+- `electron/main/backend-supervisor.ts`
+- `backend/index.ts`
+- `backend/runtime/protocol.ts`
+- `backend/runtime/request-router.ts`
+- `backend/runtime/event-bus.ts`
+
+### 4. Analytics pipeline
 
 The analytics path is:
 
 ```text
 session JSONL files
-  -> discovery/parsing in Rust
-  -> `SessionCache`
-  -> Tauri commands
-  -> typed frontend API wrappers
-  -> route pages / charts / tables
+  -> backend/analytics/discovery.ts
+  -> backend/analytics/session-parser.ts
+  -> backend/analytics/session-cache.ts
+  -> aggregation/query helpers
+  -> preload command bridge
+  -> src/api/analytics.ts
+  -> route pages and charts
 ```
 
-Important ownership split:
-- Rust owns parsing and aggregation
-- frontend owns fetching, validation, and presentation
-
 Start with:
-- `src-tauri/src/parser/session.rs`
-- `src-tauri/src/cache.rs`
-- `src-tauri/src/commands/analytics.rs`
+- `backend/analytics/session-cache.ts`
+- `backend/analytics/aggregations/`
+- `backend/analytics/query.ts`
 - `src/api/analytics.ts`
-- `src/schemas/analytics.ts`
 
-### 3. Session replay pipeline
+### 5. Session replay pipeline
 
-Session replay is intentionally separate from summary analytics.
+Replay is separate from summary analytics.
 
 The replay path is:
 
 ```text
 raw session entries
-  -> on-demand backend fetch
-  -> branch/path shaping in the replay subsystem
-  -> tree + conversation + sidebar rendering
+  -> backend/analytics/replay-loader.ts
+  -> src/api/analytics.ts#get_session_entries()
+  -> src/components/session-viewer/
 ```
 
 Start with:
+- `backend/analytics/replay-loader.ts`
 - `src/pages/session-detail.tsx`
-- `src/pages/scoped-session-detail.tsx`
 - `src/components/session-viewer/`
 
-### 4. Usage workspace
+### 6. Usage workspace
 
-Usage is a route-local analytics workspace with shared loading and tab-level presentation.
-
-Important design boundary:
-- global project scope and time range are app-level selections
-- Usage data itself is route-local shared state
+Usage is a route-local analytics workspace with shared loading.
 
 Start with:
 - `src/pages/usage/layout.tsx`
 - `src/pages/usage/usage-context.tsx`
 - `src/pages/usage/*`
 
-### 5. QMD management path
+### 7. QMD management path
 
 QMD uses a hybrid backend.
-
-The management path is:
-
-```text
-frontend QMD pages
-  -> Rust read commands for status/collection/index reads
-  -> sidecar-backed commands for mutations/search/progress/file toggles
-```
-
-Start with:
-- `src/pages/qmd.tsx`
-- `src/pages/qmd-collection.tsx`
-- `src-tauri/src/commands/qmd.rs`
-- `src-tauri/src/sidecar.rs`
-- `src-sidecar/qmd-bridge.ts`
-
-### 6. QMD logs observability path
-
-QMD logs is a separate observation pipeline built from session logs, not from the QMD database.
 
 The path is:
 
 ```text
-session JSONL files
-  -> QMD CLI extraction parser
-  -> lazy `QmdLogCache`
-  -> QMD logs endpoints
-  -> `/qmd/logs` page and badge UI
+frontend QMD pages
+  -> backend/qmd/sqlite-read-service.ts for status/read views
+  -> backend/qmd/bridge/* + src-sidecar/qmd-bridge.ts for mutations/search
 ```
 
 Start with:
-- `src-tauri/src/parser/qmd_logs.rs`
-- `src-tauri/src/qmd_log_cache.rs`
-- `src-tauri/src/commands/qmd_logs.rs`
+- `backend/qmd/sqlite-read-service.ts`
+- `backend/qmd/commands.ts`
+- `backend/qmd/bridge/bridge-supervisor.ts`
+- `src-sidecar/qmd-bridge.ts`
+- `src/pages/qmd.tsx`
+
+### 8. QMD logs observability path
+
+QMD logs is a separate observation pipeline built from session logs, not from the QMD database.
+
+Start with:
+- `backend/qmd-logs/cache.ts`
+- `backend/qmd-logs/parser.ts`
+- `backend/qmd-logs/commands.ts`
 - `src/pages/qmd-logs.tsx`
+
+### 9. Provider limits path
+
+Provider limits is a separate live-data subsystem.
+
+Start with:
+- `backend/provider-limits/cache.ts`
+- `backend/provider-limits/codex.ts`
+- `backend/provider-limits/commands.ts`
+- `src/components/provider-limits-provider.tsx`
 
 ---
 
@@ -182,91 +205,101 @@ Start with:
 
 `src/router.tsx` is the source of truth.
 
-At a high level, the route system is organized as:
-- `/` for Overview
-- `/sessions` for session browsing and replay
-- `/usage/*` for the shared analytics workspace
-- `/qmd/*` for QMD management and QMD logs
+At a high level:
+- `/` — Overview
+- `/sessions` — sessions list and replay
+- `/usage/*` — analytics workspace
+- `/qmd/*` — QMD management and logs
 
-Two route-shape details matter architecturally:
-- `/usage` is a **layout route** with shared data loading
-- `/qmd/logs` is a **static route** that must remain distinct from dynamic index routes
-
-For the full route/page map, use `docs/information-architecture.md` or inspect `src/router.tsx` directly.
+Two route details matter architecturally:
+- `/usage` is a layout route with shared data loading
+- `/qmd/logs` is a static route and must remain distinct from `/qmd/:index`
 
 ---
 
 ## Important subsystem boundaries
 
-### 1. Frontend ↔ backend
+### 1. Renderer ↔ desktop boundary
 
-All app data crosses the Tauri boundary through typed wrappers in `src/api/`.
+All renderer-to-desktop calls go through `window.ariadne`.
 
-The frontend:
-- does **not** parse session files directly
-- does **not** read QMD SQLite directly
-- validates structured payloads with Zod before use
+The renderer:
+- does not import Electron directly
+- does not access Node APIs directly
+- uses `src/platform/*` as the only transport abstraction
 
-### 2. Backend ↔ pi session logs
+### 2. Main process ↔ backend boundary
 
-Ariadne is **read-only** with respect to pi session logs.
+Electron main stays thin.
 
-The backend discovers and parses `~/.pi/agent/sessions/**/*.jsonl`, but never modifies them.
+It should own only:
+- app/window lifecycle
+- native dialogs
+- backend supervision
+- IPC fan-out
 
-### 3. Backend ↔ QMD for reads
+It should not own analytics math, QMD SQL, or session parsing.
 
-QMD status and collection/dashboard reads come from **direct SQLite access** in Rust.
+### 3. Backend ↔ pi session logs
 
-This is used for:
+Ariadne is read-only with respect to pi session logs.
+
+The backend may discover and parse session files, but must not mutate them.
+
+### 4. Backend ↔ QMD for reads
+
+Dashboard-like QMD reads come from direct SQLite access in:
+- `backend/qmd/sqlite-read-service.ts`
+
+This covers:
 - index discovery
-- collection/status reads
-- document/indexed-path reads
+- index status
+- collection lists
+- collection detail
+- indexed paths
 
-### 4. Backend ↔ QMD for writes/search
+### 5. Backend ↔ QMD for writes/search
 
-Mutations and hybrid search go through the **QMD sidecar**, not through per-command shelling out.
+Mutations and search go through the managed QMD bridge, not direct shell-outs per command.
 
-This is used for:
-- creating indexes
-- collection/context mutation
-- reindex / embed / cleanup
-- hybrid search
-- filesystem scans
-- file inclusion toggles
+This covers:
+- add/remove/rename collection
+- context changes
+- reindex/embed/cleanup
+- filesystem scan / file toggles
+- hybrid search and progress events
 
-### 5. Analytics cache ↔ QMD log cache
+### 6. Analytics cache ↔ QMD log cache
 
-`SessionCache` and `QmdLogCache` are intentionally separate.
+`session_cache` and `qmd_log_cache` are intentionally separate.
 
-Normal analytics pages should not pay the cost of QMD-log parsing. QMD log extraction is lazy and only runs when QMD logs endpoints are requested.
+Normal analytics pages should not pay the cost of QMD-log parsing.
 
-### 6. Global scope vs route-local state
+### 7. Global scope vs route-local state
 
-Global scope lives in providers at the app root:
+Global selections live near the app root:
 - `ProjectScopeProvider`
 - `AnalyticsTimeRangeProvider`
 
-Route-local shared state lives inside the route that owns it:
+Route-local shared data lives inside the route that owns it:
 - `UsageProvider` inside the Usage layout route
-
-That split matters:
-- project scope and time range are app-level selections
-- usage overview/time/file payloads are usage-route data, not app-global stores
 
 ---
 
 ## Current invariants
 
-1. **Bun is the repo package-manager standard.** Use `bun`, `bun run`, and `bunx` in repo docs and workflows.
-2. **Ariadne is a read-only observer of pi sessions.** It may read and aggregate session files, but must not mutate them.
-3. **Zod guards the IPC boundary.** `src/api/` + `src/schemas/` are the frontend contract for backend payloads.
-4. **Rust model fields and frontend schema fields stay aligned in `snake_case`.** Drift here breaks the app at runtime.
-5. **There is one managed QMD sidecar process at a time.** Indexes switch inside the process via `switch_index`; Ariadne does not run one sidecar per index.
-6. **QMD dashboard reads are SQLite reads; writes/search are sidecar calls.** Do not blur those paths casually — the split is intentional.
-7. **Project identity is path-based, not display-name-based.** `project_name` is presentation only; `project_path` is the stable identity key.
-8. **Analytics time range is global across analytics routes.** Overview, Sessions, Usage, and Tool Detail must agree on the selected range.
-9. **QMD logs are global observability, not index-scoped content.** `/qmd/logs` may parse index metadata from commands, but the route itself is not tied to one selected index.
-10. **Docs should follow progressive disclosure.** `AGENTS.md` -> `docs/README.md` -> `docs/ARCHITECTURE.md` -> `docs/DESIGN.md` -> focused docs -> code. For documentation work, read `docs/documentation-maintenance.md` before editing.
+1. **Bun is the repo package-manager standard.** Use `bun`, `bun run`, and `bunx` in repo workflows.
+2. **Electron preload is the only renderer access point to desktop capabilities.** Do not bypass it.
+3. **Electron main stays thin.** Heavy logic belongs in `backend/`, not in `electron/main/`.
+4. **Ariadne is a read-only observer of pi sessions.** It must never mutate session files.
+5. **Contracts + Zod guard the boundary.** `contracts/` defines shared shapes and `src/api/` validates backend payloads before use.
+6. **There is one supervised backend process at a time.** Request/response correlation lives in the backend supervisor.
+7. **There is one managed QMD bridge process at a time.** Indexes switch inside that process.
+8. **QMD reads and QMD mutations are intentionally split.** SQLite reads live in backend services; mutations/search live in the bridge.
+9. **Project identity is path-based, not display-name-based.** `project_name` is presentation only.
+10. **Analytics time range is global across analytics routes.** Overview, Sessions, Usage, and Tool Detail must agree on the selected range.
+11. **QMD logs are global observability, not index-scoped content.** `/qmd/logs` is not tied to one selected index.
+12. **Current docs must describe the live Electron runtime.** Historical material should be clearly separated or removed.
 
 ---
 
@@ -274,15 +307,16 @@ That split matters:
 
 | Task | Start here |
 |---|---|
-| Add or change a route | `src/router.tsx`, then matching file under `src/pages/` |
 | Change the app shell/header/sidebar | `src/app.tsx` |
-| Change project scope behavior | `src/components/project-scope-provider.tsx`, `src/components/project-scope-selector/` |
-| Change analytics time range behavior | `src/components/analytics-time-range-provider.tsx`, `src/components/analytics-time-range-selector.tsx` |
+| Add or change a route | `src/router.tsx`, then matching page under `src/pages/` |
+| Change renderer-to-desktop transport | `src/platform/*`, `electron/preload/index.ts`, `electron/main/ipc-router.ts` |
+| Change backend process lifecycle | `electron/main/backend-supervisor.ts`, `backend/index.ts` |
+| Change analytics aggregation | `backend/analytics/session-cache.ts`, `backend/analytics/aggregations/` |
+| Change session parsing | `backend/analytics/session-parser.ts` |
+| Change replay loading | `backend/analytics/replay-loader.ts` |
 | Change Usage shared loading | `src/pages/usage/layout.tsx`, `src/pages/usage/usage-context.tsx` |
-| Change session replay | `src/pages/session-detail.tsx`, `src/components/session-viewer/` |
-| Change analytics aggregation | `src-tauri/src/cache.rs` |
-| Change session parsing | `src-tauri/src/parser/session.rs` |
-| Change QMD dashboard reads | `src-tauri/src/commands/qmd.rs` + `src-tauri/src/models/qmd.rs` |
-| Change QMD writes/search/progress | `src-sidecar/qmd-bridge.ts`, `src-tauri/src/sidecar.rs`, `src-tauri/src/commands/qmd.rs` |
-| Change QMD logs extraction | `src-tauri/src/parser/qmd_logs.rs`, `src-tauri/src/qmd_log_cache.rs`, `src/pages/qmd-logs.tsx` |
-| Change doc structure / maps | `docs/README.md`, `docs/documentation-maintenance.md` |
+| Change QMD dashboard reads | `backend/qmd/sqlite-read-service.ts` |
+| Change QMD writes/search/progress | `backend/qmd/bridge/`, `backend/qmd/commands/`, `src-sidecar/qmd-bridge.ts` |
+| Change QMD logs extraction | `backend/qmd-logs/parser.ts`, `backend/qmd-logs/cache.ts`, `src/pages/qmd-logs.tsx` |
+| Change provider limits | `backend/provider-limits/` |
+| Change doc structure or discovery | `docs/README.md`, `docs/documentation-maintenance.md` |

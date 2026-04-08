@@ -1,7 +1,6 @@
 // ---- Backend supervisor: manages the backend child process from Electron main
 
 import { fork, type ChildProcess } from "node:child_process";
-import path from "node:path";
 import crypto from "node:crypto";
 import {
   is_backend_ready,
@@ -11,6 +10,7 @@ import {
   type BackendResponse,
   type BackendErrorResponse,
 } from "../../backend/runtime/protocol.js";
+import { get_backend_entry_path } from "./paths.js";
 
 // ---- State ------------------------------------------------------------------
 
@@ -34,9 +34,7 @@ const REQUEST_TIMEOUT_MS = 30_000;
 
 export function start_backend(): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const backend_entry = path.join(__dirname, "..", "..", "..", "backend", "dist", "index.js");
-
-    backend_process = fork(backend_entry, [], {
+    backend_process = fork(get_backend_entry_path(), [], {
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 

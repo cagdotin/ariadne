@@ -3,7 +3,7 @@
  * Ariadne QMD Bridge — Sidecar process wrapping the QMD SDK.
  *
  * Communicates via newline-delimited JSON over stdin/stdout.
- * Spawned by the Tauri Rust backend; stays alive for the app's lifetime.
+ * Spawned by Ariadne's backend bridge supervisor; stays alive for the app's lifetime.
  *
  * Usage:
  *   bun run qmd-bridge.ts [--db-path <path>]

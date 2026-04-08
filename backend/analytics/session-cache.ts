@@ -1,6 +1,6 @@
 /**
  * Session cache — faithful port of
- * src-tauri/src/cache.rs :: SessionCache
+ * the analytics session cache.
  */
 
 import type { SessionSummary } from "./session-types.js";

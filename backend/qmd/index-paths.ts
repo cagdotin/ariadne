@@ -1,4 +1,4 @@
-// ---- QMD index path resolution (ported from src-tauri/src/commands/qmd.rs) --
+// ---- QMD index path resolution (ported from the legacy QMD command layer) --
 
 import path from "node:path";
 import os from "node:os";

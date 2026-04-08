@@ -1,4 +1,4 @@
-// ---- Codex provider adapter (faithful port of src-tauri/src/provider_limits/codex.rs) ----
+// ---- Codex provider adapter (faithful port of the legacy provider-limits Codex adapter) ----
 
 import { spawn, execSync } from "node:child_process";
 import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";

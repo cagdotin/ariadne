@@ -1,6 +1,6 @@
 /**
  * JSONL session parser — faithful port of
- * src-tauri/src/parser/session.rs :: parse_session_file()
+ * the session parsing logic.
  */
 
 import * as fs from "node:fs";

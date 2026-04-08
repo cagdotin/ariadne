@@ -1,6 +1,6 @@
 // ---- QMD mutation commands: collection/context mutations via bridge ----------
 //
-// Faithful port of the mutation commands from src-tauri/src/commands/qmd.rs.
+// Faithful port of the mutation commands from the legacy QMD command layer.
 // Each handler resolves the index db path, ensures the bridge has that index
 // open, and delegates the operation to the bridge process.
 

@@ -1,7 +1,7 @@
 // ---- QMD file management commands: scan filesystem and toggle files ----------
 //
 // Faithful port of qmd_scan_filesystem and qmd_toggle_files from
-// src-tauri/src/commands/qmd.rs.
+// the legacy QMD command layer.
 
 import Database from "better-sqlite3";
 import fs from "node:fs";

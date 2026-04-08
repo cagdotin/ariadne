@@ -1,6 +1,6 @@
 /**
  * QMD session log parser — faithful port of
- * src-tauri/src/parser/qmd_logs.rs :: parse_qmd_logs_from_session()
+ * the QMD log parsing flow.
  */
 
 import * as fs from "node:fs";

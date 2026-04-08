@@ -25,7 +25,7 @@
 | `src/components/model-distribution.tsx` | 77 | Model distribution chart |
 | `src/components/cost-breakdown.tsx` | 98 | Cost pie chart |
 | `src/components/tool-detail-breakdown.tsx` | 88 | Tool detail breakdown cards |
-| `src/api/analytics.ts` | — | Tauri IPC wrappers |
+| `src/api/analytics.ts` | — | analytics IPC wrappers |
 | `src/main.tsx` | 28 | Entry point |
 
 ---

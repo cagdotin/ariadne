@@ -2,8 +2,7 @@ import { z } from "zod";
 
 // ─── Folder picker ──────────────────────────────────────────────────────────
 // Contract for the directory selection dialog.
-// Currently backed by @tauri-apps/plugin-dialog, will be backed by Electron
-// dialog.showOpenDialog via preload after migration.
+// Backed by Electron's dialog.showOpenDialog through the preload bridge.
 
 export const pick_directory_request_schema = z.object({
   title: z.string(),

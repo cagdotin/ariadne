@@ -1,6 +1,6 @@
 /**
  * Time breakdown aggregation — faithful port of
- * src-tauri/src/cache.rs :: SessionCache::get_time_breakdown()
+ * the time-breakdown aggregation logic.
  */
 
 import { session_cache } from "../session-cache.js";
