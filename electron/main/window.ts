@@ -23,6 +23,8 @@ export function create_window(): BrowserWindow {
     width: 1200,
     height: 800,
     show: false,
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 16, y: 12 },
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
