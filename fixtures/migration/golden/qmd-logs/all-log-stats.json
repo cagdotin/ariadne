@@ -1,0 +1,11 @@
+{
+  "by_subcommand": {
+    "ls": 1,
+    "search": 4,
+    "status": 1
+  },
+  "error_calls": 1,
+  "total_calls": 6,
+  "unique_projects": 1,
+  "unique_sessions": 1
+}

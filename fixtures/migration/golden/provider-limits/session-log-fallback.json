@@ -1,0 +1,35 @@
+{
+  "account_label": null,
+  "credits": {
+    "balance": "$86.25",
+    "has_credits": true,
+    "unlimited": false
+  },
+  "error_message": null,
+  "fetched_at": "__unstable__",
+  "plan_type": "max_5",
+  "provider_id": "codex",
+  "provider_label": "Codex",
+  "source": "codex-session-log",
+  "source_confidence": "medium",
+  "stale_after_seconds": 900,
+  "status": "stale",
+  "windows": [
+    {
+      "id": "primary",
+      "label": "Primary (5h)",
+      "remaining_percent": 55.0,
+      "resets_at": "2025-03-30T18:00:00+00:00",
+      "used_percent": 45.0,
+      "window_minutes": 300
+    },
+    {
+      "id": "secondary",
+      "label": "Secondary (7d)",
+      "remaining_percent": 84.5,
+      "resets_at": "2025-04-06T00:00:00+00:00",
+      "used_percent": 15.5,
+      "window_minutes": 10080
+    }
+  ]
+}

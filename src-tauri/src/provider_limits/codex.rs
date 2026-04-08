@@ -314,9 +314,15 @@ fn normalize_window(id: &str, label: &str, w: &RateLimitWindow) -> ProviderLimit
 // Session log fallback
 // ---------------------------------------------------------------------------
 
-async fn fallback_session_logs() -> Result<ProviderLimitSnapshot, String> {
-    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
-    let sessions_dir = home.join(".codex").join("sessions");
+pub async fn fallback_session_logs() -> Result<ProviderLimitSnapshot, String> {
+    let codex_home = if let Ok(override_home) = std::env::var("ARIADNE_CODEX_HOME") {
+        PathBuf::from(override_home)
+    } else {
+        dirs::home_dir()
+            .ok_or("Cannot determine home directory")?
+            .join(".codex")
+    };
+    let sessions_dir = codex_home.join("sessions");
 
     if !sessions_dir.exists() {
         return Err("~/.codex/sessions does not exist".to_string());

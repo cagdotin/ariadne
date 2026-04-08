@@ -14,6 +14,9 @@ use crate::sidecar::QmdSidecar;
 // ─── INDEX RESOLUTION ───────────────────────────────────────────────────────
 
 fn get_qmd_cache_dir() -> PathBuf {
+    if let Ok(override_root) = std::env::var("ARIADNE_QMD_CACHE_ROOT") {
+        return PathBuf::from(override_root);
+    }
     let base = if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
         PathBuf::from(xdg)
     } else {

@@ -27,12 +27,17 @@ pub struct QmdSidecar {
 }
 
 fn get_default_db_path() -> Option<PathBuf> {
-    let base = if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
-        PathBuf::from(xdg)
+    let qmd_dir = if let Ok(override_root) = std::env::var("ARIADNE_QMD_CACHE_ROOT") {
+        PathBuf::from(override_root)
     } else {
-        dirs::home_dir()?.join(".cache")
+        let base = if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
+            PathBuf::from(xdg)
+        } else {
+            dirs::home_dir()?.join(".cache")
+        };
+        base.join("qmd")
     };
-    let path = base.join("qmd").join("index.sqlite");
+    let path = qmd_dir.join("index.sqlite");
     if path.exists() {
         Some(path)
     } else {

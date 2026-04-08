@@ -1,0 +1,10 @@
+{
+  "event": "qmd:embed-progress",
+  "payload": {
+    "index": "default",
+    "phase": "embedding",
+    "total_chunks": 15,
+    "processed_chunks": 7,
+    "error_count": 0
+  }
+}

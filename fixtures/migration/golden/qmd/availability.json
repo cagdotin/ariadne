@@ -1,0 +1,6 @@
+{
+  "db_path": "<FIXTURE_ROOT>/index.sqlite",
+  "db_size_bytes": "__unstable__",
+  "installed": true,
+  "version": "qmd 2.0.1 (e359a10)"
+}

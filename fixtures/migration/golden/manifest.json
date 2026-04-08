@@ -1,0 +1,194 @@
+[
+  {
+    "command": "get_analytics_overview",
+    "file": "analytics/minimal-overview.json",
+    "fixture_root": "sessions/minimal",
+    "parameters": {
+      "project_path": null,
+      "range_days": 0
+    }
+  },
+  {
+    "command": "get_all_sessions",
+    "file": "analytics/minimal-sessions.json",
+    "fixture_root": "sessions/minimal",
+    "parameters": {
+      "project_path": null,
+      "range_days": 0
+    }
+  },
+  {
+    "command": "get_session_detail",
+    "file": "analytics/minimal-session-detail.json",
+    "fixture_root": "sessions/minimal",
+    "parameters": {
+      "session_id": "aaaaaaaa-0001-0001-0001-000000000001"
+    }
+  },
+  {
+    "command": "get_analytics_overview",
+    "file": "analytics/multi-project-overview-all.json",
+    "fixture_root": "sessions/multi-project",
+    "parameters": {
+      "project_path": null,
+      "range_days": 0
+    }
+  },
+  {
+    "command": "get_analytics_overview",
+    "file": "analytics/multi-project-overview-filtered.json",
+    "fixture_root": "sessions/multi-project",
+    "parameters": {
+      "project_path": "/home/test/project-alpha",
+      "range_days": 0
+    }
+  },
+  {
+    "command": "get_analytics_overview",
+    "file": "analytics/multi-project-overview-ranged.json",
+    "fixture_root": "sessions/multi-project",
+    "parameters": {
+      "project_path": null,
+      "range_days": 36500
+    }
+  },
+  {
+    "command": "get_all_sessions",
+    "file": "analytics/multi-project-sessions.json",
+    "fixture_root": "sessions/multi-project",
+    "parameters": {
+      "project_path": null,
+      "range_days": 0
+    }
+  },
+  {
+    "command": "get_project_file_stats",
+    "file": "analytics/multi-project-file-stats.json",
+    "fixture_root": "sessions/multi-project",
+    "parameters": {
+      "project_path": "/home/test/project-alpha",
+      "range_days": 0
+    }
+  },
+  {
+    "command": "get_time_breakdown",
+    "file": "analytics/multi-project-time-breakdown.json",
+    "fixture_root": "sessions/multi-project",
+    "parameters": {
+      "project_path": null,
+      "range_days": 30
+    }
+  },
+  {
+    "command": "get_tool_details",
+    "file": "analytics/multi-project-tool-details.json",
+    "fixture_root": "sessions/multi-project",
+    "parameters": {
+      "project_path": null,
+      "range_days": 0,
+      "tool_name": "read"
+    }
+  },
+  {
+    "command": "get_file_sizes",
+    "file": "analytics/multi-project-file-sizes.json",
+    "fixture_root": "sessions/multi-project",
+    "parameters": {
+      "paths": [
+        "/home/test/project-alpha/src/utils.ts",
+        "/home/test/project-alpha/src/auth.ts"
+      ]
+    }
+  },
+  {
+    "command": "get_session_entries",
+    "file": "replay/minimal-entries.json",
+    "fixture_root": "sessions/minimal",
+    "parameters": {
+      "session_id": "aaaaaaaa-0001-0001-0001-000000000001"
+    }
+  },
+  {
+    "command": "get_session_entries",
+    "file": "replay/branching-entries.json",
+    "fixture_root": "sessions/branching-replay",
+    "parameters": {
+      "session_id": "aaaaaaaa-0003-0001-0001-000000000001"
+    }
+  },
+  {
+    "command": "qmd_list_indexes",
+    "file": "qmd/list-indexes.json",
+    "fixture_root": "qmd/cache-root",
+    "parameters": {}
+  },
+  {
+    "command": "qmd_get_status",
+    "file": "qmd/default-status.json",
+    "fixture_root": "qmd/cache-root",
+    "parameters": {
+      "index": "default"
+    }
+  },
+  {
+    "command": "qmd_list_collections",
+    "file": "qmd/default-collections.json",
+    "fixture_root": "qmd/cache-root",
+    "parameters": {
+      "index": "default"
+    }
+  },
+  {
+    "command": "qmd_get_collection_detail",
+    "file": "qmd/default-collection-detail.json",
+    "fixture_root": "qmd/cache-root",
+    "parameters": {
+      "index": "default",
+      "name": "docs"
+    }
+  },
+  {
+    "command": "qmd_get_status",
+    "file": "qmd/work-status.json",
+    "fixture_root": "qmd/cache-root",
+    "parameters": {
+      "index": "work"
+    }
+  },
+  {
+    "command": "qmd_check_availability",
+    "file": "qmd/availability.json",
+    "fixture_root": "qmd/cache-root",
+    "parameters": {}
+  },
+  {
+    "command": "get_qmd_logs",
+    "file": "qmd-logs/all-logs.json",
+    "fixture_root": "sessions/qmd-cli",
+    "parameters": {
+      "project_path": null
+    }
+  },
+  {
+    "command": "get_qmd_log_stats",
+    "file": "qmd-logs/all-log-stats.json",
+    "fixture_root": "sessions/qmd-cli",
+    "parameters": {
+      "project_path": null
+    }
+  },
+  {
+    "command": "get_qmd_logs",
+    "file": "qmd-logs/filtered-logs.json",
+    "fixture_root": "sessions/qmd-cli",
+    "parameters": {
+      "project_path": "/home/test/project-alpha"
+    }
+  },
+  {
+    "command": "fallback_session_logs",
+    "file": "provider-limits/session-log-fallback.json",
+    "fixture_root": "provider-limits/codex-session-log",
+    "parameters": {}
+  }
+]

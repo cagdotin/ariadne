@@ -1,0 +1,77 @@
+{
+  "by_date": [
+    {
+      "count": 2,
+      "date": "2026-03-01"
+    },
+    {
+      "count": 2,
+      "date": "2026-03-15"
+    },
+    {
+      "count": 2,
+      "date": "2026-03-20"
+    }
+  ],
+  "by_project": [
+    {
+      "items": [
+        {
+          "count": 2,
+          "name": "/home/test/project-alpha/src/utils.ts"
+        },
+        {
+          "count": 1,
+          "name": "/home/test/project-alpha/src/auth.ts"
+        },
+        {
+          "count": 1,
+          "name": "/home/test/project-alpha/src/routes/api.ts"
+        }
+      ],
+      "project_name": "project-alpha",
+      "project_path": "/home/test/project-alpha",
+      "total_calls": 4
+    },
+    {
+      "items": [
+        {
+          "count": 1,
+          "name": "/home/test/project-beta/package.json"
+        },
+        {
+          "count": 1,
+          "name": "/home/test/project-beta/src/config.ts"
+        }
+      ],
+      "project_name": "project-beta",
+      "project_path": "/home/test/project-beta",
+      "total_calls": 2
+    }
+  ],
+  "items": [
+    {
+      "count": 2,
+      "name": "/home/test/project-alpha/src/utils.ts"
+    },
+    {
+      "count": 1,
+      "name": "/home/test/project-alpha/src/auth.ts"
+    },
+    {
+      "count": 1,
+      "name": "/home/test/project-alpha/src/routes/api.ts"
+    },
+    {
+      "count": 1,
+      "name": "/home/test/project-beta/package.json"
+    },
+    {
+      "count": 1,
+      "name": "/home/test/project-beta/src/config.ts"
+    }
+  ],
+  "tool_name": "read",
+  "total_calls": 6,
+  "total_errors": 0
+}

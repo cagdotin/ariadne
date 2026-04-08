@@ -1,0 +1,25 @@
+{
+  "event": "qmd:search-result",
+  "payload": {
+    "index": "default",
+    "query": "authentication patterns",
+    "results": [
+      {
+        "path": "docs/auth.md",
+        "title": "Authentication Guide",
+        "collection": "docs",
+        "score": 0.92,
+        "snippet": "This document covers authentication patterns."
+      },
+      {
+        "path": "docs/security.md",
+        "title": "Security Best Practices",
+        "collection": "docs",
+        "score": 0.85,
+        "snippet": "Security best practices including authentication."
+      }
+    ],
+    "total_results": 2,
+    "search_time_ms": 42
+  }
+}

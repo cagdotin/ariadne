@@ -1,10 +1,10 @@
-mod models;
-mod parser;
-mod commands;
-mod cache;
+pub mod models;
+pub mod parser;
+pub mod commands;
+pub mod cache;
 mod sidecar;
-mod qmd_log_cache;
-mod provider_limits;
+pub mod qmd_log_cache;
+pub mod provider_limits;
 
 use commands::analytics::{get_analytics_overview, list_projects, get_session_detail, get_all_sessions, resync_sessions, get_tool_details, get_project_file_stats, get_file_sizes, get_time_breakdown, get_session_entries};
 use commands::qmd::{qmd_check_availability, qmd_get_status, qmd_list_collections, qmd_get_collection_detail, qmd_get_collection_documents, qmd_add_collection, qmd_remove_collection, qmd_rename_collection, qmd_add_context, qmd_remove_context, qmd_set_global_context, qmd_reindex, qmd_embed, qmd_cleanup, qmd_scan_filesystem, qmd_get_indexed_paths, qmd_toggle_files, qmd_list_indexes, qmd_create_index, qmd_delete_index, qmd_rename_index, qmd_search};

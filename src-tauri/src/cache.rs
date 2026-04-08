@@ -804,12 +804,14 @@ impl SessionCache {
             .ok_or_else(|| format!("Session with id {} not found", session_id))?;
 
         // Reconstruct the file path from session_dir + file_name
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| "Could not determine home directory".to_string())?;
-        let file_path = home_dir
-            .join(".pi")
-            .join("agent")
-            .join("sessions")
+        let sessions_root = if let Ok(override_root) = std::env::var("ARIADNE_PI_SESSIONS_ROOT") {
+            std::path::PathBuf::from(override_root)
+        } else {
+            dirs::home_dir()
+                .ok_or_else(|| "Could not determine home directory".to_string())?
+                .join(".pi").join("agent").join("sessions")
+        };
+        let file_path = sessions_root
             .join(&session.session_dir)
             .join(&session.file_name);
 

@@ -1,0 +1,15 @@
+{
+  "event": "qmd:update-progress",
+  "payload": {
+    "index": "default",
+    "phase": "scanning",
+    "collection": "docs",
+    "total_files": 10,
+    "processed_files": 3,
+    "new_files": 2,
+    "modified_files": 1,
+    "removed_files": 0,
+    "unchanged_files": 0,
+    "error_count": 0
+  }
+}

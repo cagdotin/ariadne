@@ -1,0 +1,150 @@
+{
+  "avg_session_duration_seconds": 18.0,
+  "avg_turns_per_session": 3.0,
+  "cache_read_cost": 0.0012000000000000001,
+  "cache_read_tokens": 1200,
+  "cache_write_cost": 0.0018,
+  "cache_write_tokens": 450,
+  "cost_by_date": [
+    {
+      "cost": 0.0405,
+      "date": "2026-03-01"
+    }
+  ],
+  "input_cost": 0.013500000000000002,
+  "input_tokens": 4500,
+  "models": [
+    {
+      "message_count": 3,
+      "model_id": "claude-sonnet-4-20250514",
+      "provider": "anthropic",
+      "total_cost": 0.0405
+    }
+  ],
+  "output_cost": 0.024,
+  "output_tokens": 1600,
+  "projects": [
+    {
+      "last_active": "2026-03-01T10:00:00Z",
+      "name": "project-alpha",
+      "path": "/home/test/project-alpha",
+      "session_count": 1,
+      "total_cost": 0.0405,
+      "total_tokens": 7750
+    }
+  ],
+  "recent_sessions": [
+    {
+      "assistant_message_count": 3,
+      "bash_commands": {
+        "grep": 1
+      },
+      "cache_read_cost": 0.0012000000000000001,
+      "cache_read_tokens": 1200,
+      "cache_write_cost": 0.0018,
+      "cache_write_tokens": 450,
+      "compaction_count": 0,
+      "duration_seconds": 18.0,
+      "edit_files": {
+        "/home/test/project-alpha/src/auth.ts": 1
+      },
+      "ended_at": "2026-03-01T10:00:18Z",
+      "file_name": "session-001.jsonl",
+      "file_size_bytes": "__unstable__",
+      "first_user_message": "Fix the login validation bug in auth.ts",
+      "id": "aaaaaaaa-0001-0001-0001-000000000001",
+      "input_cost": 0.013500000000000002,
+      "input_tokens": 4500,
+      "models_used": [
+        {
+          "message_count": 3,
+          "model_id": "claude-sonnet-4-20250514",
+          "provider": "anthropic"
+        }
+      ],
+      "output_cost": 0.024,
+      "output_tokens": 1600,
+      "project_name": "project-alpha",
+      "project_path": "/home/test/project-alpha",
+      "read_files": {
+        "/home/test/project-alpha/src/auth.ts": 1
+      },
+      "session_dir": "%2Fhome%2Ftest%2Fproject-alpha",
+      "started_at": "2026-03-01T10:00:00Z",
+      "title": "Fix login validation",
+      "tool_calls": {
+        "bash": {
+          "calls": 1,
+          "errors": 0,
+          "name": "bash"
+        },
+        "edit": {
+          "calls": 1,
+          "errors": 0,
+          "name": "edit"
+        },
+        "read": {
+          "calls": 1,
+          "errors": 0,
+          "name": "read"
+        }
+      },
+      "tool_result_count": 3,
+      "total_cost": 0.0405,
+      "total_tokens": 7750,
+      "turn_count": 3,
+      "user_message_count": 2,
+      "write_files": {}
+    }
+  ],
+  "sessions_by_date": [
+    {
+      "count": 1,
+      "date": "2026-03-01"
+    }
+  ],
+  "tools": [
+    {
+      "name": "bash",
+      "total_calls": 1,
+      "total_errors": 0
+    },
+    {
+      "name": "edit",
+      "total_calls": 1,
+      "total_errors": 0
+    },
+    {
+      "name": "read",
+      "total_calls": 1,
+      "total_errors": 0
+    }
+  ],
+  "top_bash_commands": [
+    {
+      "count": 1,
+      "name": "grep"
+    }
+  ],
+  "top_edit_files": [
+    {
+      "count": 1,
+      "name": "/home/test/project-alpha/src/auth.ts"
+    }
+  ],
+  "top_read_files": [
+    {
+      "count": 1,
+      "name": "/home/test/project-alpha/src/auth.ts"
+    }
+  ],
+  "top_write_files": [],
+  "total_compactions": 0,
+  "total_cost": 0.0405,
+  "total_file_size_bytes": 3283,
+  "total_projects": 1,
+  "total_sessions": 1,
+  "total_tokens": 7750,
+  "total_tool_calls": 3,
+  "total_tool_errors": 0
+}

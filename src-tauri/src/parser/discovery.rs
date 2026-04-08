@@ -11,10 +11,13 @@ pub struct SessionFile {
 }
 
 pub fn discover_session_files() -> Result<Vec<SessionFile>, String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-    
-    let sessions_dir = home_dir.join(".pi").join("agent").join("sessions");
+    let sessions_dir = if let Ok(override_root) = std::env::var("ARIADNE_PI_SESSIONS_ROOT") {
+        PathBuf::from(override_root)
+    } else {
+        dirs::home_dir()
+            .ok_or_else(|| "Could not determine home directory".to_string())?
+            .join(".pi").join("agent").join("sessions")
+    };
     
     if !sessions_dir.exists() {
         return Ok(Vec::new());
