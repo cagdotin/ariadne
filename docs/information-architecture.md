@@ -56,7 +56,9 @@ Current breadcrumb patterns:
 ```text
 /                      -> Overview
 /sessions              -> Sessions
-/sessions/:id          -> Sessions / {session-id…}
+/sessions/:id          -> Sessions / {session-id…} (redirects to conversation)
+/sessions/:id/conversation -> Sessions / {session-id…}
+/sessions/:id/traces   -> Sessions / {session-id…} / Traces
 /usage/cost            -> Usage / Cost
 /usage/tools           -> Usage / Tools
 /usage/tools/:tool     -> Usage / Tools / {tool}
@@ -129,13 +131,22 @@ It is a **global analytics scope**, persisted in local storage.
 ```text
 /                          Overview
 /sessions                  Sessions list
-/sessions/:id              Session replay detail
+/sessions/:id              Session detail layout (redirects to conversation)
 /usage                     Usage redirect
 /qmd                       Redirect to last/default index
 /qmd/logs                  QMD logs observability
 /qmd/:index                QMD index overview
 /qmd/:index/:collection    QMD collection detail
 ```
+
+### Session detail sub-routes
+
+```text
+/sessions/:id/conversation    Conversation replay (default)
+/sessions/:id/traces          Timeline / traces view
+```
+
+`/sessions/:id` itself redirects to `/sessions/:id/conversation`.
 
 ### Usage sub-routes
 
@@ -194,11 +205,18 @@ It is a **global analytics scope**, persisted in local storage.
 
 ### Session detail (`/sessions/:id`)
 
-**Purpose:** replay a single session as a branch-aware conversation viewer.
+**Purpose:** inspect a single session through multiple lenses.
 
-Current page split:
-- `scoped-session-detail.tsx` = thin scope guard
-- `session-detail.tsx` = actual fetch + render container
+Session detail is a **layout route** with shared data context (`SessionDetailProvider`) and a tab nav switching between sub-views:
+
+- **Conversation** (`/sessions/:id/conversation`) — branch-aware conversation replay via `SessionViewer`
+- **Traces** (`/sessions/:id/traces`) — horizontal swim-lane timeline showing all session events on a time axis, with an inspector panel for selected events
+
+Page split:
+- `session-detail-layout.tsx` = scope guard + data fetch + tab nav + `<Outlet />`
+- `session-detail-context.tsx` = shared context provider
+- `session-detail-conversation.tsx` = renders `SessionViewer` from context
+- `session-detail-traces.tsx` = renders `TracesView` from context
 
 ### What session detail loads
 - `get_session_entries(session_id)`
@@ -206,7 +224,7 @@ Current page split:
 
 ### Important rule
 
-Session detail is the only place where full replay belongs. The main Sessions page should not accrete replay UI.
+Session detail is the only place where full replay and traces belong. The main Sessions page should not accrete replay or trace UI.
 
 ---
 
