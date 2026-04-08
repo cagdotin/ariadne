@@ -19,10 +19,12 @@ import {
   SidebarProvider,
   SidebarInset,
   SidebarRail,
+  SidebarFooter,
   SidebarTrigger,
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
+import { ProviderLimitsSidebarCard } from "@/components/provider-limits-sidebar-card";
 import { Button } from "@/components/ui/button";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -187,6 +189,9 @@ export function AppLayout() {
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
+          <SidebarFooter className="border-t border-sidebar-border p-0">
+            <ProviderLimitsSidebarCard />
+          </SidebarFooter>
           <SidebarRail />
         </Sidebar>
 

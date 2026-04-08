@@ -13,6 +13,7 @@ import { StatCard } from "@/components/stat-card";
 import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { DailyTrend } from "@/components/daily-trend";
 import { TopProjects } from "@/components/top-projects";
+import { ProviderLimitsSummaryCard } from "@/components/provider-limits-summary-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
@@ -171,6 +172,7 @@ export function Dashboard() {
         />
       </div>
 
+      <ProviderLimitsSummaryCard />
       <DailyTrend data={time_data} range_days={range_days} />
       {!scope && <TopProjects projects={overview.projects} />}
       <ActivityHeatmap data={overview.sessions_by_date} />

@@ -2,6 +2,7 @@ import type { AnalyticsOverview, TimeBreakdown } from "@/schemas/analytics";
 import { format_cost, format_tokens, format_number } from "@/lib/format";
 import { CostBreakdown } from "@/components/cost-breakdown";
 import { ModelDistribution } from "@/components/model-distribution";
+import { ProviderLimitsDetail } from "@/components/provider-limits-detail";
 import { MiniStat } from "./mini-stat";
 import { use_usage_context } from "./usage-context";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -161,6 +162,8 @@ export function CostTab({ overview, time_data }: CostTabProps) {
   return (
     <div className="space-y-4">
       <CostStatCards overview={overview} time_data={time_data} />
+
+      <ProviderLimitsDetail />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 min-w-0">
         <CostBreakdown
