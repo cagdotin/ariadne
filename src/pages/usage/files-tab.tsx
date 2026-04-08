@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import type { ProjectFileStats, NameCount } from "@/schemas/analytics";
+import type { ProjectFileStats } from "@contracts/analytics/files";
+import type { NameCount } from "@contracts/shared";
 import { format_number } from "@/lib/format";
 import {
   type OperationLens,

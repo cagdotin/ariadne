@@ -1,4 +1,4 @@
-import type { AnalyticsOverview } from "@/schemas/analytics";
+import type { AnalyticsOverview } from "@contracts/analytics/overview";
 import { format_number } from "@/lib/format";
 import { ToolUsageBar } from "@/components/tool-usage-bar";
 import { ToolDetailBreakdown } from "@/components/tool-detail-breakdown";

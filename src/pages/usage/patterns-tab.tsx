@@ -1,4 +1,4 @@
-import type { TimeBreakdown } from "@/schemas/analytics";
+import type { TimeBreakdown } from "@contracts/analytics/time";
 import { format_number } from "@/lib/format";
 import { MiniStat } from "./mini-stat";
 import { use_usage_context } from "./usage-context";

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import type { AnalyticsOverview, TimeBreakdown, ProjectFileStats } from "@/schemas/analytics";
+import type { AnalyticsOverview } from "@contracts/analytics/overview";
+import type { TimeBreakdown } from "@contracts/analytics/time";
+import type { ProjectFileStats } from "@contracts/analytics/files";
 import {
   get_analytics_overview,
   get_time_breakdown,

@@ -1,5 +1,7 @@
 import { createContext, useContext } from "react";
-import type { AnalyticsOverview, TimeBreakdown, ProjectFileStats } from "@/schemas/analytics";
+import type { AnalyticsOverview } from "@contracts/analytics/overview";
+import type { TimeBreakdown } from "@contracts/analytics/time";
+import type { ProjectFileStats } from "@contracts/analytics/files";
 
 export interface UsageContextValue {
   overview: AnalyticsOverview | null;

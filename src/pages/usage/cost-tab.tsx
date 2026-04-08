@@ -1,4 +1,5 @@
-import type { AnalyticsOverview, TimeBreakdown } from "@/schemas/analytics";
+import type { AnalyticsOverview } from "@contracts/analytics/overview";
+import type { TimeBreakdown } from "@contracts/analytics/time";
 import { format_cost, format_tokens, format_number } from "@/lib/format";
 import { CostBreakdown } from "@/components/cost-breakdown";
 import { ModelDistribution } from "@/components/model-distribution";

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, Link } from "@tanstack/react-router";
-import type { QmdStatus, QmdCollection, QmdAvailability, QmdIndex } from "@/schemas/qmd";
-import type { QmdLogStats } from "@/schemas/qmd-logs";
+import type { QmdStatus, QmdCollection, QmdAvailability, QmdIndex } from "@contracts/qmd";
+import type { QmdLogStats } from "@contracts/qmd-logs";
 import {
   qmd_check_availability,
   qmd_get_status,

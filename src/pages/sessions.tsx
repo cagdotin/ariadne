@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { SessionSummary } from "@/schemas/session";
+import type { SessionSummary } from "@contracts/sessions/summary";
 import { get_all_sessions } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
 import { use_analytics_time_range } from "@/components/analytics-time-range-provider";

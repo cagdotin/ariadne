@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import type { ToolDetailResponse } from "@/schemas/analytics";
+import type { ToolDetailResponse } from "@contracts/analytics/tools";
 import { get_tool_details } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
 import { use_analytics_time_range } from "@/components/analytics-time-range-provider";

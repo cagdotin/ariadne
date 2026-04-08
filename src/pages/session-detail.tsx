@@ -3,7 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { get_session_entries, get_session_detail } from "@/api/analytics";
 import { SessionViewer } from "@/components/session-viewer";
 import type { SessionEntriesResponse } from "@/components/session-viewer";
-import type { SessionSummary } from "@/schemas/session";
+import type { SessionSummary } from "@contracts/sessions/summary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { error_message } from "@/lib/utils";
 

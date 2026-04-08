@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { VisibilityState } from "@tanstack/react-table";
-import type { QmdLogEntry, QmdLogStats } from "@/schemas/qmd-logs";
+import type { QmdLogEntry, QmdLogStats } from "@contracts/qmd-logs";
 import { get_qmd_logs, get_qmd_log_stats } from "@/api/qmd-logs";
 import { use_project_scope } from "@/components/project-scope-provider";
 import { QmdLogStatsDisplay } from "@/components/qmd-logs/qmd-log-stats";

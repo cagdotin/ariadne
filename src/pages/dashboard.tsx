@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AnalyticsOverview, TimeBreakdown } from "@/schemas/analytics";
+import type { AnalyticsOverview } from "@contracts/analytics/overview";
+import type { TimeBreakdown } from "@contracts/analytics/time";
 import { get_analytics_overview, get_time_breakdown } from "@/api/analytics";
 import {
   format_cost,

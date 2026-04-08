@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import type { QmdCollectionDetail, QmdIndex } from "@/schemas/qmd";
+import type { QmdCollectionDetail, QmdIndex } from "@contracts/qmd";
 import {
   qmd_get_collection_detail,
   qmd_add_context,
