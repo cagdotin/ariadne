@@ -25,7 +25,7 @@ serde_json = "1"
 dirs = "6"
 walkdir = "2"
 chrono = { version = "0.4", features = ["serde"] }
-tokio = { version = "1", features = ["sync"] }
+tokio = { version = "1", features = ["sync", "process", "io-util", "time"] }
 objc2 = "0.6.4"
 rusqlite = { version = "0.34", features = ["bundled"] }
 tauri-plugin-dialog = "2.6.0"
