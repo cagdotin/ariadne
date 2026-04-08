@@ -2,7 +2,10 @@ import { createRouter, createRootRoute, createRoute } from '@tanstack/react-rout
 import { AppLayout } from './app';
 import { Dashboard } from './pages/dashboard';
 import { Sessions } from './pages/sessions';
-import { ScopedSessionDetail } from './pages/scoped-session-detail';
+import { SessionDetailLayout } from './pages/session-detail-layout';
+import { SessionDetailConversation } from './pages/session-detail-conversation';
+import { SessionDetailTraces } from './pages/session-detail-traces';
+import { SessionDetailRedirect } from './pages/session-detail-redirect';
 import { UsageLayout, UsageRedirect, CostPage, ToolsPage, PatternsPage, FilesPage } from './pages/usage';
 import { ToolDetail } from './pages/tool-detail';
 import { QmdRedirect } from './pages/qmd-redirect';
@@ -26,10 +29,30 @@ const sessions_route = createRoute({
   component: Sessions,
 });
 
-const session_detail_route = createRoute({
+// Session detail layout — shared data context + tab nav (Conversation / Traces)
+const session_detail_layout_route = createRoute({
   getParentRoute: () => root_route,
   path: '/sessions/$id',
-  component: ScopedSessionDetail,
+  component: SessionDetailLayout,
+});
+
+// /sessions/$id → redirect to /sessions/$id/conversation
+const session_detail_index_route = createRoute({
+  getParentRoute: () => session_detail_layout_route,
+  path: '/',
+  component: SessionDetailRedirect,
+});
+
+const session_detail_conversation_route = createRoute({
+  getParentRoute: () => session_detail_layout_route,
+  path: '/conversation',
+  component: SessionDetailConversation,
+});
+
+const session_detail_traces_route = createRoute({
+  getParentRoute: () => session_detail_layout_route,
+  path: '/traces',
+  component: SessionDetailTraces,
 });
 
 // Usage layout — shared nav, range picker, and data context
@@ -103,7 +126,11 @@ const qmd_collection_route = createRoute({
 const route_tree = root_route.addChildren([
   index_route,
   sessions_route,
-  session_detail_route,
+  session_detail_layout_route.addChildren([
+    session_detail_index_route,
+    session_detail_conversation_route,
+    session_detail_traces_route,
+  ]),
   usage_layout_route.addChildren([
     usage_index_route,
     usage_cost_route,

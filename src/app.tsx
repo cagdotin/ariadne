@@ -64,9 +64,17 @@ export function AppLayout() {
 
     if (parts.length === 0) return [{ label: "Overview" }];
     if (parts[0] === "sessions" && parts[1]) {
+      const session_id_label = parts[1].slice(0, 12) + "…";
+      if (parts[2] === "traces") {
+        return [
+          { label: "Sessions", href: "/sessions" },
+          { label: session_id_label, href: `/sessions/${parts[1]}` },
+          { label: "Traces" },
+        ];
+      }
       return [
         { label: "Sessions", href: "/sessions" },
-        { label: parts[1].slice(0, 12) + "…" },
+        { label: session_id_label },
       ];
     }
     if (parts[0] === "sessions") return [{ label: "Sessions" }];
@@ -115,7 +123,7 @@ export function AppLayout() {
     return [{ label: parts[0] }];
   }, [location.pathname]);
 
-  const is_session_detail = /^\/sessions\/[^/]+$/.test(location.pathname);
+  const is_session_detail = /^\/sessions\/[^/]+(\/.*)?$/.test(location.pathname);
 
   // Show the global time-range selector on aggregate analytics routes only.
   // Hidden on session detail and QMD where it has no effect.
