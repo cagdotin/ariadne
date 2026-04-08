@@ -1,39 +1,49 @@
 import { invoke } from "@tauri-apps/api/core";
 import { z } from "zod";
 import {
-  QmdAvailabilitySchema,
-  QmdIndexSchema,
-  QmdStatusSchema,
-  QmdCollectionSchema,
-  QmdCollectionDetailSchema,
-  QmdCommandResultSchema,
-  QmdSearchResultSchema,
-} from "../schemas/qmd";
-import type {
-  QmdAvailability,
-  QmdIndex,
-  QmdStatus,
-  QmdCollection,
-  QmdCollectionDetail,
-  QmdCommandResult,
-  QmdSearchResult,
-} from "../schemas/qmd";
+  qmd_availability_schema,
+  type QmdAvailability,
+} from "@contracts/qmd/availability";
+import {
+  qmd_index_schema,
+  type QmdIndex,
+} from "@contracts/qmd/indexes";
+import {
+  qmd_collection_schema,
+  qmd_collection_detail_schema,
+  type QmdCollection,
+  type QmdCollectionDetail,
+} from "@contracts/qmd/collections";
+import {
+  qmd_status_schema,
+  type QmdStatus,
+} from "@contracts/qmd/collections";
+import {
+  qmd_command_result_schema,
+  qmd_toggle_files_result_schema,
+  type QmdCommandResult,
+  type QmdToggleFilesResult,
+} from "@contracts/qmd/mutations";
+import {
+  qmd_search_result_schema,
+  type QmdSearchResult,
+} from "@contracts/qmd/search";
 
 // ─── Index Management ───────────────────────────────────────────────────────
 
 export async function qmd_list_indexes(): Promise<QmdIndex[]> {
   const raw = await invoke("qmd_list_indexes");
-  return z.array(QmdIndexSchema).parse(raw);
+  return z.array(qmd_index_schema).parse(raw);
 }
 
 export async function qmd_create_index(name: string): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_create_index", { name });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_delete_index(name: string): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_delete_index", { name });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_rename_index(
@@ -41,26 +51,26 @@ export async function qmd_rename_index(
   new_name: string,
 ): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_rename_index", { oldName: old_name, newName: new_name });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 // ─── Global (not per-index) ─────────────────────────────────────────────────
 
 export async function qmd_check_availability(): Promise<QmdAvailability> {
   const raw = await invoke("qmd_check_availability");
-  return QmdAvailabilitySchema.parse(raw);
+  return qmd_availability_schema.parse(raw);
 }
 
 // ─── Per-Index Commands ─────────────────────────────────────────────────────
 
 export async function qmd_get_status(index: string): Promise<QmdStatus> {
   const raw = await invoke("qmd_get_status", { index });
-  return QmdStatusSchema.parse(raw);
+  return qmd_status_schema.parse(raw);
 }
 
 export async function qmd_list_collections(index: string): Promise<QmdCollection[]> {
   const raw = await invoke("qmd_list_collections", { index });
-  return z.array(QmdCollectionSchema).parse(raw);
+  return z.array(qmd_collection_schema).parse(raw);
 }
 
 export async function qmd_get_collection_detail(
@@ -68,7 +78,7 @@ export async function qmd_get_collection_detail(
   name: string,
 ): Promise<QmdCollectionDetail> {
   const raw = await invoke("qmd_get_collection_detail", { index, name });
-  return QmdCollectionDetailSchema.parse(raw);
+  return qmd_collection_detail_schema.parse(raw);
 }
 
 export async function qmd_add_collection(
@@ -78,7 +88,7 @@ export async function qmd_add_collection(
   pattern?: string,
 ): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_add_collection", { index, name, path, pattern: pattern ?? null });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_remove_collection(
@@ -86,7 +96,7 @@ export async function qmd_remove_collection(
   name: string,
 ): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_remove_collection", { index, name });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_rename_collection(
@@ -95,7 +105,7 @@ export async function qmd_rename_collection(
   new_name: string,
 ): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_rename_collection", { index, oldName: old_name, newName: new_name });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_add_context(
@@ -105,7 +115,7 @@ export async function qmd_add_context(
   text: string,
 ): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_add_context", { index, collection, path, text });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_remove_context(
@@ -114,7 +124,7 @@ export async function qmd_remove_context(
   path: string,
 ): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_remove_context", { index, collection, path });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_set_global_context(
@@ -122,22 +132,22 @@ export async function qmd_set_global_context(
   text: string,
 ): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_set_global_context", { index, text });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_reindex(index: string): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_reindex", { index });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_embed(index: string): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_embed", { index });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_cleanup(index: string): Promise<QmdCommandResult> {
   const raw = await invoke("qmd_cleanup", { index });
-  return QmdCommandResultSchema.parse(raw);
+  return qmd_command_result_schema.parse(raw);
 }
 
 export async function qmd_scan_filesystem(
@@ -162,9 +172,9 @@ export async function qmd_toggle_files(
   repo_root: string,
   adds: string[],
   removes: string[],
-): Promise<{ indexed: number; deactivated: number }> {
+): Promise<QmdToggleFilesResult> {
   const raw = await invoke("qmd_toggle_files", { index, collection, repoRoot: repo_root, adds, removes });
-  return z.object({ indexed: z.number(), deactivated: z.number() }).parse(raw);
+  return qmd_toggle_files_result_schema.parse(raw);
 }
 
 // ─── Search ─────────────────────────────────────────────────────────────────
@@ -181,5 +191,5 @@ export async function qmd_search(
     collections: collections ?? null,
     limit: limit ?? null,
   });
-  return QmdSearchResultSchema.parse(raw);
+  return qmd_search_result_schema.parse(raw);
 }
