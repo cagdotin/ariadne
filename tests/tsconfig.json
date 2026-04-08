@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["bun-types"],
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@contracts/*": ["./contracts/*"]
+    }
+  },
+  "include": ["**/*.ts", "../contracts/**/*.ts"]
+}
