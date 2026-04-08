@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ProviderLimitSnapshot } from "@/schemas/provider-limits";
+import type { ProviderLimitSnapshot } from "@contracts/provider-limits";
 import {
   get_provider_limits,
   refresh_provider_limits,

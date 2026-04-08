@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ProviderLimitSnapshot, ProviderLimitWindow } from "@/schemas/provider-limits";
+import type { ProviderLimitSnapshot, ProviderLimitWindow } from "@contracts/provider-limits";
 
 function format_reset_time(resets_at: string | null): string | null {
   if (!resets_at) return null;

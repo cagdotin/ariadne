@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import type { ProviderLimitSnapshot, ProviderLimitWindow } from "@/schemas/provider-limits";
+import type { ProviderLimitSnapshot, ProviderLimitWindow } from "@contracts/provider-limits";
 
 function format_reset_time(resets_at: string | null): string | null {
   if (!resets_at) return null;
