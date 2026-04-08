@@ -1,7 +1,7 @@
 # Task: Build Parity Comparison Harness for Node Backend
 
-**Status: ⏳ Blocked**
-**Depends on: ✅ record-golden-outputs (completed), Milestone 3 (backend runtime skeleton)**
+**Status: ✅ Completed**
+**Depends on: ✅ record-golden-outputs (completed), ✅ Milestone 3 (completed)**
 
 ## Context
 
