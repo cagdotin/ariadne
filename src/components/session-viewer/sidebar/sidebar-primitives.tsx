@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { shorten_path } from "../utils/path";
 
@@ -121,24 +122,46 @@ interface NameCount {
   count: number;
 }
 
+const MAX_VISIBLE = 9;
+
+function find_common_prefix(paths: string[]): string {
+  if (paths.length === 0) return "";
+  const parts = paths[0].split("/");
+  let prefix_len = parts.length;
+  for (let i = 1; i < paths.length; i++) {
+    const p = paths[i].split("/");
+    prefix_len = Math.min(prefix_len, p.length);
+    for (let j = 0; j < prefix_len; j++) {
+      if (parts[j] !== p[j]) {
+        prefix_len = j;
+        break;
+      }
+    }
+  }
+  return parts.slice(0, prefix_len).join("/");
+}
+
 export function DetailSection({
   icon,
   label,
   items,
-  max_visible = 10,
   shorten_paths = false,
 }: {
   icon: React.ReactNode;
   label: string;
   items: NameCount[];
-  max_visible?: number;
   shorten_paths?: boolean;
 }) {
+  const [expanded, set_expanded] = useState(false);
   if (items.length === 0) return null;
 
   const max_count = items[0]?.count ?? 1;
-  const visible = items.slice(0, max_visible);
-  const remaining = items.length - max_visible;
+  const is_truncated = items.length > MAX_VISIBLE;
+  const visible = expanded ? items : items.slice(0, MAX_VISIBLE);
+  const remaining = items.length - MAX_VISIBLE;
+  const common_prefix = shorten_paths
+    ? find_common_prefix(items.map((i) => i.name))
+    : "";
 
   return (
     <div className="px-5 py-4 border-b border-border/50">
@@ -151,9 +174,11 @@ export function DetailSection({
           {items.length} unique
         </span>
       </div>
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         {visible.map((item) => {
-          const display_name = shorten_paths ? shorten_path(item.name) : item.name;
+          const display_name = shorten_paths && common_prefix
+            ? item.name.slice(common_prefix.length + 1) || item.name
+            : shorten_paths ? shorten_path(item.name) : item.name;
           const bar_width = (item.count / max_count) * 100;
           return (
             <div key={item.name}>
@@ -177,10 +202,13 @@ export function DetailSection({
             </div>
           );
         })}
-        {remaining > 0 && (
-          <p className="text-[10px] text-muted-foreground/50 pt-0.5">
-            +{remaining} more
-          </p>
+        {is_truncated && (
+          <button
+            onClick={() => set_expanded(!expanded)}
+            className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground pt-0.5 cursor-pointer"
+          >
+            {expanded ? "collapse" : `+${remaining} more`}
+          </button>
         )}
       </div>
     </div>

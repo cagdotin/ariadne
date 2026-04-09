@@ -108,20 +108,8 @@ export function SessionSidebarAnalytics({ session }: SessionSidebarAnalyticsProp
         </div>
       </div>
 
-      {/* Bash commands */}
-      <DetailSection icon={<Terminal className="size-3" />} label="Bash Commands" items={bash_commands} max_visible={15} />
-
-      {/* Read files */}
-      <DetailSection icon={<FileText className="size-3" />} label="Files Read" items={read_files} max_visible={15} shorten_paths />
-
-      {/* Edit files */}
-      <DetailSection icon={<FilePen className="size-3" />} label="Files Edited" items={edit_files} max_visible={15} shorten_paths />
-
-      {/* Write files */}
-      <DetailSection icon={<FilePlus2 className="size-3" />} label="Files Written" items={write_files} max_visible={15} shorten_paths />
-
       {/* Models */}
-      <div className="px-5 py-4">
+      <div className="px-5 py-4 border-b border-border/50">
         <div className="flex items-center gap-1.5 mb-3">
           <Cpu className="size-3 text-muted-foreground" />
           <SectionLabel>Models Used</SectionLabel>
@@ -143,6 +131,18 @@ export function SessionSidebarAnalytics({ session }: SessionSidebarAnalyticsProp
           </div>
         )}
       </div>
+
+      {/* Bash commands */}
+      <DetailSection icon={<Terminal className="size-3" />} label="Bash Commands" items={bash_commands} />
+
+      {/* Read files */}
+      <DetailSection icon={<FileText className="size-3" />} label="Files Read" items={read_files} shorten_paths />
+
+      {/* Edit files */}
+      <DetailSection icon={<FilePen className="size-3" />} label="Files Edited" items={edit_files} shorten_paths />
+
+      {/* Write files */}
+      <DetailSection icon={<FilePlus2 className="size-3" />} label="Files Written" items={write_files} shorten_paths />
     </div>
   );
 }
