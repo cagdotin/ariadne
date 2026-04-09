@@ -7,6 +7,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface SessionToolbarProps {
   search: string;
@@ -67,11 +68,12 @@ function FilterPopover({
                   className="w-full justify-start gap-2"
                 >
                   <span
-                    className={`flex size-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    className={cn(
+                      "flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
                       is_selected
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-muted-foreground/30"
-                    }`}
+                        : "border-muted-foreground/30",
+                    )}
                   >
                     {is_selected && <Check className="size-3" />}
                   </span>

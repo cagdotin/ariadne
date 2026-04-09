@@ -1,6 +1,7 @@
 import type { FlatTreeNode, MessageEntry } from "../types";
 import { build_tree_prefix, extract_text, format_tool_call_label } from "../utils";
 import type { SessionEntry } from "../types";
+import { cn } from "@/lib/utils";
 
 interface SessionTreeNodeProps {
   flat_node: FlatTreeNode;
@@ -25,15 +26,17 @@ export function SessionTreeNode({
 
   return (
     <div
-      className={`flex items-baseline cursor-pointer text-[11px] leading-[13px] whitespace-nowrap px-2 hover:bg-accent/50 ${
-        is_active ? "bg-accent/60 font-bold" : ""
-      } ${is_on_path ? "bg-primary/5" : "opacity-50 hover:opacity-100"}`}
+      className={cn(
+        "flex items-baseline cursor-pointer text-[11px] leading-[13px] whitespace-nowrap px-2 hover:bg-accent/50",
+        is_active && "bg-accent/60 font-bold",
+        is_on_path ? "bg-primary/5" : "opacity-50 hover:opacity-100",
+      )}
       onClick={on_click}
     >
       <span className="text-muted-foreground shrink-0 font-mono whitespace-pre">
         {prefix}
       </span>
-      <span className={`shrink-0 ${is_on_path ? "text-primary" : "text-muted-foreground"}`}>
+      <span className={cn("shrink-0", is_on_path ? "text-primary" : "text-muted-foreground")}>
         {is_on_path ? "•" : "\u00a0"}
       </span>
       <span className="ml-1 truncate">

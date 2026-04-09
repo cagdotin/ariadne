@@ -3,6 +3,7 @@ import { ExpandableOutput } from "../primitives/expandable-output";
 import { RawEntryInspector } from "./raw-entry-inspector";
 import { format_timestamp } from "../utils";
 import { Terminal } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface BashExecutionBlockProps {
   entry: MessageEntry;
@@ -14,9 +15,10 @@ export function BashExecutionBlock({ entry }: BashExecutionBlockProps) {
 
   return (
     <div
-      className={`rounded-md border p-3 ${
-        is_error ? "border-destructive/30 bg-destructive/5" : "border-border bg-muted/20"
-      }`}
+      className={cn(
+        "rounded-md border p-3",
+        is_error ? "border-destructive/30 bg-destructive/5" : "bg-muted/20",
+      )}
     >
       <div className="flex items-center gap-2 text-xs mb-1">
         <Terminal className="size-3.5 shrink-0 text-muted-foreground" />

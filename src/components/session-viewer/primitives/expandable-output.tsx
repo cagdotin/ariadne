@@ -3,6 +3,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ExpandableOutputProps {
   text: string;
@@ -39,9 +40,9 @@ export function ExpandableOutput({
 
   if (language) {
     return (
-      <div className={`mt-2 ${className ?? ""}`}>
+      <div className={cn("mt-2", className)}>
         <div
-          className={is_truncated ? "cursor-pointer" : ""}
+          className={cn(is_truncated && "cursor-pointer")}
           onClick={is_truncated ? () => set_expanded(!expanded) : undefined}
         >
           <SyntaxHighlighter
@@ -73,9 +74,9 @@ export function ExpandableOutput({
 
   // Plain text output
   return (
-    <div className={`mt-2 ${className ?? ""}`}>
+    <div className={cn("mt-2", className)}>
       <div
-        className={is_truncated ? "cursor-pointer" : ""}
+        className={cn(is_truncated && "cursor-pointer")}
         onClick={is_truncated ? () => set_expanded(!expanded) : undefined}
       >
         <pre className="rounded-[var(--radius)] bg-input p-2 px-3 text-xs font-mono text-muted-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap break-words">

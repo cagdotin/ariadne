@@ -4,6 +4,7 @@ import { extract_text } from "../utils";
 import { get_tool_handler } from "./tool-registry";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronDown, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ToolCallRendererProps {
   tool: ResolvedToolCall;
@@ -24,13 +25,13 @@ export function ToolCallRenderer({ tool }: ToolCallRendererProps) {
         variant="ghost"
         size="sm"
         onClick={has_body ? () => set_expanded(!expanded) : undefined}
-        className={`w-full justify-start text-[11px] font-normal ${
-          has_body ? "cursor-pointer" : "cursor-default"
-        } ${
+        className={cn(
+          "w-full justify-start text-[11px] font-normal",
+          has_body ? "cursor-pointer" : "cursor-default",
           is_error
             ? "text-destructive/70 hover:text-destructive"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
+            : "text-muted-foreground hover:text-foreground",
+        )}
       >
         {has_body ? (
           expanded ? (
