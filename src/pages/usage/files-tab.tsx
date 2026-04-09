@@ -115,7 +115,7 @@ export function FilesTab({ file_stats }: FilesTabProps) {
 
   if (!file_stats) {
     return (
-      <div className="rounded-lg border bg-card p-8 text-center">
+      <div className="rounded-none border bg-card p-8 text-center">
         <p className="text-muted-foreground">
           Select a project to view file analytics.
         </p>

@@ -255,7 +255,7 @@ export function Qmd() {
     return (
       <div className="space-y-4">
         <QmdHealthBanner state={{ kind: "not_installed" }} />
-        <div className="rounded-md border border-border p-6 text-center space-y-2">
+        <div className="rounded-none border border-border p-6 text-center space-y-2">
           <p className="text-muted-foreground text-sm">
             QMD is a hybrid search engine for markdown files. Install it to get started.
           </p>
@@ -292,7 +292,7 @@ export function Qmd() {
       {/* Actions */}
       <div className="flex items-center justify-end gap-2 flex-wrap">
           <div
-            className={`flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1 text-sm text-muted-foreground transition-colors ${
+            className={`flex items-center gap-2 rounded-none border border-input bg-background px-3 py-1 text-sm text-muted-foreground transition-colors ${
               op_state.is_busy || (status && status.embedded_chunks === 0)
                 ? "opacity-50 pointer-events-none"
                 : "cursor-pointer hover:bg-accent hover:text-accent-foreground"
@@ -451,7 +451,7 @@ export function Qmd() {
           </InfoTip>
         </div>
         {collections.length === 0 ? (
-          <div className="rounded-md border border-border p-8 text-center space-y-3">
+          <div className="rounded-none border border-border p-8 text-center space-y-3">
             <p className="text-muted-foreground">No collections yet.</p>
             <Button onClick={() => set_show_add_dialog(true)}>
               <Plus className="h-4 w-4 mr-2" />

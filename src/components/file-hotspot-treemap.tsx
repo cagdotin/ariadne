@@ -298,7 +298,7 @@ function TreemapTooltipContent({ active, payload, lens }: {
   const current_lens = lens ?? "all";
 
   return (
-    <div className="rounded-md border bg-popover px-3 py-2 text-popover-foreground shadow-md text-xs space-y-1.5 max-w-xs">
+    <div className="rounded-none border bg-popover px-3 py-2 text-popover-foreground shadow-md text-xs space-y-1.5 max-w-xs">
       <p className="font-medium text-sm">{is_dir ? `${name}/` : name}</p>
 
       {/* Operation counts + percentages */}
@@ -426,7 +426,7 @@ export function FileHotspotTreemap({ insights, lens, project_path }: FileHotspot
 
       <CardContent ref={ref}>
         {tree_data.length === 0 ? (
-          <div className="flex h-48 items-center justify-center rounded-md border border-dashed">
+          <div className="flex h-48 items-center justify-center rounded-none border border-dashed">
             <p className="text-sm text-muted-foreground">
               {lens === "all"
                 ? "No file activity after applying current filters."

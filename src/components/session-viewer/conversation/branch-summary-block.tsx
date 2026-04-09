@@ -10,7 +10,7 @@ interface BranchSummaryBlockProps {
 
 export function BranchSummaryBlock({ entry }: BranchSummaryBlockProps) {
   return (
-    <div className="rounded-md border border-chart-2/30 bg-chart-2/5 p-3">
+    <div className="rounded-none border border-chart-2/30 bg-chart-2/5 p-3">
       <div className="flex items-center gap-2 text-xs mb-2">
         <GitBranch className="size-3.5 shrink-0 text-chart-2" />
         <span className="font-semibold text-chart-2">Branch Summary</span>

@@ -16,7 +16,7 @@ export function BashExecutionBlock({ entry }: BashExecutionBlockProps) {
   return (
     <div
       className={cn(
-        "rounded-md border p-3",
+        "rounded-none border p-3",
         is_error ? "border-destructive/30 bg-destructive/5" : "bg-muted/20",
       )}
     >

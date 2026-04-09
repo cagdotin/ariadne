@@ -17,7 +17,7 @@ export function CustomMessageBlock({ entry }: CustomMessageBlockProps) {
       : extract_text(entry.content);
 
   return (
-    <div className="rounded-md border border-chart-5/30 bg-chart-5/5 p-3">
+    <div className="rounded-none border border-chart-5/30 bg-chart-5/5 p-3">
       <div className="flex items-center gap-2 text-xs mb-2">
         <Puzzle className="size-3.5 shrink-0 text-chart-5" />
         <span className="font-semibold text-chart-5">[{entry.customType}]</span>

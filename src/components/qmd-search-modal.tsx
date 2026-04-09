@@ -157,15 +157,15 @@ function ScoreBreakdown({ hit }: { hit: QmdSearchHit }) {
     <div className="space-y-3">
       {/* Score summary */}
       <div className="grid grid-cols-3 gap-3 text-xs">
-        <div className="rounded-md bg-muted/50 p-2">
+        <div className="rounded-none bg-muted/50 p-2">
           <div className="text-muted-foreground">RRF Score</div>
           <div className="font-mono font-semibold">{explain.rrf.totalScore.toFixed(4)}</div>
         </div>
-        <div className="rounded-md bg-muted/50 p-2">
+        <div className="rounded-none bg-muted/50 p-2">
           <div className="text-muted-foreground">Rerank Score</div>
           <div className="font-mono font-semibold">{explain.rerankScore.toFixed(4)}</div>
         </div>
-        <div className="rounded-md bg-muted/50 p-2">
+        <div className="rounded-none bg-muted/50 p-2">
           <div className="text-muted-foreground">Blended Score</div>
           <div className="font-mono font-semibold">{explain.blendedScore.toFixed(4)}</div>
         </div>
@@ -175,7 +175,7 @@ function ScoreBreakdown({ hit }: { hit: QmdSearchHit }) {
       {explain.rrf.contributions.length > 0 && (
         <div>
           <div className="text-xs font-medium text-muted-foreground mb-1.5">RRF Contributions</div>
-          <div className="rounded-md border overflow-hidden">
+          <div className="rounded-none border overflow-hidden">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b bg-muted/30">
@@ -219,7 +219,7 @@ function ResultCard({ hit, is_expanded, on_toggle }: {
   on_toggle: () => void;
 }) {
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-none border bg-card">
       {/* Result header */}
       <div className="p-3 space-y-1.5">
         <div className="flex items-start gap-2">
@@ -252,7 +252,7 @@ function ResultCard({ hit, is_expanded, on_toggle }: {
         </div>
 
         {/* Best chunk */}
-        <pre className="text-xs bg-muted/40 rounded-md p-2 overflow-hidden whitespace-pre-wrap break-words max-h-[120px] leading-relaxed">
+        <pre className="text-xs bg-muted/40 rounded-none p-2 overflow-hidden whitespace-pre-wrap break-words max-h-[120px] leading-relaxed">
           {hit.bestChunk}
         </pre>
       </div>
@@ -281,7 +281,7 @@ function ResultCard({ hit, is_expanded, on_toggle }: {
               <FileText className="h-3 w-3" />
               Full document
             </div>
-            <pre className="text-xs bg-muted/30 rounded-md p-3 overflow-auto max-h-[300px] whitespace-pre-wrap break-words leading-relaxed">
+            <pre className="text-xs bg-muted/30 rounded-none p-3 overflow-auto max-h-[300px] whitespace-pre-wrap break-words leading-relaxed">
               {hit.body}
             </pre>
           </div>
@@ -475,7 +475,7 @@ export function QmdSearchModal({
           {searching && !search_result && !error && (
             <div className="space-y-3 pt-2">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="rounded-lg border bg-card p-3 space-y-2">
+                <div key={i} className="rounded-none border bg-card p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-5 w-10" />
                     <Skeleton className="h-4 w-48" />

@@ -89,7 +89,7 @@ export function QmdLogOutputDialog({ entry, on_close }: QmdLogOutputDialogProps)
         {/* Raw command */}
         <div className="px-4 py-3 border-b shrink-0">
           <div className="text-xs font-medium text-muted-foreground mb-1.5">Command</div>
-          <pre className="text-xs bg-muted/40 rounded-md p-2.5 overflow-x-auto whitespace-pre-wrap break-all font-mono leading-relaxed">
+          <pre className="text-xs bg-muted/40 rounded-none p-2.5 overflow-x-auto whitespace-pre-wrap break-all font-mono leading-relaxed">
             {entry.raw_command}
           </pre>
         </div>
@@ -106,7 +106,7 @@ export function QmdLogOutputDialog({ entry, on_close }: QmdLogOutputDialogProps)
             )}
           </div>
           {entry.output_text ? (
-            <pre className="text-xs bg-muted/30 rounded-md p-3 overflow-auto whitespace-pre-wrap break-words leading-relaxed max-h-[50vh]">
+            <pre className="text-xs bg-muted/30 rounded-none p-3 overflow-auto whitespace-pre-wrap break-words leading-relaxed max-h-[50vh]">
               {entry.output_text}
             </pre>
           ) : (

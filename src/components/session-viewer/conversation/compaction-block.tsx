@@ -14,7 +14,7 @@ export function CompactionBlock({ entry }: CompactionBlockProps) {
 
   return (
     <div
-      className="rounded-md border border-chart-4/30 bg-chart-4/5 p-3 cursor-pointer"
+      className="rounded-none border border-chart-4/30 bg-chart-4/5 p-3 cursor-pointer"
       onClick={() => set_expanded(!expanded)}
     >
       <div className="flex items-center gap-2 text-xs">

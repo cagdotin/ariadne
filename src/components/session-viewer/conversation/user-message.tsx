@@ -20,7 +20,7 @@ export function UserMessage({ entry }: UserMessageProps) {
       : [];
 
   return (
-    <div className="relative rounded-lg border border-primary/20 bg-primary/[0.04] p-4">
+    <div className="relative rounded-none border border-primary/20 bg-primary/[0.04] p-4">
       <div className="flex items-center gap-2 mb-2">
         <div className="flex items-center justify-center size-5 rounded-full bg-primary/10">
           <User className="size-3 text-primary" />

@@ -78,7 +78,7 @@ export function FileSessionBreadthChart({ insights, lens, project_path }: FileSe
           <CardTitle className="text-base">Session Breadth</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+          <div className="flex h-32 items-center justify-center rounded-none border border-dashed">
             <p className="text-sm text-muted-foreground">
               Session breadth data is not available yet.
             </p>
@@ -95,7 +95,7 @@ export function FileSessionBreadthChart({ insights, lens, project_path }: FileSe
           <CardTitle className="text-base">Session Breadth</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+          <div className="flex h-32 items-center justify-center rounded-none border border-dashed">
             <p className="text-sm text-muted-foreground">
               No files with {lens === "all" ? "" : `${lens} `}activity in the current scope.
             </p>

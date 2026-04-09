@@ -113,7 +113,7 @@ function extract_content_preview(span: TraceSpan): React.ReactNode {
     const bash = message as { command?: string; output?: string; exitCode?: number };
     return (
       <div className="space-y-1.5">
-        <pre className="font-mono text-[10px] bg-muted/50 p-2 rounded-md overflow-x-auto">
+        <pre className="font-mono text-[10px] bg-muted/50 p-2 rounded-none overflow-x-auto">
           $ {bash.command}
         </pre>
         {bash.output && <TextPreview text={bash.output} max_lines={15} />}
@@ -166,7 +166,7 @@ function TextPreview({ text, max_lines = 8 }: { text: string; max_lines?: number
   const display = truncated ? lines.slice(0, max_lines).join("\n") + "\n\u2026" : text;
 
   return (
-    <pre className="text-[10px] font-mono whitespace-pre-wrap break-all bg-muted/30 p-2 rounded-md max-h-48 overflow-y-auto leading-relaxed">
+    <pre className="text-[10px] font-mono whitespace-pre-wrap break-all bg-muted/30 p-2 rounded-none max-h-48 overflow-y-auto leading-relaxed">
       {display}
     </pre>
   );
@@ -175,7 +175,7 @@ function TextPreview({ text, max_lines = 8 }: { text: string; max_lines?: number
 function JsonPreview({ data }: { data: unknown }) {
   const text = JSON.stringify(data, null, 2);
   return (
-    <pre className="text-[10px] font-mono whitespace-pre-wrap break-all bg-muted/30 p-2 rounded-md max-h-48 overflow-y-auto leading-relaxed">
+    <pre className="text-[10px] font-mono whitespace-pre-wrap break-all bg-muted/30 p-2 rounded-none max-h-48 overflow-y-auto leading-relaxed">
       {text}
     </pre>
   );
@@ -277,7 +277,7 @@ export function TraceInspector({ span }: TraceInspectorProps) {
       </Button>
       {show_raw && (
         <div className="px-3 pb-3">
-          <pre className="text-[9px] font-mono whitespace-pre-wrap break-all bg-muted/30 p-2 rounded-md max-h-80 overflow-y-auto leading-relaxed">
+          <pre className="text-[9px] font-mono whitespace-pre-wrap break-all bg-muted/30 p-2 rounded-none max-h-80 overflow-y-auto leading-relaxed">
             {JSON.stringify(span.entry, null, 2)}
           </pre>
         </div>

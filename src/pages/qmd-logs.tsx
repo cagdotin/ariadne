@@ -140,7 +140,7 @@ export function QmdLogs() {
       />
 
       {filtered_logs.length === 0 ? (
-        <div className="rounded-md border border-border p-12 text-center space-y-3">
+        <div className="rounded-none border border-border p-12 text-center space-y-3">
           <Terminal className="h-8 w-8 text-muted-foreground/40 mx-auto" />
           <p className="text-muted-foreground text-sm">
             {logs.length === 0

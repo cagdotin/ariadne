@@ -23,7 +23,7 @@ export function MetricCell({
   value: string;
 }) {
   return (
-    <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+    <div className="rounded-none border border-border/60 bg-muted/20 px-3 py-2">
       <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground mb-1">
         {icon}
         {label}

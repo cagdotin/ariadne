@@ -74,7 +74,7 @@ export function RawEntryInspector({ entry }: RawEntryInspectorProps) {
             </div>
 
             {unrendered.map(({ key, value }) => (
-              <div key={key} className="rounded-md border border-border bg-muted/30 p-3">
+              <div key={key} className="rounded-none border border-border bg-muted/30 p-3">
                 <div className="text-xs font-mono font-semibold text-foreground mb-1">
                   {key}
                 </div>

@@ -89,7 +89,7 @@ export function IndexSelector({
   };
 
   return (
-    <div className="flex items-stretch gap-1 rounded-lg border border-border bg-card p-1.5 overflow-x-auto">
+    <div className="flex items-stretch gap-1 rounded-none border border-border bg-card p-1.5 overflow-x-auto">
       {indexes.map((idx) => {
         const is_active = idx.name === active_index;
         const is_empty = idx.collection_count === 0;

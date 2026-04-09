@@ -49,7 +49,7 @@ function ScatterTooltipContent({ active, payload, lens }: {
   const current_lens = lens ?? "all";
 
   return (
-    <div className="rounded-md border bg-popover px-3 py-2 text-popover-foreground shadow-md text-xs space-y-1 max-w-xs">
+    <div className="rounded-none border bg-popover px-3 py-2 text-popover-foreground shadow-md text-xs space-y-1 max-w-xs">
       <p className="font-medium text-sm font-mono">{d.name}</p>
       <p className="text-muted-foreground">Size: {format_size(d.size_bytes)}</p>
       <div className="flex gap-3">
@@ -161,13 +161,13 @@ export function FileSizeActivityScatter({ insights, lens, project_path }: FileSi
         )}
 
         {load_state === "error" && (
-          <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+          <div className="flex h-32 items-center justify-center rounded-none border border-dashed">
             <p className="text-sm text-muted-foreground">Failed to load file sizes.</p>
           </div>
         )}
 
         {load_state === "loaded" && points.length === 0 && (
-          <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+          <div className="flex h-32 items-center justify-center rounded-none border border-dashed">
             <p className="text-sm text-muted-foreground">
               No files with both known size and {lens === "all" ? "" : `${lens} `}activity.
             </p>

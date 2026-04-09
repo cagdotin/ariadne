@@ -72,7 +72,7 @@ export function FileImbalanceChart({ insights, project_path }: FileImbalanceChar
           <CardTitle className="text-base">Read vs Change Imbalance</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+          <div className="flex h-32 items-center justify-center rounded-none border border-dashed">
             <p className="text-sm text-muted-foreground">
               No file activity to analyze.
             </p>

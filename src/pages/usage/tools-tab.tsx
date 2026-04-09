@@ -43,7 +43,7 @@ function ToolErrorRates({ overview }: ToolsTabProps) {
   const max_rate = Math.max(...tools_with_errors.map((t) => t.rate), 1);
 
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-none border bg-card">
       <div className="px-4 py-3 border-b">
         <h3 className="text-base font-semibold">Error Rates by Tool</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
