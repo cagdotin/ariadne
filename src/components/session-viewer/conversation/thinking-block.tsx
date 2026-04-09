@@ -24,7 +24,7 @@ export function ThinkingBlock({ text }: ThinkingBlockProps) {
         <span className="italic">Thinking…</span>
       </Button>
       {expanded && (
-        <pre className="pl-5 text-xs font-mono text-muted-foreground italic whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">
+        <pre className="pl-5 text-xs font-mono text-muted-foreground italic whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto">
           {trimmed}
         </pre>
       )}

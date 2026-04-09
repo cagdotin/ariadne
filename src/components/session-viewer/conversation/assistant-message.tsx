@@ -37,7 +37,7 @@ export function AssistantMessage({ entry, tool_result_map }: AssistantMessagePro
   const has_text = text_blocks.length > 0;
 
   return (
-    <div className="relative space-y-2">
+    <div className="relative space-y-2 min-w-0 overflow-hidden">
       {/* Minimal turn divider — timestamp + inspector */}
       <div className="flex items-center gap-2 py-0.5">
         <div className="flex-1 h-px bg-border/60" />
@@ -56,7 +56,7 @@ export function AssistantMessage({ entry, tool_result_map }: AssistantMessagePro
 
       {/* Text blocks — the actual assistant prose */}
       {has_text && (
-        <div>
+        <div className="px-3">
           {text_blocks.map((block, i) => (
             <MarkdownContent key={i} content={"text" in block ? (block.text as string) : ""} />
           ))}

@@ -24,7 +24,7 @@ export const edit_tool: ToolHandler = {
     if (!diff && !output) return null;
     if (diff) {
       return (
-        <div className="rounded-[var(--radius)] bg-input p-2 px-3 text-xs font-mono leading-relaxed overflow-x-auto">
+        <div className="rounded-none bg-input p-2 px-3 text-xs font-mono leading-relaxed overflow-x-auto">
           {diff.split("\n").map((line, i) => {
             let cls = "text-muted-foreground";
             if (line.startsWith("+")) cls = "text-success bg-success/10";

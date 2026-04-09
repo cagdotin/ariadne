@@ -1,8 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { cn } from "@/lib/utils";
 
 interface MarkdownContentProps {
@@ -24,7 +22,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
             if (is_inline) {
               return (
                 <code
-                  className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em] text-foreground"
+                  className="rounded-none bg-muted px-1 py-0.5 font-mono text-[0.85em] text-foreground"
                   {...props}
                 >
                   {children}
@@ -33,23 +31,11 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
             }
 
             return (
-              <SyntaxHighlighter
-                style={oneDark}
-                language={match?.[1] ?? "text"}
-                PreTag="div"
-                customStyle={{
-                  margin: 0,
-                  padding: "0.75rem",
-                  borderRadius: "var(--radius)",
-                  fontSize: "0.8rem",
-                  background: "var(--input)",
-                }}
-                codeTagProps={{
-                  style: { fontFamily: "var(--font-mono)" },
-                }}
+              <pre
+                className="rounded-none bg-input p-3 text-xs font-mono text-muted-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap break-words"
               >
-                {String(children).replace(/\n$/, "")}
-              </SyntaxHighlighter>
+                <code>{String(children).replace(/\n$/, "")}</code>
+              </pre>
             );
           },
           a({ href, children }) {

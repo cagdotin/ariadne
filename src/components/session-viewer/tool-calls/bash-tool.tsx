@@ -26,7 +26,7 @@ export const bash_tool: ToolHandler = {
     return (
       <>
         {is_long && (
-          <pre className="rounded-[var(--radius)] bg-input p-2 px-3 text-xs font-mono text-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap break-words">
+          <pre className="rounded-none bg-input p-2 px-3 text-xs font-mono text-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap break-words">
             <span className="text-muted-foreground select-none">$ </span>
             {command}
           </pre>

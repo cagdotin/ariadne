@@ -77,6 +77,7 @@ export function SessionViewer({
                   <div
                     key={entry.id}
                     id={`entry-${entry.id}`}
+                    className="min-w-0"
                   >
                     <MessageRenderer
                       entry={entry}
@@ -106,7 +107,7 @@ export function SessionViewer({
               maxSize="50%"
               className="min-w-0"
             >
-              <aside className="flex h-full min-w-0 flex-col overflow-hidden bg-card">
+              <aside className="flex h-full min-w-0 flex-col overflow-hidden">
                 {panel === "tree" && (
                   <SessionTree
                     entries={entries}

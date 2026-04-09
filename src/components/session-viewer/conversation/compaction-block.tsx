@@ -36,7 +36,7 @@ export function CompactionBlock({ entry }: CompactionBlockProps) {
         </div>
       </div>
       {expanded && (
-        <pre className="mt-2 text-xs font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
+        <pre className="mt-2 text-xs font-mono text-muted-foreground whitespace-pre-wrap break-words leading-relaxed max-h-80 overflow-y-auto">
           {entry.summary}
         </pre>
       )}

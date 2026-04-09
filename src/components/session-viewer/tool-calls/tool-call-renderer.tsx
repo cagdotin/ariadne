@@ -26,7 +26,7 @@ export function ToolCallRenderer({ tool }: ToolCallRendererProps) {
         size="sm"
         onClick={has_body ? () => set_expanded(!expanded) : undefined}
         className={cn(
-          "w-full justify-start text-[11px] font-normal",
+          "w-full justify-start text-[11px] font-normal min-w-0",
           has_body ? "cursor-pointer" : "cursor-default",
           is_error
             ? "text-destructive/70 hover:text-destructive"

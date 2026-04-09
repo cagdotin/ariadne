@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,27 +43,9 @@ export function ExpandableOutput({
           className={cn(is_truncated && "cursor-pointer")}
           onClick={is_truncated ? () => set_expanded(!expanded) : undefined}
         >
-          <SyntaxHighlighter
-            style={oneDark}
-            language={language}
-            PreTag="div"
-            customStyle={{
-              margin: 0,
-              padding: "0.5rem 0.75rem",
-              borderRadius: "var(--radius)",
-              fontSize: "0.75rem",
-              lineHeight: "1.4",
-              background: "var(--input)",
-            }}
-            codeTagProps={{
-              style: {
-                fontFamily: "var(--font-mono)",
-                textShadow: "none",
-              },
-            }}
-          >
-            {display_text}
-          </SyntaxHighlighter>
+          <pre className="rounded-none bg-input p-2 px-3 text-xs font-mono text-muted-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap break-words">
+            <code>{display_text}</code>
+          </pre>
           {is_truncated && <ToggleButton expanded={expanded} remaining={remaining} />}
         </div>
       </div>
@@ -79,7 +59,7 @@ export function ExpandableOutput({
         className={cn(is_truncated && "cursor-pointer")}
         onClick={is_truncated ? () => set_expanded(!expanded) : undefined}
       >
-        <pre className="rounded-[var(--radius)] bg-input p-2 px-3 text-xs font-mono text-muted-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap break-words">
+        <pre className="rounded-none bg-input p-2 px-3 text-xs font-mono text-muted-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap break-words">
           {display_text}
         </pre>
         {is_truncated && <ToggleButton expanded={expanded} remaining={remaining} />}

@@ -213,9 +213,11 @@
 
 /* Session viewer markdown prose */
 .prose-session {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1.65;
   color: var(--foreground);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .prose-session h1,
 .prose-session h2,
