@@ -33,7 +33,7 @@ export function AppLayout() {
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
 
-          <SidebarInset>
+          <SidebarInset className="min-w-0 min-h-0 overflow-hidden">
             {is_session_detail ? (
               <div className="flex-1 overflow-hidden min-w-0 min-h-0">
                 <Outlet />

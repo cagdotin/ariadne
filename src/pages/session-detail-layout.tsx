@@ -9,6 +9,8 @@ import { SessionDetailProvider } from "./session-detail-context";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Activity } from "lucide-react";
 import { error_message } from "@/lib/utils";
+import { SessionDetailNavHeader } from "@/components/sessions/session-detail-nav-header";
+import { SessionPanelNav } from "@/components/sessions/session-panel-nav";
 
 function SessionDetailNav() {
   const location = useLocation();
@@ -28,12 +30,12 @@ function SessionDetailNav() {
       value={active_tab}
       onValueChange={(value) => navigate({ to: value })}
     >
-      <TabsList>
+      <TabsList variant="line">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <TabsTrigger key={tab.to} value={tab.to}>
-              <Icon className="size-3.5" />
+              <Icon data-icon="inline-start" />
               {tab.label}
             </TabsTrigger>
           );
@@ -68,8 +70,11 @@ export function SessionDetailLayout() {
         if (!has_loaded.current) set_loading(true);
         set_error(null);
 
-        // Fetch summary first for scope check (also reused as session_summary)
-        const summary = await get_session_detail(id).catch(() => null);
+        // Fetch summary and entries in parallel (independent requests)
+        const [summary, entries_data] = await Promise.all([
+          get_session_detail(id).catch(() => null),
+          get_session_entries(id),
+        ]);
         if (cancelled) return;
 
         // Scope guard: if scoped to a project, verify this session belongs to it
@@ -77,10 +82,6 @@ export function SessionDetailLayout() {
           navigate({ to: "/sessions" });
           return;
         }
-
-        // Fetch entries
-        const entries_data = await get_session_entries(id);
-        if (cancelled) return;
 
         const response = entries_data as SessionEntriesResponse;
         set_header((response.header as SessionHeader) ?? null);
@@ -108,11 +109,13 @@ export function SessionDetailLayout() {
     <SessionDetailProvider
       value={{ header, entries, leaf_id, session_summary, loading, error }}
     >
-      <div className="flex flex-col h-full min-h-0">
-        <div className="flex items-center gap-4 px-4 shrink-0">
+      <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+        <SessionDetailNavHeader
+          right={<SessionPanelNav has_analytics={!!session_summary} />}
+        >
           <SessionDetailNav />
-        </div>
-        <div className="flex-1 min-h-0">
+        </SessionDetailNavHeader>
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           <Outlet />
         </div>
       </div>

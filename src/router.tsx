@@ -34,6 +34,9 @@ const session_detail_layout_route = createRoute({
   getParentRoute: () => root_route,
   path: '/sessions/$id',
   component: SessionDetailLayout,
+  validateSearch: (search: Record<string, unknown>): { panel?: string } => ({
+    ...(typeof search.panel === 'string' ? { panel: search.panel } : {}),
+  }),
 });
 
 // /sessions/$id → redirect to /sessions/$id/conversation
