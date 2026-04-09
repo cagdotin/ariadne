@@ -77,7 +77,7 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="w-full min-w-0 space-y-2">
+    <div className="flex flex-col gap-2 w-full min-w-0">
       {toolbar ? (
         toolbar(table)
       ) : (
@@ -125,7 +125,7 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={columns.length} className="h-16 text-center text-muted-foreground text-xs">
                   No results.
                 </TableCell>
               </TableRow>
