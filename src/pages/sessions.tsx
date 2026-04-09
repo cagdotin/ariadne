@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import type { SessionSummary } from "@contracts/sessions/summary";
 import { get_all_sessions } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
@@ -12,10 +13,10 @@ import {
   use_responsive_columns,
 } from "@/components/sessions";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { error_message } from "@/lib/utils";
 
 export function Sessions() {
+  const navigate = useNavigate();
   const { scope } = use_project_scope();
   const { range_days } = use_analytics_time_range();
   const project_path = scope?.project_path;
@@ -69,39 +70,45 @@ export function Sessions() {
     );
   }
 
+  const handle_row_click = useCallback(
+    (session: SessionSummary) => {
+      navigate({ to: "/sessions/$id", params: { id: session.id } });
+    },
+    [navigate],
+  );
+
   return (
-    <TooltipProvider>
-      <div className="min-w-0 w-full space-y-4">
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={filtered_sessions}
-            column_visibility={column_visibility}
-            toolbar={() => (
-              <SessionToolbar
-                search={search}
-                on_search_change={set_search}
-                available_tools={available_tools}
-                selected_tools={selected_tools}
-                on_toggle_tool={toggle_tool}
-                available_models={available_models}
-                selected_models={selected_models}
-                on_toggle_model={toggle_model}
-                has_active_filters={has_active_filters}
-                on_clear_all={clear_all}
-                total_count={sessions.length}
-                filtered_count={filtered_sessions.length}
-              />
-            )}
-          />
-        )}
-      </div>
-    </TooltipProvider>
+    <div className="flex flex-col gap-4 min-w-0 w-full">
+      {loading ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-7 w-full" />
+          ))}
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filtered_sessions}
+          column_visibility={column_visibility}
+          on_row_click={handle_row_click}
+          toolbar={() => (
+            <SessionToolbar
+              search={search}
+              on_search_change={set_search}
+              available_tools={available_tools}
+              selected_tools={selected_tools}
+              on_toggle_tool={toggle_tool}
+              available_models={available_models}
+              selected_models={selected_models}
+              on_toggle_model={toggle_model}
+              has_active_filters={has_active_filters}
+              on_clear_all={clear_all}
+              total_count={sessions.length}
+              filtered_count={filtered_sessions.length}
+            />
+          )}
+        />
+      )}
+    </div>
   );
 }
