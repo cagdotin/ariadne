@@ -99,9 +99,6 @@ function ProviderSummary({ snapshot }: { snapshot: ProviderLimitSnapshot }) {
         </span>
       </div>
 
-      {snapshot.account_label && (
-        <p className="text-xs text-muted-foreground -mt-1">{snapshot.account_label}</p>
-      )}
 
       {is_error ? (
         <div className="flex items-center gap-2 text-sm text-destructive">
