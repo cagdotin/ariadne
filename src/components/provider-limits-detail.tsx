@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Tooltip,
   TooltipContent,
@@ -169,10 +170,10 @@ function ProviderDetail({ snapshot }: { snapshot: ProviderLimitSnapshot }) {
 
       {/* Error state */}
       {is_error && (
-        <div className="flex items-start gap-2 text-sm text-destructive rounded-md border border-destructive/20 bg-destructive/5 p-3">
-          <AlertCircle className="size-4 shrink-0 mt-0.5" />
-          <span>{snapshot.error_message ?? "Failed to fetch limits"}</span>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertDescription>{snapshot.error_message ?? "Failed to fetch limits"}</AlertDescription>
+        </Alert>
       )}
 
       {/* Windows */}

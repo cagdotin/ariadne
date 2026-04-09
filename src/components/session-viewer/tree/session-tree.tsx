@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import type { SessionEntry, MessageEntry } from "../types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { SessionTreeNode } from "./session-tree-node";
 import {
   build_tree,
@@ -145,12 +146,12 @@ export function SessionTree({ entries, leaf_id, on_navigate }: SessionTreeProps)
       <div className="px-3 pt-3 pb-1">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
-          <input
+          <Input
             type="text"
             value={search_query}
             onChange={(e) => set_search_query(e.target.value)}
             placeholder="Search…"
-            className="w-full bg-input border border-border rounded-md pl-7 pr-7 py-1 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="pl-7 pr-7 font-mono"
           />
           {search_query && (
             <Button
