@@ -167,7 +167,7 @@ export function SessionTree({ entries, leaf_id, on_navigate }: SessionTreeProps)
       </div>
 
       {/* Filter buttons */}
-      <div className="flex flex-wrap gap-1 px-3 py-2">
+      <div className="flex flex-wrap gap-1.5 px-3 py-2">
         {FILTER_BUTTONS.map((fb) => (
           <Badge
             key={fb.mode}
@@ -181,7 +181,7 @@ export function SessionTree({ entries, leaf_id, on_navigate }: SessionTreeProps)
       </div>
 
       {/* Tree list */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div className="flex-1 overflow-y-auto py-1 border-t border-border/50">
         {filtered.map((fn) => {
           const is_on_path = active_path_ids.has(fn.node.entry.id);
           const is_active = fn.node.entry.id === leaf_id;
@@ -203,7 +203,7 @@ export function SessionTree({ entries, leaf_id, on_navigate }: SessionTreeProps)
       </div>
 
       {/* Status */}
-      <div className="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border">
+      <div className="px-3 py-1.5 text-[10px] text-muted-foreground/70 border-t border-border/50 tabular-nums">
         {filtered.length} / {flat_nodes.length} entries
       </div>
     </div>

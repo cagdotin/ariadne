@@ -24,16 +24,23 @@ export function SessionTreeNode({
 
   const display = get_display_text(entry, label, tool_call_map);
 
+  // Tool results and bash executions get a small visual indent
+  const is_tool_row = entry.type === "message" && (
+    (entry as MessageEntry).message.role === "toolResult" ||
+    (entry as MessageEntry).message.role === "bashExecution"
+  );
+
   return (
     <div
       className={cn(
-        "flex items-baseline cursor-pointer text-[11px] leading-[13px] whitespace-nowrap px-2 hover:bg-accent/50",
-        is_active && "bg-accent/60 font-bold",
-        is_on_path ? "bg-primary/5" : "opacity-50 hover:opacity-100",
+        "flex items-baseline cursor-pointer text-[11px] leading-[20px] whitespace-nowrap px-2 font-mono transition-colors duration-75",
+        is_active && "font-semibold",
+        !is_on_path && "opacity-40 hover:opacity-80",
+        is_tool_row && "pl-5",
       )}
       onClick={on_click}
     >
-      <span className="text-muted-foreground shrink-0 font-mono whitespace-pre">
+      <span className="text-muted-foreground shrink-0 whitespace-pre">
         {prefix}
       </span>
       <span className={cn("shrink-0", is_on_path ? "text-primary" : "text-muted-foreground")}>
