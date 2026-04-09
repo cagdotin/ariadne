@@ -6,49 +6,17 @@ import type { SessionHeader, SessionEntry } from "@/components/session-viewer/ty
 import type { SessionEntriesResponse } from "@/components/session-viewer/types";
 import type { SessionSummary } from "@contracts/sessions/summary";
 import { SessionDetailProvider } from "./session-detail-context";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Activity } from "lucide-react";
 import { error_message } from "@/lib/utils";
 import { SessionDetailNavHeader } from "@/components/sessions/session-detail-nav-header";
 import { SessionPanelNav } from "@/components/sessions/session-panel-nav";
-
-function SessionDetailNav() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { id } = useParams({ strict: false }) as { id: string };
-
-  const tabs = [
-    { to: `/sessions/${id}/conversation`, label: "Conversation", icon: MessageSquare },
-    { to: `/sessions/${id}/traces`, label: "Traces", icon: Activity },
-  ];
-
-  const active_tab =
-    tabs.find((tab) => location.pathname === tab.to)?.to ?? tabs[0].to;
-
-  return (
-    <Tabs
-      value={active_tab}
-      onValueChange={(value) => navigate({ to: value })}
-    >
-      <TabsList variant="line">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <TabsTrigger key={tab.to} value={tab.to}>
-              <Icon data-icon="inline-start" />
-              {tab.label}
-            </TabsTrigger>
-          );
-        })}
-      </TabsList>
-    </Tabs>
-  );
-}
 
 export function SessionDetailLayout() {
   const { id } = useParams({ strict: false }) as { id: string };
   const { scope } = use_project_scope();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [header, set_header] = useState<SessionHeader | null>(null);
   const [entries, set_entries] = useState<SessionEntry[]>([]);
@@ -103,6 +71,8 @@ export function SessionDetailLayout() {
     return () => { cancelled = true; };
   }, [id, scope, navigate]);
 
+  const is_traces = location.pathname.endsWith("/traces");
+
   if (!ready) return null;
 
   return (
@@ -111,9 +81,37 @@ export function SessionDetailLayout() {
     >
       <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
         <SessionDetailNavHeader
-          right={<SessionPanelNav has_analytics={!!session_summary} />}
+          right={
+            is_traces ? undefined : (
+              <SessionPanelNav
+                has_analytics={!!session_summary}
+                variant="conversation"
+                disabled_panels={[]}
+              />
+            )
+          }
         >
-          <SessionDetailNav />
+          {is_traces ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs gap-1"
+              onClick={() => navigate({ to: `/sessions/${id}/conversation` })}
+            >
+              <ArrowLeft data-icon="inline-start" />
+              Conversation
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs gap-1"
+              onClick={() => navigate({ to: `/sessions/${id}/traces` })}
+            >
+              <Activity data-icon="inline-start" />
+              Traces
+            </Button>
+          )}
         </SessionDetailNavHeader>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           <Outlet />

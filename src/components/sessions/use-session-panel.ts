@@ -1,9 +1,9 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback } from "react";
 
-export type SessionPanel = "tree" | "details" | "analytics";
+export type SessionPanel = "tree" | "details" | "analytics" | "inspector";
 
-const valid_panels: SessionPanel[] = ["tree", "details", "analytics"];
+const valid_panels: SessionPanel[] = ["tree", "details", "analytics", "inspector"];
 
 export function use_session_panel() {
   const search = useSearch({ strict: false }) as { panel?: string };
