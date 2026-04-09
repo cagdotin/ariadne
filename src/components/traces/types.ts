@@ -1,49 +1,63 @@
 import type { SessionEntry } from "@/components/session-viewer/types";
 
-// ─── Lane identifiers ──────────────────────────────────────────────────────
+// ─── Span kind ──────────────────────────────────────────────────────────────
 
-export type LaneId = "metadata" | "user" | "assistant" | "tools" | "custom";
+export type SpanKind =
+  | "user"
+  | "assistant"
+  | "text"
+  | "thinking"
+  | "tool_call"
+  | "tool_result"
+  | "bash"
+  | "metadata"
+  | "custom";
 
-// ─── Span ───────────────────────────────────────────────────────────────────
+// ─── Span node (tree element) ───────────────────────────────────────────────
 
-export interface TraceSpan {
+export interface SpanNode {
   id: string;
-  entry_id: string;
-  lane: LaneId;
   label: string;
+  kind: SpanKind;
   start_ms: number;
   end_ms: number;
+  /** Earliest start across this node + all descendants */
+  subtree_start_ms: number;
+  /** Latest end across this node + all descendants */
+  subtree_end_ms: number;
+  duration_ms: number;
+  subtree_duration_ms: number;
   color: string;
   is_error: boolean;
+  depth: number;
+  children: SpanNode[];
   entry: SessionEntry;
   content_index?: number;
+  /** For tool_call spans: the paired result entry */
+  result_entry?: SessionEntry;
 }
 
-// ─── Lane ───────────────────────────────────────────────────────────────────
+// ─── Span tree (transform output) ──────────────────────────────────────────
 
-export interface TraceLane {
-  id: LaneId;
-  label: string;
-  spans: TraceSpan[];
-}
-
-// ─── Stats ──────────────────────────────────────────────────────────────────
-
-export interface TraceStats {
-  started_at: string;
-  duration_formatted: string;
-  duration_ms: number;
+export interface SpanTreeStats {
   event_count: number;
   tool_count: number;
   error_count: number;
   model: string;
 }
 
-// ─── Timeline ───────────────────────────────────────────────────────────────
-
-export interface TraceTimeline {
-  lanes: TraceLane[];
+export interface SpanTree {
+  roots: SpanNode[];
   total_duration_ms: number;
   session_start_iso: string;
-  stats: TraceStats;
+  stats: SpanTreeStats;
+}
+
+// ─── Visible row (flattened for rendering) ──────────────────────────────────
+
+export interface VisibleRow {
+  node: SpanNode;
+  depth: number;
+  is_expanded: boolean;
+  has_children: boolean;
 }
