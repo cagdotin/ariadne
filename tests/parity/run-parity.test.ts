@@ -11,13 +11,13 @@
  *   bun run test:parity:qmd               (script)
  */
 
-import { describe, test, expect, beforeAll } from "bun:test";
-import { read_golden, fixtures_path } from "./helpers";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { fixtures_path, read_golden } from "./helpers";
 import {
-  normalize_analytics,
-  normalize_replay,
-  normalize_qmd_logs,
-  normalize_provider_limits,
+	normalize_analytics,
+	normalize_provider_limits,
+	normalize_qmd_logs,
+	normalize_replay,
 } from "./normalize";
 
 // ─── Backend readiness flags ─────────────────────────────────────────────────
@@ -25,309 +25,380 @@ import {
 // All other subsystems run here under Bun.
 
 const BACKEND_READY = {
-  analytics: true,
-  replay: true,
-  qmd_logs: true,
-  provider_limits: true,
+	analytics: true,
+	replay: true,
+	qmd_logs: true,
+	provider_limits: true,
 } as const;
 
 type Subsystem = keyof typeof BACKEND_READY;
 
 function parity_test(
-  subsystem: Subsystem,
-  name: string,
-  fn: () => Promise<void>,
+	subsystem: Subsystem,
+	name: string,
+	fn: () => Promise<void>,
 ) {
-  if (BACKEND_READY[subsystem]) {
-    test(name, fn);
-  } else {
-    test.skip(name, fn);
-  }
+	if (BACKEND_READY[subsystem]) {
+		test(name, fn);
+	} else {
+		test.skip(name, fn);
+	}
 }
 
 // ─── Analytics: Minimal ──────────────────────────────────────────────────────
 
 describe("analytics — minimal fixture", () => {
-  const sessions_root = fixtures_path("sessions", "minimal");
+	const sessions_root = fixtures_path("sessions", "minimal");
 
-  beforeAll(async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { session_cache } = await import("../../backend/analytics");
-    await session_cache.resync();
-  });
+	beforeAll(async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { session_cache } = await import("../../backend/analytics");
+		await session_cache.resync();
+	});
 
-  parity_test("analytics", "get_analytics_overview (no filter)", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_analytics_overview } = await import("../../backend/analytics");
-    const { analytics_overview_schema } = await import("@contracts/analytics");
+	parity_test("analytics", "get_analytics_overview (no filter)", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_analytics_overview } = await import("../../backend/analytics");
+		const { analytics_overview_schema } = await import("@contracts/analytics");
 
-    const actual_raw = await get_analytics_overview(null, 0);
-    analytics_overview_schema.parse(actual_raw);
+		const actual_raw = await get_analytics_overview(null, 0);
+		analytics_overview_schema.parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/minimal-overview.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/minimal-overview.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("analytics", "get_all_sessions", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_all_sessions } = await import("../../backend/analytics");
-    const { session_summary_schema } = await import("@contracts/sessions");
-    const { z } = await import("zod");
+	parity_test("analytics", "get_all_sessions", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_all_sessions } = await import("../../backend/analytics");
+		const { session_summary_schema } = await import("@contracts/sessions");
+		const { z } = await import("zod");
 
-    const actual_raw = await get_all_sessions(null, 0);
-    z.array(session_summary_schema).parse(actual_raw);
+		const actual_raw = await get_all_sessions(null, 0);
+		z.array(session_summary_schema).parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/minimal-sessions.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/minimal-sessions.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("analytics", "get_session_detail", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_session_detail } = await import("../../backend/analytics");
-    const { session_summary_schema } = await import("@contracts/sessions");
+	parity_test("analytics", "get_session_detail", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_session_detail } = await import("../../backend/analytics");
+		const { session_summary_schema } = await import("@contracts/sessions");
 
-    const actual_raw = await get_session_detail("aaaaaaaa-0001-0001-0001-000000000001");
-    session_summary_schema.parse(actual_raw);
+		const actual_raw = await get_session_detail(
+			"aaaaaaaa-0001-0001-0001-000000000001",
+		);
+		session_summary_schema.parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/minimal-session-detail.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/minimal-session-detail.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 });
 
 // ─── Analytics: Multi-Project ────────────────────────────────────────────────
 
 describe("analytics — multi-project fixture", () => {
-  const sessions_root = fixtures_path("sessions", "multi-project");
+	const sessions_root = fixtures_path("sessions", "multi-project");
 
-  beforeAll(async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { session_cache } = await import("../../backend/analytics");
-    await session_cache.resync();
-  });
+	beforeAll(async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { session_cache } = await import("../../backend/analytics");
+		await session_cache.resync();
+	});
 
-  parity_test("analytics", "get_analytics_overview — all projects, all time", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_analytics_overview } = await import("../../backend/analytics");
-    const { analytics_overview_schema } = await import("@contracts/analytics");
+	parity_test(
+		"analytics",
+		"get_analytics_overview — all projects, all time",
+		async () => {
+			process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+			const { get_analytics_overview } = await import(
+				"../../backend/analytics"
+			);
+			const { analytics_overview_schema } = await import(
+				"@contracts/analytics"
+			);
 
-    const actual_raw = await get_analytics_overview(null, 0);
-    analytics_overview_schema.parse(actual_raw);
+			const actual_raw = await get_analytics_overview(null, 0);
+			analytics_overview_schema.parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/multi-project-overview-all.json"));
-    expect(actual).toEqual(golden);
-  });
+			const actual = normalize_analytics(actual_raw);
+			const golden = normalize_analytics(
+				read_golden("analytics/multi-project-overview-all.json"),
+			);
+			expect(actual).toEqual(golden);
+		},
+	);
 
-  parity_test("analytics", "get_analytics_overview — filtered by project", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_analytics_overview } = await import("../../backend/analytics");
-    const { analytics_overview_schema } = await import("@contracts/analytics");
+	parity_test(
+		"analytics",
+		"get_analytics_overview — filtered by project",
+		async () => {
+			process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+			const { get_analytics_overview } = await import(
+				"../../backend/analytics"
+			);
+			const { analytics_overview_schema } = await import(
+				"@contracts/analytics"
+			);
 
-    const actual_raw = await get_analytics_overview("/home/test/project-alpha", 0);
-    analytics_overview_schema.parse(actual_raw);
+			const actual_raw = await get_analytics_overview(
+				"/home/test/project-alpha",
+				0,
+			);
+			analytics_overview_schema.parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/multi-project-overview-filtered.json"));
-    expect(actual).toEqual(golden);
-  });
+			const actual = normalize_analytics(actual_raw);
+			const golden = normalize_analytics(
+				read_golden("analytics/multi-project-overview-filtered.json"),
+			);
+			expect(actual).toEqual(golden);
+		},
+	);
 
-  parity_test("analytics", "get_analytics_overview — ranged", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_analytics_overview } = await import("../../backend/analytics");
-    const { analytics_overview_schema } = await import("@contracts/analytics");
+	parity_test("analytics", "get_analytics_overview — ranged", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_analytics_overview } = await import("../../backend/analytics");
+		const { analytics_overview_schema } = await import("@contracts/analytics");
 
-    const actual_raw = await get_analytics_overview(null, 36500);
-    analytics_overview_schema.parse(actual_raw);
+		const actual_raw = await get_analytics_overview(null, 36500);
+		analytics_overview_schema.parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/multi-project-overview-ranged.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/multi-project-overview-ranged.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("analytics", "get_all_sessions — multi-project", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_all_sessions } = await import("../../backend/analytics");
-    const { session_summary_schema } = await import("@contracts/sessions");
-    const { z } = await import("zod");
+	parity_test("analytics", "get_all_sessions — multi-project", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_all_sessions } = await import("../../backend/analytics");
+		const { session_summary_schema } = await import("@contracts/sessions");
+		const { z } = await import("zod");
 
-    const actual_raw = await get_all_sessions(null, 0);
-    z.array(session_summary_schema).parse(actual_raw);
+		const actual_raw = await get_all_sessions(null, 0);
+		z.array(session_summary_schema).parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/multi-project-sessions.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/multi-project-sessions.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("analytics", "get_project_file_stats", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_project_file_stats } = await import("../../backend/analytics");
-    const { project_file_stats_schema } = await import("@contracts/analytics");
+	parity_test("analytics", "get_project_file_stats", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_project_file_stats } = await import("../../backend/analytics");
+		const { project_file_stats_schema } = await import("@contracts/analytics");
 
-    const actual_raw = await get_project_file_stats("/home/test/project-alpha", 0);
-    project_file_stats_schema.parse(actual_raw);
+		const actual_raw = await get_project_file_stats(
+			"/home/test/project-alpha",
+			0,
+		);
+		project_file_stats_schema.parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/multi-project-file-stats.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/multi-project-file-stats.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("analytics", "get_time_breakdown", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_time_breakdown } = await import("../../backend/analytics");
-    const { time_breakdown_schema } = await import("@contracts/analytics");
+	parity_test("analytics", "get_time_breakdown", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_time_breakdown } = await import("../../backend/analytics");
+		const { time_breakdown_schema } = await import("@contracts/analytics");
 
-    const actual_raw = await get_time_breakdown(30, null);
-    time_breakdown_schema.parse(actual_raw);
+		const actual_raw = await get_time_breakdown(30, null);
+		time_breakdown_schema.parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/multi-project-time-breakdown.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/multi-project-time-breakdown.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("analytics", "get_tool_details", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_tool_details } = await import("../../backend/analytics");
-    const { tool_detail_response_schema } = await import("@contracts/analytics");
+	parity_test("analytics", "get_tool_details", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_tool_details } = await import("../../backend/analytics");
+		const { tool_detail_response_schema } = await import(
+			"@contracts/analytics"
+		);
 
-    const actual_raw = await get_tool_details("read", null, 0);
-    tool_detail_response_schema.parse(actual_raw);
+		const actual_raw = await get_tool_details("read", null, 0);
+		tool_detail_response_schema.parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/multi-project-tool-details.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/multi-project-tool-details.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("analytics", "get_file_sizes", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_file_sizes } = await import("../../backend/analytics");
-    const { file_size_result_schema } = await import("@contracts/analytics");
-    const { z } = await import("zod");
+	parity_test("analytics", "get_file_sizes", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_file_sizes } = await import("../../backend/analytics");
+		const { file_size_result_schema } = await import("@contracts/analytics");
+		const { z } = await import("zod");
 
-    const actual_raw = await get_file_sizes([
-      "/home/test/project-alpha/src/utils.ts",
-      "/home/test/project-alpha/src/auth.ts",
-    ]);
-    z.array(file_size_result_schema).parse(actual_raw);
+		const actual_raw = await get_file_sizes([
+			"/home/test/project-alpha/src/utils.ts",
+			"/home/test/project-alpha/src/auth.ts",
+		]);
+		z.array(file_size_result_schema).parse(actual_raw);
 
-    const actual = normalize_analytics(actual_raw);
-    const golden = normalize_analytics(read_golden("analytics/multi-project-file-sizes.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_analytics(actual_raw);
+		const golden = normalize_analytics(
+			read_golden("analytics/multi-project-file-sizes.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 });
 
 // ─── Replay: Minimal ─────────────────────────────────────────────────────────
 
 describe("replay — minimal fixture", () => {
-  const sessions_root = fixtures_path("sessions", "minimal");
+	const sessions_root = fixtures_path("sessions", "minimal");
 
-  beforeAll(async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { session_cache } = await import("../../backend/analytics");
-    await session_cache.resync();
-  });
+	beforeAll(async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { session_cache } = await import("../../backend/analytics");
+		await session_cache.resync();
+	});
 
-  parity_test("replay", "get_session_entries — minimal", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_session_entries } = await import("../../backend/replay");
-    const { session_entries_response_schema } = await import("@contracts/sessions");
+	parity_test("replay", "get_session_entries — minimal", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_session_entries } = await import("../../backend/replay");
+		const { session_entries_response_schema } = await import(
+			"@contracts/sessions"
+		);
 
-    const actual_raw = await get_session_entries("aaaaaaaa-0001-0001-0001-000000000001");
-    session_entries_response_schema.parse(actual_raw);
+		const actual_raw = await get_session_entries(
+			"aaaaaaaa-0001-0001-0001-000000000001",
+		);
+		session_entries_response_schema.parse(actual_raw);
 
-    const actual = normalize_replay(actual_raw);
-    const golden = normalize_replay(read_golden("replay/minimal-entries.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_replay(actual_raw);
+		const golden = normalize_replay(read_golden("replay/minimal-entries.json"));
+		expect(actual).toEqual(golden);
+	});
 });
 
 // ─── Replay: Branching ───────────────────────────────────────────────────────
 
 describe("replay — branching fixture", () => {
-  const sessions_root = fixtures_path("sessions", "branching-replay");
+	const sessions_root = fixtures_path("sessions", "branching-replay");
 
-  beforeAll(async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { session_cache } = await import("../../backend/analytics");
-    await session_cache.resync();
-  });
+	beforeAll(async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { session_cache } = await import("../../backend/analytics");
+		await session_cache.resync();
+	});
 
-  parity_test("replay", "get_session_entries — branching", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_session_entries } = await import("../../backend/replay");
-    const { session_entries_response_schema } = await import("@contracts/sessions");
+	parity_test("replay", "get_session_entries — branching", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_session_entries } = await import("../../backend/replay");
+		const { session_entries_response_schema } = await import(
+			"@contracts/sessions"
+		);
 
-    const actual_raw = await get_session_entries("aaaaaaaa-0003-0001-0001-000000000001");
-    session_entries_response_schema.parse(actual_raw);
+		const actual_raw = await get_session_entries(
+			"aaaaaaaa-0003-0001-0001-000000000001",
+		);
+		session_entries_response_schema.parse(actual_raw);
 
-    const actual = normalize_replay(actual_raw);
-    const golden = normalize_replay(read_golden("replay/branching-entries.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_replay(actual_raw);
+		const golden = normalize_replay(
+			read_golden("replay/branching-entries.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 });
 
 // ─── QMD Logs ────────────────────────────────────────────────────────────────
 
 describe("qmd-logs", () => {
-  const sessions_root = fixtures_path("sessions", "qmd-cli");
+	const sessions_root = fixtures_path("sessions", "qmd-cli");
 
-  parity_test("qmd_logs", "get_qmd_logs — all", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_qmd_logs } = await import("../../backend/qmd-logs");
-    const { qmd_log_entry_schema } = await import("@contracts/qmd-logs");
-    const { z } = await import("zod");
+	parity_test("qmd_logs", "get_qmd_logs — all", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_qmd_logs } = await import("../../backend/qmd-logs");
+		const { qmd_log_entry_schema } = await import("@contracts/qmd-logs");
+		const { z } = await import("zod");
 
-    const actual_raw = await get_qmd_logs(null);
-    z.array(qmd_log_entry_schema).parse(actual_raw);
+		const actual_raw = await get_qmd_logs(null);
+		z.array(qmd_log_entry_schema).parse(actual_raw);
 
-    const actual = normalize_qmd_logs(actual_raw);
-    const golden = normalize_qmd_logs(read_golden("qmd-logs/all-logs.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_qmd_logs(actual_raw);
+		const golden = normalize_qmd_logs(read_golden("qmd-logs/all-logs.json"));
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("qmd_logs", "get_qmd_log_stats — all", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_qmd_log_stats } = await import("../../backend/qmd-logs");
-    const { qmd_log_stats_schema } = await import("@contracts/qmd-logs");
+	parity_test("qmd_logs", "get_qmd_log_stats — all", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_qmd_log_stats } = await import("../../backend/qmd-logs");
+		const { qmd_log_stats_schema } = await import("@contracts/qmd-logs");
 
-    const actual_raw = await get_qmd_log_stats(null);
-    qmd_log_stats_schema.parse(actual_raw);
+		const actual_raw = await get_qmd_log_stats(null);
+		qmd_log_stats_schema.parse(actual_raw);
 
-    const actual = normalize_qmd_logs(actual_raw);
-    const golden = normalize_qmd_logs(read_golden("qmd-logs/all-log-stats.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_qmd_logs(actual_raw);
+		const golden = normalize_qmd_logs(
+			read_golden("qmd-logs/all-log-stats.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 
-  parity_test("qmd_logs", "get_qmd_logs — filtered by project", async () => {
-    process.env["ARIADNE_PI_SESSIONS_ROOT"] = sessions_root;
-    const { get_qmd_logs } = await import("../../backend/qmd-logs");
-    const { qmd_log_entry_schema } = await import("@contracts/qmd-logs");
-    const { z } = await import("zod");
+	parity_test("qmd_logs", "get_qmd_logs — filtered by project", async () => {
+		process.env.ARIADNE_PI_SESSIONS_ROOT = sessions_root;
+		const { get_qmd_logs } = await import("../../backend/qmd-logs");
+		const { qmd_log_entry_schema } = await import("@contracts/qmd-logs");
+		const { z } = await import("zod");
 
-    const actual_raw = await get_qmd_logs("/home/test/project-alpha");
-    z.array(qmd_log_entry_schema).parse(actual_raw);
+		const actual_raw = await get_qmd_logs("/home/test/project-alpha");
+		z.array(qmd_log_entry_schema).parse(actual_raw);
 
-    const actual = normalize_qmd_logs(actual_raw);
-    const golden = normalize_qmd_logs(read_golden("qmd-logs/filtered-logs.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_qmd_logs(actual_raw);
+		const golden = normalize_qmd_logs(
+			read_golden("qmd-logs/filtered-logs.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 });
 
 // ─── Provider Limits ─────────────────────────────────────────────────────────
 
 describe("provider-limits", () => {
-  parity_test("provider_limits", "fallback_session_logs", async () => {
-    process.env["ARIADNE_CODEX_HOME"] = fixtures_path("provider-limits", "codex-session-log");
-    const { fallback_session_logs } = await import("../../backend/provider-limits");
-    const { provider_limit_snapshot_schema } = await import("@contracts/provider-limits");
+	parity_test("provider_limits", "fallback_session_logs", async () => {
+		process.env.ARIADNE_CODEX_HOME = fixtures_path(
+			"provider-limits",
+			"codex-session-log",
+		);
+		const { fallback_session_logs } = await import(
+			"../../backend/provider-limits"
+		);
+		const { provider_limit_snapshot_schema } = await import(
+			"@contracts/provider-limits"
+		);
 
-    const actual_raw = await fallback_session_logs();
-    provider_limit_snapshot_schema.parse(actual_raw);
+		const actual_raw = await fallback_session_logs();
+		provider_limit_snapshot_schema.parse(actual_raw);
 
-    const actual = normalize_provider_limits(actual_raw);
-    const golden = normalize_provider_limits(read_golden("provider-limits/session-log-fallback.json"));
-    expect(actual).toEqual(golden);
-  });
+		const actual = normalize_provider_limits(actual_raw);
+		const golden = normalize_provider_limits(
+			read_golden("provider-limits/session-log-fallback.json"),
+		);
+		expect(actual).toEqual(golden);
+	});
 });

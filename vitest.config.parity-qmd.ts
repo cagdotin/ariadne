@@ -6,18 +6,19 @@
  * subset under Node via vitest, while non-QMD parity tests continue to run
  * under Bun (see `bun run test:parity`).
  */
+
+import path from "node:path";
 import { defineConfig } from "vitest/config";
-import path from "path";
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@contracts": path.resolve(__dirname, "./contracts"),
-    },
-  },
-  test: {
-    include: ["tests/parity/run-parity-qmd.test.ts"],
-    environment: "node",
-  },
+	resolve: {
+		alias: {
+			"@": path.resolve(__dirname, "./src"),
+			"@contracts": path.resolve(__dirname, "./contracts"),
+		},
+	},
+	test: {
+		include: ["tests/parity/run-parity-qmd.test.ts"],
+		environment: "node",
+	},
 });
