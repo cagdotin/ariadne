@@ -1,20 +1,20 @@
 [
-  {
-    "collection_count": 1,
-    "db_path": "<FIXTURE_ROOT>/index.sqlite",
-    "db_size_bytes": "__unstable__",
-    "document_count": 2,
-    "file_stem": "index",
-    "last_modified": "__unstable__",
-    "name": "default"
-  },
-  {
-    "collection_count": 1,
-    "db_path": "<FIXTURE_ROOT>/work.sqlite",
-    "db_size_bytes": "__unstable__",
-    "document_count": 1,
-    "file_stem": "work",
-    "last_modified": "__unstable__",
-    "name": "work"
-  }
+	{
+		"collection_count": 1,
+		"db_path": "<FIXTURE_ROOT>/index.sqlite",
+		"db_size_bytes": "__unstable__",
+		"document_count": 2,
+		"file_stem": "index",
+		"last_modified": "__unstable__",
+		"name": "default"
+	},
+	{
+		"collection_count": 1,
+		"db_path": "<FIXTURE_ROOT>/work.sqlite",
+		"db_size_bytes": "__unstable__",
+		"document_count": 1,
+		"file_stem": "work",
+		"last_modified": "__unstable__",
+		"name": "work"
+	}
 ]

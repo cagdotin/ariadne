@@ -1,213 +1,213 @@
 {
-  "entries": [
-    {
-      "id": "entry-0001-01",
-      "name": "Fix login validation",
-      "parentId": "aaaaaaaa-0001-0001-0001-000000000001",
-      "timestamp": "2026-03-01T10:00:01Z",
-      "type": "session_info"
-    },
-    {
-      "id": "entry-0001-02",
-      "message": {
-        "content": "Fix the login validation bug in auth.ts",
-        "role": "user"
-      },
-      "parentId": "entry-0001-01",
-      "timestamp": "2026-03-01T10:00:02Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-0001-03",
-      "message": {
-        "content": [
-          {
-            "text": "I'll look at the auth file first.",
-            "type": "text"
-          },
-          {
-            "arguments": {
-              "path": "/home/test/project-alpha/src/auth.ts"
-            },
-            "id": "tc-0001-01",
-            "name": "read",
-            "type": "toolCall"
-          }
-        ],
-        "model": "claude-sonnet-4-20250514",
-        "provider": "anthropic",
-        "role": "assistant",
-        "stopReason": "end_turn",
-        "usage": {
-          "cacheRead": 200,
-          "cacheWrite": 100,
-          "cost": {
-            "cacheRead": 0.0002,
-            "cacheWrite": 0.0004,
-            "input": 0.003,
-            "output": 0.0075,
-            "total": 0.0111
-          },
-          "input": 1000,
-          "output": 500,
-          "totalTokens": 1800
-        }
-      },
-      "parentId": "entry-0001-02",
-      "timestamp": "2026-03-01T10:00:05Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-0001-04",
-      "message": {
-        "content": [
-          {
-            "text": "export function validate(email: string) {\n  return email.includes('@');\n}",
-            "type": "text"
-          }
-        ],
-        "isError": false,
-        "role": "toolResult",
-        "toolCallId": "tc-0001-01",
-        "toolName": "read"
-      },
-      "parentId": "entry-0001-03",
-      "timestamp": "2026-03-01T10:00:06Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-0001-05",
-      "message": {
-        "content": [
-          {
-            "text": "I see the issue. Let me fix the validation and verify.",
-            "type": "text"
-          },
-          {
-            "arguments": {
-              "path": "/home/test/project-alpha/src/auth.ts"
-            },
-            "id": "tc-0001-02",
-            "name": "edit",
-            "type": "toolCall"
-          },
-          {
-            "arguments": {
-              "command": "grep -r 'validate' /home/test/project-alpha/src/"
-            },
-            "id": "tc-0001-03",
-            "name": "bash",
-            "type": "toolCall"
-          }
-        ],
-        "model": "claude-sonnet-4-20250514",
-        "provider": "anthropic",
-        "role": "assistant",
-        "stopReason": "end_turn",
-        "usage": {
-          "cacheRead": 400,
-          "cacheWrite": 200,
-          "cost": {
-            "cacheRead": 0.0004,
-            "cacheWrite": 0.0008,
-            "input": 0.006,
-            "output": 0.012,
-            "total": 0.0192
-          },
-          "input": 2000,
-          "output": 800,
-          "totalTokens": 3400
-        }
-      },
-      "parentId": "entry-0001-04",
-      "timestamp": "2026-03-01T10:00:10Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-0001-06",
-      "message": {
-        "content": [
-          {
-            "text": "File edited successfully",
-            "type": "text"
-          }
-        ],
-        "isError": false,
-        "role": "toolResult",
-        "toolCallId": "tc-0001-02",
-        "toolName": "edit"
-      },
-      "parentId": "entry-0001-05",
-      "timestamp": "2026-03-01T10:00:11Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-0001-07",
-      "message": {
-        "content": [
-          {
-            "text": "src/auth.ts:1:export function validate(email: string) {",
-            "type": "text"
-          }
-        ],
-        "isError": false,
-        "role": "toolResult",
-        "toolCallId": "tc-0001-03",
-        "toolName": "bash"
-      },
-      "parentId": "entry-0001-06",
-      "timestamp": "2026-03-01T10:00:12Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-0001-08",
-      "message": {
-        "content": "Looks good, thanks!",
-        "role": "user"
-      },
-      "parentId": "entry-0001-07",
-      "timestamp": "2026-03-01T10:00:15Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-0001-09",
-      "message": {
-        "content": [
-          {
-            "text": "You're welcome! The login validation is now fixed.",
-            "type": "text"
-          }
-        ],
-        "model": "claude-sonnet-4-20250514",
-        "provider": "anthropic",
-        "role": "assistant",
-        "stopReason": "end_turn",
-        "usage": {
-          "cacheRead": 600,
-          "cacheWrite": 150,
-          "cost": {
-            "cacheRead": 0.0006,
-            "cacheWrite": 0.0006,
-            "input": 0.0045,
-            "output": 0.0045,
-            "total": 0.0102
-          },
-          "input": 1500,
-          "output": 300,
-          "totalTokens": 2550
-        }
-      },
-      "parentId": "entry-0001-08",
-      "timestamp": "2026-03-01T10:00:18Z",
-      "type": "message"
-    }
-  ],
-  "header": {
-    "cwd": "/home/test/project-alpha",
-    "id": "aaaaaaaa-0001-0001-0001-000000000001",
-    "timestamp": "2026-03-01T10:00:00Z",
-    "type": "session",
-    "version": 1
-  },
-  "leaf_id": "entry-0001-09"
+	"entries": [
+		{
+			"id": "entry-0001-01",
+			"name": "Fix login validation",
+			"parentId": "aaaaaaaa-0001-0001-0001-000000000001",
+			"timestamp": "2026-03-01T10:00:01Z",
+			"type": "session_info"
+		},
+		{
+			"id": "entry-0001-02",
+			"message": {
+				"content": "Fix the login validation bug in auth.ts",
+				"role": "user"
+			},
+			"parentId": "entry-0001-01",
+			"timestamp": "2026-03-01T10:00:02Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-0001-03",
+			"message": {
+				"content": [
+					{
+						"text": "I'll look at the auth file first.",
+						"type": "text"
+					},
+					{
+						"arguments": {
+							"path": "/home/test/project-alpha/src/auth.ts"
+						},
+						"id": "tc-0001-01",
+						"name": "read",
+						"type": "toolCall"
+					}
+				],
+				"model": "claude-sonnet-4-20250514",
+				"provider": "anthropic",
+				"role": "assistant",
+				"stopReason": "end_turn",
+				"usage": {
+					"cacheRead": 200,
+					"cacheWrite": 100,
+					"cost": {
+						"cacheRead": 0.0002,
+						"cacheWrite": 0.0004,
+						"input": 0.003,
+						"output": 0.0075,
+						"total": 0.0111
+					},
+					"input": 1000,
+					"output": 500,
+					"totalTokens": 1800
+				}
+			},
+			"parentId": "entry-0001-02",
+			"timestamp": "2026-03-01T10:00:05Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-0001-04",
+			"message": {
+				"content": [
+					{
+						"text": "export function validate(email: string) {\n  return email.includes('@');\n}",
+						"type": "text"
+					}
+				],
+				"isError": false,
+				"role": "toolResult",
+				"toolCallId": "tc-0001-01",
+				"toolName": "read"
+			},
+			"parentId": "entry-0001-03",
+			"timestamp": "2026-03-01T10:00:06Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-0001-05",
+			"message": {
+				"content": [
+					{
+						"text": "I see the issue. Let me fix the validation and verify.",
+						"type": "text"
+					},
+					{
+						"arguments": {
+							"path": "/home/test/project-alpha/src/auth.ts"
+						},
+						"id": "tc-0001-02",
+						"name": "edit",
+						"type": "toolCall"
+					},
+					{
+						"arguments": {
+							"command": "grep -r 'validate' /home/test/project-alpha/src/"
+						},
+						"id": "tc-0001-03",
+						"name": "bash",
+						"type": "toolCall"
+					}
+				],
+				"model": "claude-sonnet-4-20250514",
+				"provider": "anthropic",
+				"role": "assistant",
+				"stopReason": "end_turn",
+				"usage": {
+					"cacheRead": 400,
+					"cacheWrite": 200,
+					"cost": {
+						"cacheRead": 0.0004,
+						"cacheWrite": 0.0008,
+						"input": 0.006,
+						"output": 0.012,
+						"total": 0.0192
+					},
+					"input": 2000,
+					"output": 800,
+					"totalTokens": 3400
+				}
+			},
+			"parentId": "entry-0001-04",
+			"timestamp": "2026-03-01T10:00:10Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-0001-06",
+			"message": {
+				"content": [
+					{
+						"text": "File edited successfully",
+						"type": "text"
+					}
+				],
+				"isError": false,
+				"role": "toolResult",
+				"toolCallId": "tc-0001-02",
+				"toolName": "edit"
+			},
+			"parentId": "entry-0001-05",
+			"timestamp": "2026-03-01T10:00:11Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-0001-07",
+			"message": {
+				"content": [
+					{
+						"text": "src/auth.ts:1:export function validate(email: string) {",
+						"type": "text"
+					}
+				],
+				"isError": false,
+				"role": "toolResult",
+				"toolCallId": "tc-0001-03",
+				"toolName": "bash"
+			},
+			"parentId": "entry-0001-06",
+			"timestamp": "2026-03-01T10:00:12Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-0001-08",
+			"message": {
+				"content": "Looks good, thanks!",
+				"role": "user"
+			},
+			"parentId": "entry-0001-07",
+			"timestamp": "2026-03-01T10:00:15Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-0001-09",
+			"message": {
+				"content": [
+					{
+						"text": "You're welcome! The login validation is now fixed.",
+						"type": "text"
+					}
+				],
+				"model": "claude-sonnet-4-20250514",
+				"provider": "anthropic",
+				"role": "assistant",
+				"stopReason": "end_turn",
+				"usage": {
+					"cacheRead": 600,
+					"cacheWrite": 150,
+					"cost": {
+						"cacheRead": 0.0006,
+						"cacheWrite": 0.0006,
+						"input": 0.0045,
+						"output": 0.0045,
+						"total": 0.0102
+					},
+					"input": 1500,
+					"output": 300,
+					"totalTokens": 2550
+				}
+			},
+			"parentId": "entry-0001-08",
+			"timestamp": "2026-03-01T10:00:18Z",
+			"type": "message"
+		}
+	],
+	"header": {
+		"cwd": "/home/test/project-alpha",
+		"id": "aaaaaaaa-0001-0001-0001-000000000001",
+		"timestamp": "2026-03-01T10:00:00Z",
+		"type": "session",
+		"version": 1
+	},
+	"leaf_id": "entry-0001-09"
 }

@@ -8,10 +8,10 @@
  * Respects the TZ environment variable (Node.js/Bun behavior).
  */
 export function format_local_date(dt: Date): string {
-  const year = dt.getFullYear();
-  const month = String(dt.getMonth() + 1).padStart(2, "0");
-  const day = String(dt.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+	const year = dt.getFullYear();
+	const month = String(dt.getMonth() + 1).padStart(2, "0");
+	const day = String(dt.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 }
 
 /**
@@ -19,17 +19,17 @@ export function format_local_date(dt: Date): string {
  * Matches chrono's num_days_from_monday().
  */
 export function get_weekday_index(dt: Date): number {
-  // JS getDay(): 0=Sun, 1=Mon, ..., 6=Sat
-  // Convert to 0=Mon, ..., 6=Sun
-  const js_day = dt.getDay();
-  return js_day === 0 ? 6 : js_day - 1;
+	// JS getDay(): 0=Sun, 1=Mon, ..., 6=Sat
+	// Convert to 0=Mon, ..., 6=Sun
+	const js_day = dt.getDay();
+	return js_day === 0 ? 6 : js_day - 1;
 }
 
 /**
  * Get the local hour (0-23).
  */
 export function get_local_hour(dt: Date): number {
-  return dt.getHours();
+	return dt.getHours();
 }
 
 /**
@@ -37,9 +37,9 @@ export function get_local_hour(dt: Date): number {
  * Returns null if parsing fails.
  */
 export function parse_timestamp(ts: string): Date | null {
-  const dt = new Date(ts);
-  if (isNaN(dt.getTime())) {
-    return null;
-  }
-  return dt;
+	const dt = new Date(ts);
+	if (Number.isNaN(dt.getTime())) {
+		return null;
+	}
+	return dt;
 }

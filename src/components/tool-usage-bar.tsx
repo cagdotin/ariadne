@@ -1,119 +1,137 @@
-import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import type { ToolAggregate } from "@contracts/analytics/overview";
+import { useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
+	type ChartConfig,
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
 } from "@/components/ui/chart";
-import { BarChart, Bar, Cell, XAxis, YAxis } from "recharts";
 
 interface ToolUsageBarProps {
-  tools: ToolAggregate[];
+	tools: ToolAggregate[];
 }
 
 const clickable_tools = new Set(["bash", "read", "edit", "write"]);
 
 const chart_config = {
-  success: {
-    label: "Success",
-    color: "var(--chart-1)",
-  },
-  errors: {
-    label: "Errors",
-    color: "var(--destructive)",
-  },
+	success: {
+		label: "Success",
+		color: "var(--chart-1)",
+	},
+	errors: {
+		label: "Errors",
+		color: "var(--destructive)",
+	},
 } satisfies ChartConfig;
 
 export function ToolUsageBar({ tools }: ToolUsageBarProps) {
-  const navigate = useNavigate();
+	const navigate = useNavigate();
 
-  const chart_data = useMemo(
-    () =>
-      [...tools]
-        .sort((a, b) => b.total_calls - a.total_calls)
-        .slice(0, 12)
-        .map((tool) => ({
-          name: tool.name,
-          success: tool.total_calls - tool.total_errors,
-          errors: tool.total_errors,
-        })),
-    [tools],
-  );
+	const chart_data = useMemo(
+		() =>
+			[...tools]
+				.sort((a, b) => b.total_calls - a.total_calls)
+				.slice(0, 12)
+				.map((tool) => ({
+					name: tool.name,
+					success: tool.total_calls - tool.total_errors,
+					errors: tool.total_errors,
+				})),
+		[tools],
+	);
 
-  const handle_click = (data: { name?: string }) => {
-    if (data.name && clickable_tools.has(data.name)) {
-      navigate({ to: `/usage/tools/${data.name}` });
-    }
-  };
+	const handle_click = (data: { name?: string }) => {
+		if (data.name && clickable_tools.has(data.name)) {
+			navigate({ to: `/usage/tools/${data.name}` });
+		}
+	};
 
-  return (
-    <Card className="min-w-0 overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-base">Tool Usage</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Click bash, read, edit, or write for details
-        </p>
-      </CardHeader>
-      <CardContent className="min-w-0">
-        <ChartContainer config={chart_config} className="h-[300px] w-full">
-          <BarChart
-            data={chart_data}
-            layout="vertical"
-            margin={{ left: 8, right: 8 }}
-            onClick={(event) => {
-              if (typeof event?.activeLabel === "string") {
-                handle_click({ name: event.activeLabel });
-              }
-            }}
-            style={{ cursor: "pointer" }}
-          >
-            <XAxis type="number" hide />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={110}
-              interval={0}
-              tick={(props) => {
-                const value = typeof props.payload?.value === "string"
-                  ? props.payload.value
-                  : String(props.payload?.value ?? "");
-                const x = typeof props.x === "number" ? props.x : Number(props.x ?? 0);
-                const y = typeof props.y === "number" ? props.y : Number(props.y ?? 0);
-                const is_clickable = clickable_tools.has(value);
+	return (
+		<Card className="min-w-0 overflow-hidden">
+			<CardHeader>
+				<CardTitle className="text-base">Tool Usage</CardTitle>
+				<p className="text-xs text-muted-foreground">
+					Click bash, read, edit, or write for details
+				</p>
+			</CardHeader>
+			<CardContent className="min-w-0">
+				<ChartContainer config={chart_config} className="h-[300px] w-full">
+					<BarChart
+						data={chart_data}
+						layout="vertical"
+						margin={{ left: 8, right: 8 }}
+						onClick={(event) => {
+							if (typeof event?.activeLabel === "string") {
+								handle_click({ name: event.activeLabel });
+							}
+						}}
+						style={{ cursor: "pointer" }}
+					>
+						<XAxis type="number" hide />
+						<YAxis
+							type="category"
+							dataKey="name"
+							width={110}
+							interval={0}
+							tick={(props) => {
+								const value =
+									typeof props.payload?.value === "string"
+										? props.payload.value
+										: String(props.payload?.value ?? "");
+								const x =
+									typeof props.x === "number" ? props.x : Number(props.x ?? 0);
+								const y =
+									typeof props.y === "number" ? props.y : Number(props.y ?? 0);
+								const is_clickable = clickable_tools.has(value);
 
-                return (
-                  <text
-                    x={x}
-                    y={y}
-                    dy={4}
-                    textAnchor="end"
-                    fontSize={11}
-                    fill={is_clickable ? "var(--chart-1)" : "var(--muted-foreground)"}
-                    style={{ cursor: is_clickable ? "pointer" : "default" }}
-                    onClick={() => {
-                      if (is_clickable) navigate({ to: `/usage/tools/${value}` });
-                    }}
-                  >
-                    {value}
-                  </text>
-                );
-              }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="success" stackId="a" fill="var(--chart-1)" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="errors" stackId="a" fill="var(--destructive)" radius={[0, 2, 2, 0]}>
-              {chart_data.map((tool) => (
-                <Cell key={tool.name} fill="var(--destructive)" />
-              ))}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
-  );
+								return (
+									<text
+										x={x}
+										y={y}
+										dy={4}
+										textAnchor="end"
+										fontSize={11}
+										fill={
+											is_clickable
+												? "var(--chart-1)"
+												: "var(--muted-foreground)"
+										}
+										style={{ cursor: is_clickable ? "pointer" : "default" }}
+										onClick={() => {
+											if (is_clickable)
+												navigate({ to: `/usage/tools/${value}` });
+										}}
+									>
+										{value}
+									</text>
+								);
+							}}
+							axisLine={false}
+							tickLine={false}
+						/>
+						<ChartTooltip content={<ChartTooltipContent />} />
+						<Bar
+							dataKey="success"
+							stackId="a"
+							fill="var(--chart-1)"
+							radius={[0, 0, 0, 0]}
+						/>
+						<Bar
+							dataKey="errors"
+							stackId="a"
+							fill="var(--destructive)"
+							radius={[0, 2, 2, 0]}
+						>
+							{chart_data.map((tool) => (
+								<Cell key={tool.name} fill="var(--destructive)" />
+							))}
+						</Bar>
+					</BarChart>
+				</ChartContainer>
+			</CardContent>
+		</Card>
+	);
 }

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	format_cost,
 	format_date,
-	format_date_short,
 	format_date_relative,
+	format_date_short,
 	format_duration,
 	format_file_size,
 	format_number,

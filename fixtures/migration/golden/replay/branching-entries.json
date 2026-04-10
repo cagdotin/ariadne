@@ -1,219 +1,219 @@
 {
-  "entries": [
-    {
-      "id": "entry-b-01",
-      "name": "Branching session",
-      "parentId": "aaaaaaaa-0003-0001-0001-000000000001",
-      "timestamp": "2026-03-10T08:00:01Z",
-      "type": "session_info"
-    },
-    {
-      "id": "entry-b-02",
-      "message": {
-        "content": "Help me decide between two approaches for the cache layer",
-        "role": "user"
-      },
-      "parentId": "entry-b-01",
-      "timestamp": "2026-03-10T08:00:02Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-b-03",
-      "message": {
-        "content": [
-          {
-            "text": "Let me explore option A: in-memory LRU cache.",
-            "type": "text"
-          },
-          {
-            "arguments": {
-              "path": "/home/test/project-alpha/src/cache.ts"
-            },
-            "id": "tc-b-01",
-            "name": "read",
-            "type": "toolCall"
-          }
-        ],
-        "model": "claude-sonnet-4-20250514",
-        "provider": "anthropic",
-        "role": "assistant",
-        "stopReason": "end_turn",
-        "usage": {
-          "cacheRead": 100,
-          "cacheWrite": 50,
-          "cost": {
-            "cacheRead": 0.0001,
-            "cacheWrite": 0.0002,
-            "input": 0.0015,
-            "output": 0.00375,
-            "total": 0.00555
-          },
-          "input": 500,
-          "output": 250,
-          "totalTokens": 900
-        }
-      },
-      "parentId": "entry-b-02",
-      "timestamp": "2026-03-10T08:00:05Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-b-04",
-      "message": {
-        "content": [
-          {
-            "text": "// empty cache module",
-            "type": "text"
-          }
-        ],
-        "isError": false,
-        "role": "toolResult",
-        "toolCallId": "tc-b-01",
-        "toolName": "read"
-      },
-      "parentId": "entry-b-03",
-      "timestamp": "2026-03-10T08:00:06Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-b-05a",
-      "message": {
-        "content": [
-          {
-            "text": "Option A: LRU cache with configurable TTL. This is simpler but uses more memory.",
-            "type": "text"
-          }
-        ],
-        "model": "claude-sonnet-4-20250514",
-        "provider": "anthropic",
-        "role": "assistant",
-        "stopReason": "end_turn",
-        "usage": {
-          "cacheRead": 120,
-          "cacheWrite": 60,
-          "cost": {
-            "cacheRead": 0.00012,
-            "cacheWrite": 0.00024,
-            "input": 0.0018,
-            "output": 0.0045,
-            "total": 0.00666
-          },
-          "input": 600,
-          "output": 300,
-          "totalTokens": 1080
-        }
-      },
-      "parentId": "entry-b-04",
-      "timestamp": "2026-03-10T08:00:10Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-b-05b",
-      "message": {
-        "content": [
-          {
-            "text": "Option B: Redis-backed cache. More infrastructure but better for scaling.",
-            "type": "text"
-          }
-        ],
-        "model": "claude-sonnet-4-20250514",
-        "provider": "anthropic",
-        "role": "assistant",
-        "stopReason": "end_turn",
-        "usage": {
-          "cacheRead": 120,
-          "cacheWrite": 60,
-          "cost": {
-            "cacheRead": 0.00012,
-            "cacheWrite": 0.00024,
-            "input": 0.0018,
-            "output": 0.0045,
-            "total": 0.00666
-          },
-          "input": 600,
-          "output": 300,
-          "totalTokens": 1080
-        }
-      },
-      "parentId": "entry-b-04",
-      "timestamp": "2026-03-10T08:00:12Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-b-06",
-      "message": {
-        "content": "Let's go with option B",
-        "role": "user"
-      },
-      "parentId": "entry-b-05b",
-      "timestamp": "2026-03-10T08:00:15Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-b-07",
-      "message": {
-        "content": [
-          {
-            "text": "Great choice. I'll implement the Redis-backed cache.",
-            "type": "text"
-          },
-          {
-            "arguments": {
-              "path": "/home/test/project-alpha/src/cache.ts"
-            },
-            "id": "tc-b-02",
-            "name": "edit",
-            "type": "toolCall"
-          }
-        ],
-        "model": "claude-sonnet-4-20250514",
-        "provider": "anthropic",
-        "role": "assistant",
-        "stopReason": "end_turn",
-        "usage": {
-          "cacheRead": 140,
-          "cacheWrite": 70,
-          "cost": {
-            "cacheRead": 0.00014,
-            "cacheWrite": 0.00028,
-            "input": 0.0021,
-            "output": 0.00525,
-            "total": 0.00777
-          },
-          "input": 700,
-          "output": 350,
-          "totalTokens": 1260
-        }
-      },
-      "parentId": "entry-b-06",
-      "timestamp": "2026-03-10T08:00:20Z",
-      "type": "message"
-    },
-    {
-      "id": "entry-b-08",
-      "message": {
-        "content": [
-          {
-            "text": "File edited successfully",
-            "type": "text"
-          }
-        ],
-        "isError": false,
-        "role": "toolResult",
-        "toolCallId": "tc-b-02",
-        "toolName": "edit"
-      },
-      "parentId": "entry-b-07",
-      "timestamp": "2026-03-10T08:00:21Z",
-      "type": "message"
-    }
-  ],
-  "header": {
-    "cwd": "/home/test/project-alpha",
-    "id": "aaaaaaaa-0003-0001-0001-000000000001",
-    "timestamp": "2026-03-10T08:00:00Z",
-    "type": "session",
-    "version": 1
-  },
-  "leaf_id": "entry-b-08"
+	"entries": [
+		{
+			"id": "entry-b-01",
+			"name": "Branching session",
+			"parentId": "aaaaaaaa-0003-0001-0001-000000000001",
+			"timestamp": "2026-03-10T08:00:01Z",
+			"type": "session_info"
+		},
+		{
+			"id": "entry-b-02",
+			"message": {
+				"content": "Help me decide between two approaches for the cache layer",
+				"role": "user"
+			},
+			"parentId": "entry-b-01",
+			"timestamp": "2026-03-10T08:00:02Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-b-03",
+			"message": {
+				"content": [
+					{
+						"text": "Let me explore option A: in-memory LRU cache.",
+						"type": "text"
+					},
+					{
+						"arguments": {
+							"path": "/home/test/project-alpha/src/cache.ts"
+						},
+						"id": "tc-b-01",
+						"name": "read",
+						"type": "toolCall"
+					}
+				],
+				"model": "claude-sonnet-4-20250514",
+				"provider": "anthropic",
+				"role": "assistant",
+				"stopReason": "end_turn",
+				"usage": {
+					"cacheRead": 100,
+					"cacheWrite": 50,
+					"cost": {
+						"cacheRead": 0.0001,
+						"cacheWrite": 0.0002,
+						"input": 0.0015,
+						"output": 0.00375,
+						"total": 0.00555
+					},
+					"input": 500,
+					"output": 250,
+					"totalTokens": 900
+				}
+			},
+			"parentId": "entry-b-02",
+			"timestamp": "2026-03-10T08:00:05Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-b-04",
+			"message": {
+				"content": [
+					{
+						"text": "// empty cache module",
+						"type": "text"
+					}
+				],
+				"isError": false,
+				"role": "toolResult",
+				"toolCallId": "tc-b-01",
+				"toolName": "read"
+			},
+			"parentId": "entry-b-03",
+			"timestamp": "2026-03-10T08:00:06Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-b-05a",
+			"message": {
+				"content": [
+					{
+						"text": "Option A: LRU cache with configurable TTL. This is simpler but uses more memory.",
+						"type": "text"
+					}
+				],
+				"model": "claude-sonnet-4-20250514",
+				"provider": "anthropic",
+				"role": "assistant",
+				"stopReason": "end_turn",
+				"usage": {
+					"cacheRead": 120,
+					"cacheWrite": 60,
+					"cost": {
+						"cacheRead": 0.00012,
+						"cacheWrite": 0.00024,
+						"input": 0.0018,
+						"output": 0.0045,
+						"total": 0.00666
+					},
+					"input": 600,
+					"output": 300,
+					"totalTokens": 1080
+				}
+			},
+			"parentId": "entry-b-04",
+			"timestamp": "2026-03-10T08:00:10Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-b-05b",
+			"message": {
+				"content": [
+					{
+						"text": "Option B: Redis-backed cache. More infrastructure but better for scaling.",
+						"type": "text"
+					}
+				],
+				"model": "claude-sonnet-4-20250514",
+				"provider": "anthropic",
+				"role": "assistant",
+				"stopReason": "end_turn",
+				"usage": {
+					"cacheRead": 120,
+					"cacheWrite": 60,
+					"cost": {
+						"cacheRead": 0.00012,
+						"cacheWrite": 0.00024,
+						"input": 0.0018,
+						"output": 0.0045,
+						"total": 0.00666
+					},
+					"input": 600,
+					"output": 300,
+					"totalTokens": 1080
+				}
+			},
+			"parentId": "entry-b-04",
+			"timestamp": "2026-03-10T08:00:12Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-b-06",
+			"message": {
+				"content": "Let's go with option B",
+				"role": "user"
+			},
+			"parentId": "entry-b-05b",
+			"timestamp": "2026-03-10T08:00:15Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-b-07",
+			"message": {
+				"content": [
+					{
+						"text": "Great choice. I'll implement the Redis-backed cache.",
+						"type": "text"
+					},
+					{
+						"arguments": {
+							"path": "/home/test/project-alpha/src/cache.ts"
+						},
+						"id": "tc-b-02",
+						"name": "edit",
+						"type": "toolCall"
+					}
+				],
+				"model": "claude-sonnet-4-20250514",
+				"provider": "anthropic",
+				"role": "assistant",
+				"stopReason": "end_turn",
+				"usage": {
+					"cacheRead": 140,
+					"cacheWrite": 70,
+					"cost": {
+						"cacheRead": 0.00014,
+						"cacheWrite": 0.00028,
+						"input": 0.0021,
+						"output": 0.00525,
+						"total": 0.00777
+					},
+					"input": 700,
+					"output": 350,
+					"totalTokens": 1260
+				}
+			},
+			"parentId": "entry-b-06",
+			"timestamp": "2026-03-10T08:00:20Z",
+			"type": "message"
+		},
+		{
+			"id": "entry-b-08",
+			"message": {
+				"content": [
+					{
+						"text": "File edited successfully",
+						"type": "text"
+					}
+				],
+				"isError": false,
+				"role": "toolResult",
+				"toolCallId": "tc-b-02",
+				"toolName": "edit"
+			},
+			"parentId": "entry-b-07",
+			"timestamp": "2026-03-10T08:00:21Z",
+			"type": "message"
+		}
+	],
+	"header": {
+		"cwd": "/home/test/project-alpha",
+		"id": "aaaaaaaa-0003-0001-0001-000000000001",
+		"timestamp": "2026-03-10T08:00:00Z",
+		"type": "session",
+		"version": 1
+	},
+	"leaf_id": "entry-b-08"
 }

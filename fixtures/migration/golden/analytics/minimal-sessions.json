@@ -1,64 +1,64 @@
 [
-  {
-    "assistant_message_count": 3,
-    "bash_commands": {
-      "grep": 1
-    },
-    "cache_read_cost": 0.0012000000000000001,
-    "cache_read_tokens": 1200,
-    "cache_write_cost": 0.0018,
-    "cache_write_tokens": 450,
-    "compaction_count": 0,
-    "duration_seconds": 18.0,
-    "edit_files": {
-      "/home/test/project-alpha/src/auth.ts": 1
-    },
-    "ended_at": "2026-03-01T10:00:18Z",
-    "file_name": "session-001.jsonl",
-    "file_size_bytes": "__unstable__",
-    "first_user_message": "Fix the login validation bug in auth.ts",
-    "id": "aaaaaaaa-0001-0001-0001-000000000001",
-    "input_cost": 0.013500000000000002,
-    "input_tokens": 4500,
-    "models_used": [
-      {
-        "message_count": 3,
-        "model_id": "claude-sonnet-4-20250514",
-        "provider": "anthropic"
-      }
-    ],
-    "output_cost": 0.024,
-    "output_tokens": 1600,
-    "project_name": "project-alpha",
-    "project_path": "/home/test/project-alpha",
-    "read_files": {
-      "/home/test/project-alpha/src/auth.ts": 1
-    },
-    "session_dir": "%2Fhome%2Ftest%2Fproject-alpha",
-    "started_at": "2026-03-01T10:00:00Z",
-    "title": "Fix login validation",
-    "tool_calls": {
-      "bash": {
-        "calls": 1,
-        "errors": 0,
-        "name": "bash"
-      },
-      "edit": {
-        "calls": 1,
-        "errors": 0,
-        "name": "edit"
-      },
-      "read": {
-        "calls": 1,
-        "errors": 0,
-        "name": "read"
-      }
-    },
-    "tool_result_count": 3,
-    "total_cost": 0.0405,
-    "total_tokens": 7750,
-    "turn_count": 3,
-    "user_message_count": 2,
-    "write_files": {}
-  }
+	{
+		"assistant_message_count": 3,
+		"bash_commands": {
+			"grep": 1
+		},
+		"cache_read_cost": 0.0012000000000000001,
+		"cache_read_tokens": 1200,
+		"cache_write_cost": 0.0018,
+		"cache_write_tokens": 450,
+		"compaction_count": 0,
+		"duration_seconds": 18.0,
+		"edit_files": {
+			"/home/test/project-alpha/src/auth.ts": 1
+		},
+		"ended_at": "2026-03-01T10:00:18Z",
+		"file_name": "session-001.jsonl",
+		"file_size_bytes": "__unstable__",
+		"first_user_message": "Fix the login validation bug in auth.ts",
+		"id": "aaaaaaaa-0001-0001-0001-000000000001",
+		"input_cost": 0.013500000000000002,
+		"input_tokens": 4500,
+		"models_used": [
+			{
+				"message_count": 3,
+				"model_id": "claude-sonnet-4-20250514",
+				"provider": "anthropic"
+			}
+		],
+		"output_cost": 0.024,
+		"output_tokens": 1600,
+		"project_name": "project-alpha",
+		"project_path": "/home/test/project-alpha",
+		"read_files": {
+			"/home/test/project-alpha/src/auth.ts": 1
+		},
+		"session_dir": "%2Fhome%2Ftest%2Fproject-alpha",
+		"started_at": "2026-03-01T10:00:00Z",
+		"title": "Fix login validation",
+		"tool_calls": {
+			"bash": {
+				"calls": 1,
+				"errors": 0,
+				"name": "bash"
+			},
+			"edit": {
+				"calls": 1,
+				"errors": 0,
+				"name": "edit"
+			},
+			"read": {
+				"calls": 1,
+				"errors": 0,
+				"name": "read"
+			}
+		},
+		"tool_result_count": 3,
+		"total_cost": 0.0405,
+		"total_tokens": 7750,
+		"turn_count": 3,
+		"user_message_count": 2,
+		"write_files": {}
+	}
 ]

@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+	return twMerge(clsx(inputs));
 }
 
 /**
@@ -12,8 +12,11 @@ export function cn(...inputs: ClassValue[]) {
  * This helper handles that case along with standard Error objects and
  * other thrown values.
  */
-export function error_message(err: unknown, fallback = "Unknown error"): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "string" && err.length > 0) return err;
-  return fallback;
+export function error_message(
+	err: unknown,
+	fallback = "Unknown error",
+): string {
+	if (err instanceof Error) return err.message;
+	if (typeof err === "string" && err.length > 0) return err;
+	return fallback;
 }

@@ -6,11 +6,11 @@ import { createContext, useCallback, useContext, useState } from "react";
  * needs to display the current range label.
  */
 export const RANGE_OPTIONS = [
-  { label: "Today", value: 1 },
-  { label: "7d", value: 7 },
-  { label: "30d", value: 30 },
-  { label: "90d", value: 90 },
-  { label: "All", value: 0 },
+	{ label: "Today", value: 1 },
+	{ label: "7d", value: 7 },
+	{ label: "30d", value: 30 },
+	{ label: "90d", value: 90 },
+	{ label: "All", value: 0 },
 ] as const;
 
 export type RangeDays = (typeof RANGE_OPTIONS)[number]["value"];
@@ -24,25 +24,25 @@ const STORAGE_KEY = "ariadne:analytics-time-range-days";
 // ---------------------------------------------------------------------------
 
 function read_stored_range(): RangeDays {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return DEFAULT_RANGE;
-    const parsed = Number(raw);
-    if (ALLOWED_VALUES.has(parsed)) return parsed as RangeDays;
-    // Bad value — clear and fall back
-    localStorage.removeItem(STORAGE_KEY);
-    return DEFAULT_RANGE;
-  } catch {
-    return DEFAULT_RANGE;
-  }
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (raw === null) return DEFAULT_RANGE;
+		const parsed = Number(raw);
+		if (ALLOWED_VALUES.has(parsed)) return parsed as RangeDays;
+		// Bad value — clear and fall back
+		localStorage.removeItem(STORAGE_KEY);
+		return DEFAULT_RANGE;
+	} catch {
+		return DEFAULT_RANGE;
+	}
 }
 
 function write_stored_range(days: RangeDays) {
-  try {
-    localStorage.setItem(STORAGE_KEY, String(days));
-  } catch {
-    // Storage full / unavailable — ignore
-  }
+	try {
+		localStorage.setItem(STORAGE_KEY, String(days));
+	} catch {
+		// Storage full / unavailable — ignore
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -50,12 +50,12 @@ function write_stored_range(days: RangeDays) {
 // ---------------------------------------------------------------------------
 
 interface AnalyticsTimeRangeState {
-  range_days: RangeDays;
-  set_range_days: (days: RangeDays) => void;
+	range_days: RangeDays;
+	set_range_days: (days: RangeDays) => void;
 }
 
 const AnalyticsTimeRangeContext = createContext<AnalyticsTimeRangeState | null>(
-  null,
+	null,
 );
 
 // ---------------------------------------------------------------------------
@@ -63,23 +63,23 @@ const AnalyticsTimeRangeContext = createContext<AnalyticsTimeRangeState | null>(
 // ---------------------------------------------------------------------------
 
 export function AnalyticsTimeRangeProvider({
-  children,
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode;
 }) {
-  const [range_days, set_range_state] = useState<RangeDays>(read_stored_range);
+	const [range_days, set_range_state] = useState<RangeDays>(read_stored_range);
 
-  const set_range_days = useCallback((days: RangeDays) => {
-    if (!ALLOWED_VALUES.has(days)) return;
-    set_range_state(days);
-    write_stored_range(days);
-  }, []);
+	const set_range_days = useCallback((days: RangeDays) => {
+		if (!ALLOWED_VALUES.has(days)) return;
+		set_range_state(days);
+		write_stored_range(days);
+	}, []);
 
-  return (
-    <AnalyticsTimeRangeContext.Provider value={{ range_days, set_range_days }}>
-      {children}
-    </AnalyticsTimeRangeContext.Provider>
-  );
+	return (
+		<AnalyticsTimeRangeContext.Provider value={{ range_days, set_range_days }}>
+			{children}
+		</AnalyticsTimeRangeContext.Provider>
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -87,17 +87,17 @@ export function AnalyticsTimeRangeProvider({
 // ---------------------------------------------------------------------------
 
 export function use_analytics_time_range(): AnalyticsTimeRangeState {
-  const ctx = useContext(AnalyticsTimeRangeContext);
-  if (!ctx) {
-    throw new Error(
-      "use_analytics_time_range must be used within AnalyticsTimeRangeProvider",
-    );
-  }
-  return ctx;
+	const ctx = useContext(AnalyticsTimeRangeContext);
+	if (!ctx) {
+		throw new Error(
+			"use_analytics_time_range must be used within AnalyticsTimeRangeProvider",
+		);
+	}
+	return ctx;
 }
 
 /** Convenience: get the display label for a given range_days value. */
 export function range_label(days: number): string {
-  const opt = RANGE_OPTIONS.find((o) => o.value === days);
-  return opt?.label ?? `${days}d`;
+	const opt = RANGE_OPTIONS.find((o) => o.value === days);
+	return opt?.label ?? `${days}d`;
 }

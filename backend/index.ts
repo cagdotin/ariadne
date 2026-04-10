@@ -1,10 +1,10 @@
 // ---- Backend entry point: forked as a child process from Electron main ------
 
 import type {
-  BackendRequest,
-  BackendResponse,
-  BackendErrorResponse,
-  BackendReady,
+	BackendErrorResponse,
+	BackendReady,
+	BackendRequest,
+	BackendResponse,
 } from "./runtime/protocol.js";
 import { route_request } from "./runtime/request-router.js";
 
@@ -25,49 +25,53 @@ import "./analytics/commands.js";
 
 // ---- IPC message listener ---------------------------------------------------
 
-function send_message(msg: BackendResponse | BackendErrorResponse | BackendReady): void {
-  if (typeof process.send !== "function") {
-    console.warn("[backend] process.send unavailable — not running as a child process");
-    return;
-  }
-  process.send(msg);
+function send_message(
+	msg: BackendResponse | BackendErrorResponse | BackendReady,
+): void {
+	if (typeof process.send !== "function") {
+		console.warn(
+			"[backend] process.send unavailable — not running as a child process",
+		);
+		return;
+	}
+	process.send(msg);
 }
 
 function is_backend_request(msg: unknown): msg is BackendRequest {
-  return (
-    typeof msg === "object" &&
-    msg !== null &&
-    "id" in msg &&
-    "channel" in msg &&
-    "payload" in msg
-  );
+	return (
+		typeof msg === "object" &&
+		msg !== null &&
+		"id" in msg &&
+		"channel" in msg &&
+		"payload" in msg
+	);
 }
 
 process.on("message", async (raw: unknown) => {
-  if (!is_backend_request(raw)) {
-    console.warn("[backend] received malformed message:", raw);
-    return;
-  }
+	if (!is_backend_request(raw)) {
+		console.warn("[backend] received malformed message:", raw);
+		return;
+	}
 
-  const { id, channel, payload } = raw;
+	const { id, channel, payload } = raw;
 
-  try {
-    const result = await route_request(channel, payload);
-    send_message({ id, ok: true, result });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    send_message({
-      id,
-      ok: false,
-      error: { code: "HANDLER_ERROR", message },
-    });
-  }
+	try {
+		const result = await route_request(channel, payload);
+		send_message({ id, ok: true, result });
+	} catch (err: unknown) {
+		const message = err instanceof Error ? err.message : String(err);
+		send_message({
+			id,
+			ok: false,
+			error: { code: "HANDLER_ERROR", message },
+		});
+	}
 });
 
 // ---- Graceful shutdown ------------------------------------------------------
 
 process.on("SIGTERM", () => {
-  process.exit(0);
+	process.exit(0);
 });
 
 // ---- Handshake: signal readiness to parent ----------------------------------

@@ -1,9 +1,9 @@
 {
-  "name": "ariadne-qmd-bridge",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@tobilu/qmd": "^2.0.1",
-    "fast-glob": "^3.3.0"
-  }
+	"name": "ariadne-qmd-bridge",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@tobilu/qmd": "^2.0.1",
+		"fast-glob": "^3.3.0"
+	}
 }

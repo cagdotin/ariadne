@@ -1,19 +1,19 @@
 import { CalendarRange } from "lucide-react";
 import {
-  use_analytics_time_range,
-  RANGE_OPTIONS,
-  range_label,
-  type RangeDays,
+	RANGE_OPTIONS,
+	type RangeDays,
+	range_label,
+	use_analytics_time_range,
 } from "./analytics-time-range-provider";
-import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Button } from "./ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 
 /**
  * Header-level analytics time-range selector.
@@ -22,53 +22,57 @@ import {
  * Narrow (< md): compact dropdown showing the current label.
  */
 export function AnalyticsTimeRangeSelector() {
-  const { range_days, set_range_days } = use_analytics_time_range();
+	const { range_days, set_range_days } = use_analytics_time_range();
 
-  return (
-    <>
-      {/* Expanded: shadcn Tabs — hidden below lg */}
-      <Tabs
-        value={String(range_days)}
-        onValueChange={(v) => set_range_days(Number(v) as RangeDays)}
-        className="hidden lg:flex shrink-0"
-      >
-        <TabsList className="h-6 p-0.5">
-          {RANGE_OPTIONS.map((opt) => (
-            <TabsTrigger key={opt.value} value={String(opt.value)} className="text-[11px] px-1.5 h-5">
-              {opt.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+	return (
+		<>
+			{/* Expanded: shadcn Tabs — hidden below lg */}
+			<Tabs
+				value={String(range_days)}
+				onValueChange={(v) => set_range_days(Number(v) as RangeDays)}
+				className="hidden lg:flex shrink-0"
+			>
+				<TabsList className="h-6 p-0.5">
+					{RANGE_OPTIONS.map((opt) => (
+						<TabsTrigger
+							key={opt.value}
+							value={String(opt.value)}
+							className="text-[11px] px-1.5 h-5"
+						>
+							{opt.label}
+						</TabsTrigger>
+					))}
+				</TabsList>
+			</Tabs>
 
-      {/* Collapsed: dropdown — visible below lg */}
-      <div className="lg:hidden shrink-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="sm">
-                <CalendarRange className="size-3.5 mr-1" />
-                <span>{range_label(range_days)}</span>
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="end" side="bottom" sideOffset={6}>
-            <DropdownMenuRadioGroup
-              value={String(range_days)}
-              onValueChange={(v) => set_range_days(Number(v) as RangeDays)}
-            >
-              {RANGE_OPTIONS.map((opt) => (
-                <DropdownMenuRadioItem
-                  key={opt.value}
-                  value={String(opt.value)}
-                >
-                  {opt.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </>
-  );
+			{/* Collapsed: dropdown — visible below lg */}
+			<div className="lg:hidden shrink-0">
+				<DropdownMenu>
+					<DropdownMenuTrigger
+						render={
+							<Button variant="ghost" size="sm">
+								<CalendarRange className="size-3.5 mr-1" />
+								<span>{range_label(range_days)}</span>
+							</Button>
+						}
+					/>
+					<DropdownMenuContent align="end" side="bottom" sideOffset={6}>
+						<DropdownMenuRadioGroup
+							value={String(range_days)}
+							onValueChange={(v) => set_range_days(Number(v) as RangeDays)}
+						>
+							{RANGE_OPTIONS.map((opt) => (
+								<DropdownMenuRadioItem
+									key={opt.value}
+									value={String(opt.value)}
+								>
+									{opt.label}
+								</DropdownMenuRadioItem>
+							))}
+						</DropdownMenuRadioGroup>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+		</>
+	);
 }

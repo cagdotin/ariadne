@@ -1,27 +1,27 @@
-import type { ToolHandler } from "./tool-types";
+import { Search } from "lucide-react";
 import { ExpandableOutput } from "../primitives/expandable-output";
 import { shorten_path } from "../utils";
-import { Search } from "lucide-react";
+import type { ToolHandler } from "./tool-types";
 
 export const grep_tool: ToolHandler = {
-  get_summary(tool) {
-    const pattern = String(tool.arguments.pattern ?? "");
-    const path = shorten_path(String(tool.arguments.path ?? "."));
-    return {
-      icon: <Search className="size-3" />,
-      summary: (
-        <>
-          <span className="font-semibold">grep</span>{" "}
-          <span className="text-warning">/{pattern}/</span>{" "}
-          <span className="text-muted-foreground/50">in</span>{" "}
-          <span className="text-chart-1">{path}</span>
-        </>
-      ),
-    };
-  },
+	get_summary(tool) {
+		const pattern = String(tool.arguments.pattern ?? "");
+		const path = shorten_path(String(tool.arguments.path ?? "."));
+		return {
+			icon: <Search className="size-3" />,
+			summary: (
+				<>
+					<span className="font-semibold">grep</span>{" "}
+					<span className="text-warning">/{pattern}/</span>{" "}
+					<span className="text-muted-foreground/50">in</span>{" "}
+					<span className="text-chart-1">{path}</span>
+				</>
+			),
+		};
+	},
 
-  get_body(_tool, output) {
-    if (!output) return null;
-    return <ExpandableOutput text={output} max_lines={8} />;
-  },
+	get_body(_tool, output) {
+		if (!output) return null;
+		return <ExpandableOutput text={output} max_lines={8} />;
+	},
 };

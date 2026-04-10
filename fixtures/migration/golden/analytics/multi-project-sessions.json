@@ -1,205 +1,205 @@
 [
-  {
-    "assistant_message_count": 2,
-    "bash_commands": {
-      "grep": 1
-    },
-    "cache_read_cost": 0.00065,
-    "cache_read_tokens": 650,
-    "cache_write_cost": 0.00106,
-    "cache_write_tokens": 270,
-    "compaction_count": 0,
-    "duration_seconds": 14.0,
-    "edit_files": {
-      "/home/test/project-alpha/src/routes/api.ts": 1
-    },
-    "ended_at": "2026-03-20T14:00:14Z",
-    "file_name": "session-002.jsonl",
-    "file_size_bytes": "__unstable__",
-    "first_user_message": "Add error handling to the API routes",
-    "id": "aaaaaaaa-0002-0002-0001-000000000001",
-    "input_cost": 0.0081,
-    "input_tokens": 2700,
-    "models_used": [
-      {
-        "message_count": 2,
-        "model_id": "claude-sonnet-4-20250514",
-        "provider": "anthropic"
-      }
-    ],
-    "output_cost": 0.01725,
-    "output_tokens": 1150,
-    "project_name": "project-alpha",
-    "project_path": "/home/test/project-alpha",
-    "read_files": {
-      "/home/test/project-alpha/src/routes/api.ts": 1,
-      "/home/test/project-alpha/src/utils.ts": 1
-    },
-    "session_dir": "%2Fhome%2Ftest%2Fproject-alpha",
-    "started_at": "2026-03-20T14:00:00Z",
-    "title": "Add error handling",
-    "tool_calls": {
-      "bash": {
-        "calls": 1,
-        "errors": 0,
-        "name": "bash"
-      },
-      "edit": {
-        "calls": 1,
-        "errors": 0,
-        "name": "edit"
-      },
-      "read": {
-        "calls": 2,
-        "errors": 0,
-        "name": "read"
-      }
-    },
-    "tool_result_count": 4,
-    "total_cost": 0.02706,
-    "total_tokens": 4770,
-    "turn_count": 2,
-    "user_message_count": 1,
-    "write_files": {}
-  },
-  {
-    "assistant_message_count": 2,
-    "bash_commands": {
-      "node": 1
-    },
-    "cache_read_cost": 0.0006000000000000001,
-    "cache_read_tokens": 600,
-    "cache_write_cost": 0.001,
-    "cache_write_tokens": 250,
-    "compaction_count": 0,
-    "duration_seconds": 15.0,
-    "edit_files": {
-      "/home/test/project-beta/src/config.ts": 1
-    },
-    "ended_at": "2026-03-15T11:00:15Z",
-    "file_name": "session-003.jsonl",
-    "file_size_bytes": "__unstable__",
-    "first_user_message": "Set up a GitHub Actions CI pipeline",
-    "id": "aaaaaaaa-0002-0003-0001-000000000001",
-    "input_cost": 0.0075,
-    "input_tokens": 2500,
-    "models_used": [
-      {
-        "message_count": 2,
-        "model_id": "claude-sonnet-4-20250514",
-        "provider": "anthropic"
-      }
-    ],
-    "output_cost": 0.018000000000000002,
-    "output_tokens": 1200,
-    "project_name": "project-beta",
-    "project_path": "/home/test/project-beta",
-    "read_files": {
-      "/home/test/project-beta/package.json": 1,
-      "/home/test/project-beta/src/config.ts": 1
-    },
-    "session_dir": "%2Fhome%2Ftest%2Fproject-beta",
-    "started_at": "2026-03-15T11:00:00Z",
-    "title": "Setup CI pipeline",
-    "tool_calls": {
-      "bash": {
-        "calls": 1,
-        "errors": 0,
-        "name": "bash"
-      },
-      "edit": {
-        "calls": 1,
-        "errors": 0,
-        "name": "edit"
-      },
-      "read": {
-        "calls": 2,
-        "errors": 0,
-        "name": "read"
-      },
-      "write": {
-        "calls": 1,
-        "errors": 0,
-        "name": "write"
-      }
-    },
-    "tool_result_count": 5,
-    "total_cost": 0.0271,
-    "total_tokens": 4550,
-    "turn_count": 2,
-    "user_message_count": 1,
-    "write_files": {
-      "/home/test/project-beta/.github/workflows/ci.yml": 1
-    }
-  },
-  {
-    "assistant_message_count": 2,
-    "bash_commands": {
-      "npm": 1
-    },
-    "cache_read_cost": 0.00039999999999999996,
-    "cache_read_tokens": 400,
-    "cache_write_cost": 0.0007999999999999999,
-    "cache_write_tokens": 200,
-    "compaction_count": 0,
-    "duration_seconds": 13.0,
-    "edit_files": {
-      "/home/test/project-alpha/src/utils.ts": 1
-    },
-    "ended_at": "2026-03-01T09:00:13Z",
-    "file_name": "session-001.jsonl",
-    "file_size_bytes": "__unstable__",
-    "first_user_message": "Refactor the utils module to use ES modules",
-    "id": "aaaaaaaa-0002-0001-0001-000000000001",
-    "input_cost": 0.006,
-    "input_tokens": 2000,
-    "models_used": [
-      {
-        "message_count": 2,
-        "model_id": "claude-sonnet-4-20250514",
-        "provider": "anthropic"
-      }
-    ],
-    "output_cost": 0.015,
-    "output_tokens": 1000,
-    "project_name": "project-alpha",
-    "project_path": "/home/test/project-alpha",
-    "read_files": {
-      "/home/test/project-alpha/src/auth.ts": 1,
-      "/home/test/project-alpha/src/utils.ts": 1
-    },
-    "session_dir": "%2Fhome%2Ftest%2Fproject-alpha",
-    "started_at": "2026-03-01T09:00:00Z",
-    "title": "Refactor utils module",
-    "tool_calls": {
-      "bash": {
-        "calls": 1,
-        "errors": 0,
-        "name": "bash"
-      },
-      "edit": {
-        "calls": 1,
-        "errors": 0,
-        "name": "edit"
-      },
-      "read": {
-        "calls": 2,
-        "errors": 0,
-        "name": "read"
-      },
-      "write": {
-        "calls": 1,
-        "errors": 0,
-        "name": "write"
-      }
-    },
-    "tool_result_count": 5,
-    "total_cost": 0.0222,
-    "total_tokens": 3600,
-    "turn_count": 2,
-    "user_message_count": 1,
-    "write_files": {
-      "/home/test/project-alpha/src/helpers.ts": 1
-    }
-  }
+	{
+		"assistant_message_count": 2,
+		"bash_commands": {
+			"grep": 1
+		},
+		"cache_read_cost": 0.00065,
+		"cache_read_tokens": 650,
+		"cache_write_cost": 0.00106,
+		"cache_write_tokens": 270,
+		"compaction_count": 0,
+		"duration_seconds": 14.0,
+		"edit_files": {
+			"/home/test/project-alpha/src/routes/api.ts": 1
+		},
+		"ended_at": "2026-03-20T14:00:14Z",
+		"file_name": "session-002.jsonl",
+		"file_size_bytes": "__unstable__",
+		"first_user_message": "Add error handling to the API routes",
+		"id": "aaaaaaaa-0002-0002-0001-000000000001",
+		"input_cost": 0.0081,
+		"input_tokens": 2700,
+		"models_used": [
+			{
+				"message_count": 2,
+				"model_id": "claude-sonnet-4-20250514",
+				"provider": "anthropic"
+			}
+		],
+		"output_cost": 0.01725,
+		"output_tokens": 1150,
+		"project_name": "project-alpha",
+		"project_path": "/home/test/project-alpha",
+		"read_files": {
+			"/home/test/project-alpha/src/routes/api.ts": 1,
+			"/home/test/project-alpha/src/utils.ts": 1
+		},
+		"session_dir": "%2Fhome%2Ftest%2Fproject-alpha",
+		"started_at": "2026-03-20T14:00:00Z",
+		"title": "Add error handling",
+		"tool_calls": {
+			"bash": {
+				"calls": 1,
+				"errors": 0,
+				"name": "bash"
+			},
+			"edit": {
+				"calls": 1,
+				"errors": 0,
+				"name": "edit"
+			},
+			"read": {
+				"calls": 2,
+				"errors": 0,
+				"name": "read"
+			}
+		},
+		"tool_result_count": 4,
+		"total_cost": 0.02706,
+		"total_tokens": 4770,
+		"turn_count": 2,
+		"user_message_count": 1,
+		"write_files": {}
+	},
+	{
+		"assistant_message_count": 2,
+		"bash_commands": {
+			"node": 1
+		},
+		"cache_read_cost": 0.0006000000000000001,
+		"cache_read_tokens": 600,
+		"cache_write_cost": 0.001,
+		"cache_write_tokens": 250,
+		"compaction_count": 0,
+		"duration_seconds": 15.0,
+		"edit_files": {
+			"/home/test/project-beta/src/config.ts": 1
+		},
+		"ended_at": "2026-03-15T11:00:15Z",
+		"file_name": "session-003.jsonl",
+		"file_size_bytes": "__unstable__",
+		"first_user_message": "Set up a GitHub Actions CI pipeline",
+		"id": "aaaaaaaa-0002-0003-0001-000000000001",
+		"input_cost": 0.0075,
+		"input_tokens": 2500,
+		"models_used": [
+			{
+				"message_count": 2,
+				"model_id": "claude-sonnet-4-20250514",
+				"provider": "anthropic"
+			}
+		],
+		"output_cost": 0.018000000000000002,
+		"output_tokens": 1200,
+		"project_name": "project-beta",
+		"project_path": "/home/test/project-beta",
+		"read_files": {
+			"/home/test/project-beta/package.json": 1,
+			"/home/test/project-beta/src/config.ts": 1
+		},
+		"session_dir": "%2Fhome%2Ftest%2Fproject-beta",
+		"started_at": "2026-03-15T11:00:00Z",
+		"title": "Setup CI pipeline",
+		"tool_calls": {
+			"bash": {
+				"calls": 1,
+				"errors": 0,
+				"name": "bash"
+			},
+			"edit": {
+				"calls": 1,
+				"errors": 0,
+				"name": "edit"
+			},
+			"read": {
+				"calls": 2,
+				"errors": 0,
+				"name": "read"
+			},
+			"write": {
+				"calls": 1,
+				"errors": 0,
+				"name": "write"
+			}
+		},
+		"tool_result_count": 5,
+		"total_cost": 0.0271,
+		"total_tokens": 4550,
+		"turn_count": 2,
+		"user_message_count": 1,
+		"write_files": {
+			"/home/test/project-beta/.github/workflows/ci.yml": 1
+		}
+	},
+	{
+		"assistant_message_count": 2,
+		"bash_commands": {
+			"npm": 1
+		},
+		"cache_read_cost": 0.00039999999999999996,
+		"cache_read_tokens": 400,
+		"cache_write_cost": 0.0007999999999999999,
+		"cache_write_tokens": 200,
+		"compaction_count": 0,
+		"duration_seconds": 13.0,
+		"edit_files": {
+			"/home/test/project-alpha/src/utils.ts": 1
+		},
+		"ended_at": "2026-03-01T09:00:13Z",
+		"file_name": "session-001.jsonl",
+		"file_size_bytes": "__unstable__",
+		"first_user_message": "Refactor the utils module to use ES modules",
+		"id": "aaaaaaaa-0002-0001-0001-000000000001",
+		"input_cost": 0.006,
+		"input_tokens": 2000,
+		"models_used": [
+			{
+				"message_count": 2,
+				"model_id": "claude-sonnet-4-20250514",
+				"provider": "anthropic"
+			}
+		],
+		"output_cost": 0.015,
+		"output_tokens": 1000,
+		"project_name": "project-alpha",
+		"project_path": "/home/test/project-alpha",
+		"read_files": {
+			"/home/test/project-alpha/src/auth.ts": 1,
+			"/home/test/project-alpha/src/utils.ts": 1
+		},
+		"session_dir": "%2Fhome%2Ftest%2Fproject-alpha",
+		"started_at": "2026-03-01T09:00:00Z",
+		"title": "Refactor utils module",
+		"tool_calls": {
+			"bash": {
+				"calls": 1,
+				"errors": 0,
+				"name": "bash"
+			},
+			"edit": {
+				"calls": 1,
+				"errors": 0,
+				"name": "edit"
+			},
+			"read": {
+				"calls": 2,
+				"errors": 0,
+				"name": "read"
+			},
+			"write": {
+				"calls": 1,
+				"errors": 0,
+				"name": "write"
+			}
+		},
+		"tool_result_count": 5,
+		"total_cost": 0.0222,
+		"total_tokens": 3600,
+		"turn_count": 2,
+		"user_message_count": 1,
+		"write_files": {
+			"/home/test/project-alpha/src/helpers.ts": 1
+		}
+	}
 ]

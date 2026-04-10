@@ -1,122 +1,122 @@
 {
-  "activity_by_date": [
-    {
-      "count": 1,
-      "date": "2026-03-01"
-    },
-    {
-      "count": 1,
-      "date": "2026-03-20"
-    }
-  ],
-  "bash_commands": [
-    {
-      "count": 1,
-      "name": "grep"
-    },
-    {
-      "count": 1,
-      "name": "npm"
-    }
-  ],
-  "directory_stats": [
-    {
-      "edit_count": 1,
-      "path": "/home/test/project-alpha/src",
-      "read_count": 3,
-      "total": 5,
-      "write_count": 1
-    },
-    {
-      "edit_count": 1,
-      "path": "/home/test/project-alpha/src/routes",
-      "read_count": 1,
-      "total": 2,
-      "write_count": 0
-    }
-  ],
-  "edit_files": [
-    {
-      "count": 1,
-      "name": "/home/test/project-alpha/src/routes/api.ts"
-    },
-    {
-      "count": 1,
-      "name": "/home/test/project-alpha/src/utils.ts"
-    }
-  ],
-  "file_insights": [
-    {
-      "distinct_session_count": 2,
-      "edit_count": 1,
-      "path": "/home/test/project-alpha/src/utils.ts",
-      "read_count": 2,
-      "total_count": 3,
-      "write_count": 0
-    },
-    {
-      "distinct_session_count": 1,
-      "edit_count": 1,
-      "path": "/home/test/project-alpha/src/routes/api.ts",
-      "read_count": 1,
-      "total_count": 2,
-      "write_count": 0
-    },
-    {
-      "distinct_session_count": 1,
-      "edit_count": 0,
-      "path": "/home/test/project-alpha/src/auth.ts",
-      "read_count": 1,
-      "total_count": 1,
-      "write_count": 0
-    },
-    {
-      "distinct_session_count": 1,
-      "edit_count": 0,
-      "path": "/home/test/project-alpha/src/helpers.ts",
-      "read_count": 0,
-      "total_count": 1,
-      "write_count": 1
-    }
-  ],
-  "project_path": "/home/test/project-alpha",
-  "read_files": [
-    {
-      "count": 2,
-      "name": "/home/test/project-alpha/src/utils.ts"
-    },
-    {
-      "count": 1,
-      "name": "/home/test/project-alpha/src/auth.ts"
-    },
-    {
-      "count": 1,
-      "name": "/home/test/project-alpha/src/routes/api.ts"
-    }
-  ],
-  "tool_distribution": [
-    {
-      "count": 2,
-      "name": "bash"
-    },
-    {
-      "count": 2,
-      "name": "edit"
-    },
-    {
-      "count": 4,
-      "name": "read"
-    },
-    {
-      "count": 1,
-      "name": "write"
-    }
-  ],
-  "total_sessions": 2,
-  "write_files": [
-    {
-      "count": 1,
-      "name": "/home/test/project-alpha/src/helpers.ts"
-    }
-  ]
+	"activity_by_date": [
+		{
+			"count": 1,
+			"date": "2026-03-01"
+		},
+		{
+			"count": 1,
+			"date": "2026-03-20"
+		}
+	],
+	"bash_commands": [
+		{
+			"count": 1,
+			"name": "grep"
+		},
+		{
+			"count": 1,
+			"name": "npm"
+		}
+	],
+	"directory_stats": [
+		{
+			"edit_count": 1,
+			"path": "/home/test/project-alpha/src",
+			"read_count": 3,
+			"total": 5,
+			"write_count": 1
+		},
+		{
+			"edit_count": 1,
+			"path": "/home/test/project-alpha/src/routes",
+			"read_count": 1,
+			"total": 2,
+			"write_count": 0
+		}
+	],
+	"edit_files": [
+		{
+			"count": 1,
+			"name": "/home/test/project-alpha/src/routes/api.ts"
+		},
+		{
+			"count": 1,
+			"name": "/home/test/project-alpha/src/utils.ts"
+		}
+	],
+	"file_insights": [
+		{
+			"distinct_session_count": 2,
+			"edit_count": 1,
+			"path": "/home/test/project-alpha/src/utils.ts",
+			"read_count": 2,
+			"total_count": 3,
+			"write_count": 0
+		},
+		{
+			"distinct_session_count": 1,
+			"edit_count": 1,
+			"path": "/home/test/project-alpha/src/routes/api.ts",
+			"read_count": 1,
+			"total_count": 2,
+			"write_count": 0
+		},
+		{
+			"distinct_session_count": 1,
+			"edit_count": 0,
+			"path": "/home/test/project-alpha/src/auth.ts",
+			"read_count": 1,
+			"total_count": 1,
+			"write_count": 0
+		},
+		{
+			"distinct_session_count": 1,
+			"edit_count": 0,
+			"path": "/home/test/project-alpha/src/helpers.ts",
+			"read_count": 0,
+			"total_count": 1,
+			"write_count": 1
+		}
+	],
+	"project_path": "/home/test/project-alpha",
+	"read_files": [
+		{
+			"count": 2,
+			"name": "/home/test/project-alpha/src/utils.ts"
+		},
+		{
+			"count": 1,
+			"name": "/home/test/project-alpha/src/auth.ts"
+		},
+		{
+			"count": 1,
+			"name": "/home/test/project-alpha/src/routes/api.ts"
+		}
+	],
+	"tool_distribution": [
+		{
+			"count": 2,
+			"name": "bash"
+		},
+		{
+			"count": 2,
+			"name": "edit"
+		},
+		{
+			"count": 4,
+			"name": "read"
+		},
+		{
+			"count": 1,
+			"name": "write"
+		}
+	],
+	"total_sessions": 2,
+	"write_files": [
+		{
+			"count": 1,
+			"name": "/home/test/project-alpha/src/helpers.ts"
+		}
+	]
 }

@@ -1,40 +1,38 @@
 {
-  "collection": {
-    "active_doc_count": 2,
-    "contexts": [
-      {
-        "context": "Project documentation root",
-        "path": "docs/README.md"
-      }
-    ],
-    "doc_count": 3,
-    "embedded_count": 1,
-    "ignore_patterns": [
-      "node_modules"
-    ],
-    "include_by_default": true,
-    "last_modified": "2026-03-02T12:00:00Z",
-    "name": "docs",
-    "path": "/home/test/project-alpha/docs",
-    "pattern": "**/*.md",
-    "update_command": null
-  },
-  "documents": [
-    {
-      "body_length": 49,
-      "collection": "docs",
-      "docid": "hash-d",
-      "modified_at": "2026-03-02T12:00:00Z",
-      "path": "docs/api.md",
-      "title": "API Reference"
-    },
-    {
-      "body_length": 71,
-      "collection": "docs",
-      "docid": "hash-d",
-      "modified_at": "2026-03-01T10:00:00Z",
-      "path": "docs/auth.md",
-      "title": "Authentication Guide"
-    }
-  ]
+	"collection": {
+		"active_doc_count": 2,
+		"contexts": [
+			{
+				"context": "Project documentation root",
+				"path": "docs/README.md"
+			}
+		],
+		"doc_count": 3,
+		"embedded_count": 1,
+		"ignore_patterns": ["node_modules"],
+		"include_by_default": true,
+		"last_modified": "2026-03-02T12:00:00Z",
+		"name": "docs",
+		"path": "/home/test/project-alpha/docs",
+		"pattern": "**/*.md",
+		"update_command": null
+	},
+	"documents": [
+		{
+			"body_length": 49,
+			"collection": "docs",
+			"docid": "hash-d",
+			"modified_at": "2026-03-02T12:00:00Z",
+			"path": "docs/api.md",
+			"title": "API Reference"
+		},
+		{
+			"body_length": 71,
+			"collection": "docs",
+			"docid": "hash-d",
+			"modified_at": "2026-03-01T10:00:00Z",
+			"path": "docs/auth.md",
+			"title": "Authentication Guide"
+		}
+	]
 }

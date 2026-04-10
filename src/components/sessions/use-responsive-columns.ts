@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
 import type { VisibilityState } from "@tanstack/react-table";
+import { useEffect, useState } from "react";
 
 /**
  * Returns column visibility state that hides certain columns at narrow widths.
@@ -10,23 +10,25 @@ import type { VisibilityState } from "@tanstack/react-table";
  *   >= 1024px:     show all
  */
 export function use_responsive_columns(): VisibilityState {
-  const [visibility, set_visibility] = useState<VisibilityState>(() => compute(window.innerWidth));
+	const [visibility, set_visibility] = useState<VisibilityState>(() =>
+		compute(window.innerWidth),
+	);
 
-  useEffect(() => {
-    const on_resize = () => set_visibility(compute(window.innerWidth));
-    window.addEventListener("resize", on_resize);
-    return () => window.removeEventListener("resize", on_resize);
-  }, []);
+	useEffect(() => {
+		const on_resize = () => set_visibility(compute(window.innerWidth));
+		window.addEventListener("resize", on_resize);
+		return () => window.removeEventListener("resize", on_resize);
+	}, []);
 
-  return visibility;
+	return visibility;
 }
 
 function compute(width: number): VisibilityState {
-  if (width < 768) {
-    return { tools: false, model: false, project_name: false };
-  }
-  if (width < 1024) {
-    return { tools: false, model: false };
-  }
-  return {};
+	if (width < 768) {
+		return { tools: false, model: false, project_name: false };
+	}
+	if (width < 1024) {
+		return { tools: false, model: false };
+	}
+	return {};
 }

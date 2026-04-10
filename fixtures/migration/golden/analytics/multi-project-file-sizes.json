@@ -1,10 +1,10 @@
 [
-  {
-    "path": "/home/test/project-alpha/src/utils.ts",
-    "size_bytes": null
-  },
-  {
-    "path": "/home/test/project-alpha/src/auth.ts",
-    "size_bytes": null
-  }
+	{
+		"path": "/home/test/project-alpha/src/utils.ts",
+		"size_bytes": null
+	},
+	{
+		"path": "/home/test/project-alpha/src/auth.ts",
+		"size_bytes": null
+	}
 ]
