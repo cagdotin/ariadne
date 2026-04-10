@@ -3,37 +3,29 @@ productName: Ariadne
 directories:
   output: release
 files:
-  # ── renderer (Vite build output) ──
+  # ── built outputs ──
   - dist/**/*
-
-  # ── electron main / preload bundles ──
   - electron/main/dist/**/*
   - electron/preload/dist/**/*
-
-  # ── backend bundle (forked child process) ──
   - backend/dist/**/*
-
-  # ── QMD bridge sidecar bundle + its own node_modules ──
   - src-sidecar/dist/**/*
   - src-sidecar/node_modules/**/*
 
-  # ── native modules required at runtime (esbuild externals) ──
+  # ── root node_modules: only native/external modules needed at runtime.
+  #   All JS deps (react, recharts, etc.) are already bundled by Vite/esbuild.
+  #   better-sqlite3 is --external in esbuild and needs its native .node addon. ──
   - node_modules/better-sqlite3/**/*
   - node_modules/bindings/**/*
   - node_modules/file-uri-to-path/**/*
 
-  # ── exclude everything else from node_modules ──
-  - "!node_modules"
-
-  # ── exclude source / dev artifacts that are not needed at runtime ──
-  - "!**/src/**/*.ts"
-  - "!**/src/**/*.tsx"
+  # ── exclude dev artifacts ──
   - "!**/*.map"
   - "!**/tsconfig*.json"
-  - "!docs/**/*"
-  - "!tests/**/*"
-  - "!scripts/**/*"
-  - "!**/.git"
+
+# ── unpack native .node bindings so they load outside the asar ──
+asarUnpack:
+  - "**/*.node"
+
 mac:
   target:
     - dmg
