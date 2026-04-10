@@ -1,7 +1,7 @@
 # ARCHITECTURE
 
-Status: active  
-Last updated: 2026-04-08
+Status: active
+Last updated: 2026-04-10
 
 This document explains Ariadne's current system shape.
 
@@ -93,13 +93,16 @@ The renderer never talks directly to Electron or Node primitives.
 The boundary is:
 - renderer adapters: `src/platform/`
 - preload API: `electron/preload/index.ts`
+- typed contracts: `contracts/ipc-commands.ts`
 - main-process router: `electron/main/ipc-router.ts`
 
+The preload surface is strongly typed via `contracts/ipc-commands.ts`, which defines `AriadnePreloadApi` — typed command signatures for all namespaces, dialog types, and event channel payloads. `electron/preload/ariadne.d.ts` imports this type directly. Renderer-side Zod validation in `src/api/*` is preserved as a runtime safety net.
+
 Start here when changing desktop capabilities:
+- `contracts/ipc-commands.ts`
 - `electron/preload/index.ts`
 - `electron/preload/ariadne.d.ts`
 - `electron/main/ipc-router.ts`
-- `contracts/channels.ts`
 
 ### 3. Backend process model
 
@@ -118,6 +121,7 @@ The analytics path is:
 
 ```text
 session JSONL files
+  -> backend/workers/analytics-build.worker.ts (worker thread)
   -> backend/analytics/discovery.ts
   -> backend/analytics/session-parser.ts
   -> backend/analytics/session-cache.ts
@@ -127,8 +131,11 @@ session JSONL files
   -> route pages and charts
 ```
 
+Cache building (discovery + parsing) runs in a worker thread so it does not block other backend requests. The worker is bundled as a separate entry point at `backend/dist/analytics-build.worker.js`.
+
 Start with:
 - `backend/analytics/session-cache.ts`
+- `backend/workers/analytics-build.worker.ts`
 - `backend/analytics/aggregations/`
 - `backend/analytics/query.ts`
 - `src/api/analytics.ts`
@@ -172,6 +179,8 @@ frontend QMD pages
   -> backend/qmd/bridge/* + src-sidecar/qmd-bridge.ts for mutations/search
 ```
 
+The QMD bridge sidecar is compiled to `src-sidecar/dist/qmd-bridge.js` as part of the build. In dev, the supervisor runs the TypeScript source via `bun run`. In production, it runs the compiled JS bundle via Electron's Node (`ELECTRON_RUN_AS_NODE=1`).
+
 Start with:
 - `backend/qmd/sqlite-read-service.ts`
 - `backend/qmd/commands.ts`
@@ -210,6 +219,8 @@ At a high level:
 - `/sessions` — sessions list and replay
 - `/usage/*` — analytics workspace
 - `/qmd/*` — QMD management and logs
+
+Routes are lazy-loaded via `React.lazy()` + `Suspense` with a skeleton fallback. Only lightweight redirect components are eagerly loaded.
 
 Two route details matter architecturally:
 - `/usage` is a layout route with shared data loading
@@ -309,9 +320,9 @@ Route-local shared data lives inside the route that owns it:
 |---|---|
 | Change the app shell/header/sidebar | `src/app.tsx` |
 | Add or change a route | `src/router.tsx`, then matching page under `src/pages/` |
-| Change renderer-to-desktop transport | `src/platform/*`, `electron/preload/index.ts`, `electron/main/ipc-router.ts` |
+| Change renderer-to-desktop transport | `contracts/ipc-commands.ts`, `src/platform/*`, `electron/preload/index.ts`, `electron/main/ipc-router.ts` |
 | Change backend process lifecycle | `electron/main/backend-supervisor.ts`, `backend/index.ts` |
-| Change analytics aggregation | `backend/analytics/session-cache.ts`, `backend/analytics/aggregations/` |
+| Change analytics aggregation | `backend/analytics/session-cache.ts`, `backend/workers/analytics-build.worker.ts`, `backend/analytics/aggregations/` |
 | Change session parsing | `backend/analytics/session-parser.ts` |
 | Change replay loading | `backend/analytics/replay-loader.ts` |
 | Change Usage shared loading | `src/pages/usage/layout.tsx`, `src/pages/usage/usage-context.tsx` |

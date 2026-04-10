@@ -1,7 +1,7 @@
 # DESIGN
 
-Status: active  
-Last updated: 2026-04-08
+Status: active
+Last updated: 2026-04-10
 
 This document explains the non-obvious design choices in Ariadne.
 
@@ -97,11 +97,9 @@ The current product benefits more from:
 
 than from introducing a second persistence layer.
 
-### Important current tradeoff
+### Worker thread for cache builds
 
-The worker-thread follow-up has not landed yet. Heavy analytics parsing still happens inside the backend process rather than a dedicated worker thread.
-
-That is acceptable for current correctness, but it remains one of the clearest post-migration performance improvements.
+Analytics cache building (session discovery + parsing) now runs in a worker thread (`backend/workers/analytics-build.worker.ts`). This keeps the backend event loop responsive during initial cache build and resync. The worker receives the sessions root path and returns parsed summaries. Concurrent resync calls are coalesced to avoid spawning multiple workers.
 
 ---
 
@@ -124,11 +122,9 @@ A replay viewer needs the original event stream, including:
 
 Trying to collapse both into one model would either lose fidelity or create an overly broad contract.
 
-### Important current detail
+### Replay contract
 
-`get_session_entries()` is only partially validated today. The wire shape is validated with permissive Zod schemas, but entry bodies are still intentionally passthrough to preserve parity.
-
-That is a conscious migration tradeoff, not a finished ideal.
+Replay entries are validated against a strict discriminated union schema in `contracts/sessions/replay.ts`. The schema covers all known entry types (message, thinking_level_change, model_change, compaction, branch_summary, custom, custom_message, label, session_info) with an unknown fallback for forward compatibility. Inner schemas (content blocks, messages) are strict; entry-level schemas use `.passthrough()` to preserve extra fields the viewer may need.
 
 ---
 
