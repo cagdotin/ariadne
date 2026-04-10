@@ -38,6 +38,7 @@ export class BridgeClient {
     runtime: string,
     runtime_args: string[],
     default_db_path: string | null,
+    extra_env?: Record<string, string>,
   ): void {
     const args = [...runtime_args, script_path];
     if (default_db_path) {
@@ -46,6 +47,9 @@ export class BridgeClient {
 
     this.child = spawn(runtime, args, {
       stdio: ["pipe", "pipe", "pipe"],
+      env: extra_env
+        ? { ...process.env, ...extra_env }
+        : process.env,
     });
 
     // Forward stderr to our stderr for diagnostics

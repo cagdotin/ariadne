@@ -3,10 +3,37 @@ productName: Ariadne
 directories:
   output: release
 files:
+  # ── renderer (Vite build output) ──
   - dist/**/*
+
+  # ── electron main / preload bundles ──
   - electron/main/dist/**/*
   - electron/preload/dist/**/*
-  - node_modules/**/*
+
+  # ── backend bundle (forked child process) ──
+  - backend/dist/**/*
+
+  # ── QMD bridge sidecar bundle + its own node_modules ──
+  - src-sidecar/dist/**/*
+  - src-sidecar/node_modules/**/*
+
+  # ── native modules required at runtime (esbuild externals) ──
+  - node_modules/better-sqlite3/**/*
+  - node_modules/bindings/**/*
+  - node_modules/file-uri-to-path/**/*
+
+  # ── exclude everything else from node_modules ──
+  - "!node_modules"
+
+  # ── exclude source / dev artifacts that are not needed at runtime ──
+  - "!**/src/**/*.ts"
+  - "!**/src/**/*.tsx"
+  - "!**/*.map"
+  - "!**/tsconfig*.json"
+  - "!docs/**/*"
+  - "!tests/**/*"
+  - "!scripts/**/*"
+  - "!**/.git"
 mac:
   target:
     - dmg

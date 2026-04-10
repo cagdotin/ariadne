@@ -1,9 +1,14 @@
 /**
- * Parity comparison harness for the current backend.
+ * Parity comparison harness for the current backend (Bun runner).
  *
- * Each test compares current Node backend output against frozen legacy goldens.
- * Most subsystems now run by default; QMD SQLite parity remains skipped under
- * Bun because better-sqlite3 does not load in Bun's test runner.
+ * Each test compares current backend output against frozen legacy goldens.
+ * All non-QMD subsystems run here under Bun.
+ *
+ * QMD SQLite parity is handled separately under Node/vitest because
+ * better-sqlite3 does not load in Bun's test runner. See:
+ *   tests/parity/run-parity-qmd.test.ts   (test file)
+ *   vitest.config.parity-qmd.ts           (vitest config)
+ *   bun run test:parity:qmd               (script)
  */
 
 import { describe, test, expect, beforeAll } from "bun:test";
@@ -11,23 +16,17 @@ import { read_golden, fixtures_path } from "./helpers";
 import {
   normalize_analytics,
   normalize_replay,
-  normalize_qmd,
-  normalize_qmd_indexes,
   normalize_qmd_logs,
   normalize_provider_limits,
 } from "./normalize";
 
 // ─── Backend readiness flags ─────────────────────────────────────────────────
-// QMD remains runtime-gated because better-sqlite3 cannot run under Bun tests.
-
-// better-sqlite3 is a Node native addon that doesn't load under Bun's test runner.
-// QMD SQLite tests must run under Node, or be skipped in Bun.
-const is_bun = typeof globalThis.Bun !== "undefined";
+// QMD SQLite parity now runs under Node/vitest (test:parity:qmd).
+// All other subsystems run here under Bun.
 
 const BACKEND_READY = {
   analytics: true,
   replay: true,
-  qmd: !is_bun, // better-sqlite3 requires Node runtime
   qmd_logs: true,
   provider_limits: true,
 } as const;
@@ -45,10 +44,6 @@ function parity_test(
     test.skip(name, fn);
   }
 }
-
-// ─── Fixture paths ───────────────────────────────────────────────────────────
-
-const qmd_cache_root = fixtures_path("qmd", "cache-root");
 
 // ─── Analytics: Minimal ──────────────────────────────────────────────────────
 
@@ -269,90 +264,6 @@ describe("replay — branching fixture", () => {
 
     const actual = normalize_replay(actual_raw);
     const golden = normalize_replay(read_golden("replay/branching-entries.json"));
-    expect(actual).toEqual(golden);
-  });
-});
-
-// ─── QMD ─────────────────────────────────────────────────────────────────────
-
-describe("qmd", () => {
-  parity_test("qmd", "qmd_list_indexes", async () => {
-    process.env["ARIADNE_QMD_CACHE_ROOT"] = qmd_cache_root;
-    const { qmd_list_indexes } = await import("../../backend/qmd");
-    const { qmd_index_schema } = await import("@contracts/qmd");
-    const { z } = await import("zod");
-
-    const actual_raw = await qmd_list_indexes();
-    z.array(qmd_index_schema).parse(actual_raw);
-
-    const actual = normalize_qmd_indexes(actual_raw, qmd_cache_root);
-    const golden = normalize_qmd_indexes(read_golden("qmd/list-indexes.json"), qmd_cache_root);
-    expect(actual).toEqual(golden);
-  });
-
-  parity_test("qmd", "qmd_get_status — default", async () => {
-    process.env["ARIADNE_QMD_CACHE_ROOT"] = qmd_cache_root;
-    const { qmd_get_status } = await import("../../backend/qmd");
-    const { qmd_status_schema } = await import("@contracts/qmd");
-
-    const actual_raw = await qmd_get_status("default");
-    qmd_status_schema.parse(actual_raw);
-
-    const actual = normalize_qmd(actual_raw, qmd_cache_root);
-    const golden = normalize_qmd(read_golden("qmd/default-status.json"), qmd_cache_root);
-    expect(actual).toEqual(golden);
-  });
-
-  parity_test("qmd", "qmd_list_collections — default", async () => {
-    process.env["ARIADNE_QMD_CACHE_ROOT"] = qmd_cache_root;
-    const { qmd_list_collections } = await import("../../backend/qmd");
-    const { qmd_collection_schema } = await import("@contracts/qmd");
-    const { z } = await import("zod");
-
-    const actual_raw = await qmd_list_collections("default");
-    z.array(qmd_collection_schema).parse(actual_raw);
-
-    const actual = normalize_qmd(actual_raw, qmd_cache_root);
-    const golden = normalize_qmd(read_golden("qmd/default-collections.json"), qmd_cache_root);
-    expect(actual).toEqual(golden);
-  });
-
-  parity_test("qmd", "qmd_get_collection_detail — default/docs", async () => {
-    process.env["ARIADNE_QMD_CACHE_ROOT"] = qmd_cache_root;
-    const { qmd_get_collection_detail } = await import("../../backend/qmd");
-    const { qmd_collection_detail_schema } = await import("@contracts/qmd");
-
-    const actual_raw = await qmd_get_collection_detail("default", "docs");
-    qmd_collection_detail_schema.parse(actual_raw);
-
-    const actual = normalize_qmd(actual_raw, qmd_cache_root);
-    const golden = normalize_qmd(read_golden("qmd/default-collection-detail.json"), qmd_cache_root);
-    expect(actual).toEqual(golden);
-  });
-
-  parity_test("qmd", "qmd_get_status — work", async () => {
-    process.env["ARIADNE_QMD_CACHE_ROOT"] = qmd_cache_root;
-    const { qmd_get_status } = await import("../../backend/qmd");
-    const { qmd_status_schema } = await import("@contracts/qmd");
-
-    const actual_raw = await qmd_get_status("work");
-    qmd_status_schema.parse(actual_raw);
-
-    const actual = normalize_qmd(actual_raw, qmd_cache_root);
-    const golden = normalize_qmd(read_golden("qmd/work-status.json"), qmd_cache_root);
-    expect(actual).toEqual(golden);
-  });
-
-  parity_test("qmd", "qmd_check_availability", async () => {
-    process.env["ARIADNE_QMD_CACHE_ROOT"] = qmd_cache_root;
-    const { qmd_check_availability } = await import("../../backend/qmd");
-    const { qmd_availability_schema } = await import("@contracts/qmd");
-
-    const actual_raw = await qmd_check_availability();
-    qmd_availability_schema.parse(actual_raw);
-
-    const actual = normalize_qmd(actual_raw, qmd_cache_root);
-    const golden = normalize_qmd(read_golden("qmd/availability.json"), qmd_cache_root);
     expect(actual).toEqual(golden);
   });
 });

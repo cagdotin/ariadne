@@ -13,29 +13,56 @@ import { resolve_index_db_path } from "../index-paths.js";
 
 // ---- Helpers ----------------------------------------------------------------
 
+const is_dev = process.env.NODE_ENV === "development";
+
 /**
- * Find the bridge script path.
- * Matches Rust find_bridge_script — looks for src-sidecar/qmd-bridge.ts
- * relative to the project root.
+ * Resolve the project root from the backend dist output.
+ *
+ * In dev the backend is bundled to backend/dist/index.js — __dirname
+ * points at the dist folder, so project root is two levels up.
+ * In a packaged Electron app the asar layout mirrors the repo structure
+ * so the same relative traversal applies.
  */
-function find_bridge_script(): string {
-  // __dirname equivalent: this file is at backend/qmd/bridge/bridge-supervisor.ts
-  // project root is 3 levels up
-  const project_root = path.resolve(__dirname, "..", "..", "..");
-  const bridge_path = path.join(project_root, "src-sidecar", "qmd-bridge.ts");
-
-  if (!fs.existsSync(bridge_path)) {
-    throw new Error(`Bridge script not found at ${bridge_path}`);
-  }
-
-  return bridge_path;
+function get_project_root(): string {
+  return path.resolve(__dirname, "..", "..");
 }
 
 /**
- * Detect the runtime to use for running TypeScript.
- * Matches Rust find_runtime — tries bun first, falls back to npx tsx.
+ * Find the bridge entry point and the runtime to execute it.
+ *
+ * Dev mode  — run the TypeScript source via `bun run` for fast iteration.
+ * Prod mode — run the pre-built JS bundle via `node` (shipped by Electron).
  */
-function find_runtime(): { runtime: string; runtime_args: string[] } {
+function resolve_bridge(): {
+  script_path: string;
+  runtime: string;
+  runtime_args: string[];
+} {
+  const project_root = get_project_root();
+
+  if (is_dev) {
+    // Dev: prefer the raw .ts source so edits take effect immediately.
+    const ts_path = path.join(project_root, "src-sidecar", "qmd-bridge.ts");
+    if (!fs.existsSync(ts_path)) {
+      throw new Error(`Bridge TypeScript source not found at ${ts_path}`);
+    }
+    const { runtime, runtime_args } = find_dev_runtime();
+    return { script_path: ts_path, runtime, runtime_args };
+  }
+
+  // Production: use the pre-compiled JS bundle with node.
+  const js_path = path.join(project_root, "src-sidecar", "dist", "qmd-bridge.js");
+  if (!fs.existsSync(js_path)) {
+    throw new Error(`Bridge JS bundle not found at ${js_path}`);
+  }
+  return { script_path: js_path, runtime: process.execPath, runtime_args: [] };
+}
+
+/**
+ * Detect the runtime to use for running TypeScript in dev mode.
+ * Tries bun first, falls back to npx tsx.
+ */
+function find_dev_runtime(): { runtime: string; runtime_args: string[] } {
   try {
     execSync("bun --version", { stdio: "ignore" });
     return { runtime: "bun", runtime_args: ["run"] };
@@ -87,12 +114,15 @@ export class BridgeSupervisor {
     }
 
     // Spawn a new bridge process
-    const bridge_script = find_bridge_script();
-    const { runtime, runtime_args } = find_runtime();
+    const { script_path: bridge_script, runtime, runtime_args } = resolve_bridge();
     const default_db_path = get_default_db_path();
 
+    // In production, the runtime is the Electron binary — set ELECTRON_RUN_AS_NODE
+    // so it behaves as a plain Node process (no Chromium initialization).
+    const extra_env = is_dev ? undefined : { ELECTRON_RUN_AS_NODE: "1" };
+
     const client = new BridgeClient();
-    client.spawn(bridge_script, runtime, runtime_args, default_db_path);
+    client.spawn(bridge_script, runtime, runtime_args, default_db_path, extra_env);
 
     this.client = client;
 

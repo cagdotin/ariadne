@@ -31,3 +31,6 @@ release/
 
 # Backend build output
 backend/dist/
+
+# Sidecar build output
+src-sidecar/dist/
