@@ -23,6 +23,9 @@ import "./provider-limits/commands.js";
 // Register real analytics handlers (overrides stubs)
 import "./analytics/commands.js";
 
+// Register exploration handlers
+import "./analytics/exploration/commands.js";
+
 // ---- IPC message listener ---------------------------------------------------
 
 function send_message(

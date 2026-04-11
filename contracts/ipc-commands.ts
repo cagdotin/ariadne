@@ -14,6 +14,7 @@ import type {
 	PickDirectoryRequest,
 	PickDirectoryResult,
 } from "./dialogs/filesystem";
+import type { ExplorationPayload } from "./exploration";
 import type { ProviderLimitsResponse } from "./provider-limits/snapshots";
 import type { QmdAvailability } from "./qmd/availability";
 import type {
@@ -65,6 +66,9 @@ export interface AnalyticsCommandSignatures {
 		rangeDays?: number | null;
 	}): Promise<ToolDetailResponse>;
 	get_file_sizes(payload: { paths: string[] }): Promise<FileSizeResult[]>;
+	get_session_exploration(payload: {
+		sessionId: string;
+	}): Promise<ExplorationPayload>;
 }
 
 // ─── QMD commands ───────────────────────────────────────────────────────────

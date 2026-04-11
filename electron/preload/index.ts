@@ -72,6 +72,9 @@ contextBridge.exposeInMainWorld("ariadne", {
 
 			get_file_sizes: (payload: { paths: string[] }) =>
 				invoke_command("get_file_sizes", payload),
+
+			get_session_exploration: (payload: { sessionId: string }) =>
+				invoke_command("get_session_exploration", payload),
 		},
 
 		// ── QMD ───────────────────────────────────────────────────────────────
