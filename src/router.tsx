@@ -41,6 +41,12 @@ const LazySessionDetailTraces = lazy(() =>
 	})),
 );
 
+const LazySessionDetailExploration = lazy(() =>
+	import("./pages/session-detail-exploration").then((m) => ({
+		default: m.SessionDetailExploration,
+	})),
+);
+
 const LazyUsageLayout = lazy(() =>
 	import("./pages/usage").then((m) => ({ default: m.UsageLayout })),
 );
@@ -146,6 +152,12 @@ const session_detail_traces_route = createRoute({
 	component: with_suspense(LazySessionDetailTraces),
 });
 
+const session_detail_exploration_route = createRoute({
+	getParentRoute: () => session_detail_layout_route,
+	path: "/exploration",
+	component: with_suspense(LazySessionDetailExploration),
+});
+
 // Usage layout — shared nav, range picker, and data context
 const usage_layout_route = createRoute({
 	getParentRoute: () => root_route,
@@ -221,6 +233,7 @@ const route_tree = root_route.addChildren([
 		session_detail_index_route,
 		session_detail_conversation_route,
 		session_detail_traces_route,
+		session_detail_exploration_route,
 	]),
 	usage_layout_route.addChildren([
 		usage_index_route,

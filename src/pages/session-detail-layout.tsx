@@ -5,7 +5,7 @@ import {
 	useNavigate,
 	useParams,
 } from "@tanstack/react-router";
-import { Activity, ArrowLeft } from "lucide-react";
+import { Activity, ArrowLeft, Network } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { get_session_detail, get_session_entries } from "@/api/analytics";
 import { use_project_scope } from "@/components/project-scope-provider";
@@ -83,6 +83,8 @@ export function SessionDetailLayout() {
 	}, [id, scope, navigate]);
 
 	const is_traces = location.pathname.endsWith("/traces");
+	const is_exploration = location.pathname.endsWith("/exploration");
+	const is_conversation = !is_traces && !is_exploration;
 
 	if (!ready) return null;
 
@@ -93,16 +95,38 @@ export function SessionDetailLayout() {
 			<div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
 				<SessionDetailNavHeader
 					right={
-						is_traces ? undefined : (
+						is_conversation ? (
 							<SessionPanelNav
 								has_analytics={!!session_summary}
 								variant="conversation"
 								disabled_panels={[]}
 							/>
-						)
+						) : undefined
 					}
 				>
-					{is_traces ? (
+					{is_conversation && (
+						<>
+							<Button
+								variant="ghost"
+								size="sm"
+								className="text-xs gap-1"
+								onClick={() => navigate({ to: `/sessions/${id}/traces` })}
+							>
+								<Activity data-icon="inline-start" />
+								Traces
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								className="text-xs gap-1"
+								onClick={() => navigate({ to: `/sessions/${id}/exploration` })}
+							>
+								<Network data-icon="inline-start" />
+								Exploration
+							</Button>
+						</>
+					)}
+					{is_traces && (
 						<Button
 							variant="ghost"
 							size="sm"
@@ -112,15 +136,16 @@ export function SessionDetailLayout() {
 							<ArrowLeft data-icon="inline-start" />
 							Conversation
 						</Button>
-					) : (
+					)}
+					{is_exploration && (
 						<Button
 							variant="ghost"
 							size="sm"
 							className="text-xs gap-1"
-							onClick={() => navigate({ to: `/sessions/${id}/traces` })}
+							onClick={() => navigate({ to: `/sessions/${id}/conversation` })}
 						>
-							<Activity data-icon="inline-start" />
-							Traces
+							<ArrowLeft data-icon="inline-start" />
+							Conversation
 						</Button>
 					)}
 				</SessionDetailNavHeader>
