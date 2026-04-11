@@ -59,6 +59,7 @@ Current breadcrumb patterns:
 /sessions/:id          -> Sessions / {session-id…} (redirects to conversation)
 /sessions/:id/conversation -> Sessions / {session-id…}
 /sessions/:id/traces   -> Sessions / {session-id…} / Traces
+/sessions/:id/exploration -> Sessions / {session-id…} / Exploration
 /usage/cost            -> Usage / Cost
 /usage/tools           -> Usage / Tools
 /usage/tools/:tool     -> Usage / Tools / {tool}
@@ -144,6 +145,7 @@ It is a **global analytics scope**, persisted in local storage.
 ```text
 /sessions/:id/conversation    Conversation replay (default)
 /sessions/:id/traces          Timeline / traces view
+/sessions/:id/exploration     Exploration graph + timeline view
 ```
 
 `/sessions/:id` itself redirects to `/sessions/:id/conversation`.
@@ -211,12 +213,16 @@ Session detail is a **layout route** with shared data context (`SessionDetailPro
 
 - **Conversation** (`/sessions/:id/conversation`) — branch-aware conversation replay via `SessionViewer`
 - **Traces** (`/sessions/:id/traces`) — horizontal swim-lane timeline showing all session events on a time axis, with an inspector panel for selected events
+- **Exploration** (`/sessions/:id/exploration`) — split view showing how the agent explored the codebase: chronological timeline grouped by turn (left), session-scoped artifact graph with one-hop unexplored neighbors (right), and a selection-driven inspector
+
+Navigation from Conversation exposes both Traces and Exploration quick actions. From Traces or Exploration, a Conversation back action is shown.
 
 Page split:
 - `session-detail-layout.tsx` = scope guard + data fetch + tab nav + `<Outlet />`
 - `session-detail-context.tsx` = shared context provider
 - `session-detail-conversation.tsx` = renders `SessionViewer` from context
 - `session-detail-traces.tsx` = renders `TracesView` from context
+- `session-detail-exploration.tsx` = fetches exploration payload, renders `ExplorationView`
 
 ### What session detail loads
 - `get_session_entries(session_id)`
