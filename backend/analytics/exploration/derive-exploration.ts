@@ -31,14 +31,7 @@ type MessageEntry = Extract<SessionEntry, { type: "message" }>;
 /** The message payload union (user | assistant | toolResult | ...). */
 type MessageData = MessageEntry["message"];
 
-/** A content block from an assistant message. */
-type ContentBlock = Extract<
-	MessageData,
-	{ role: "assistant" }
->["content"][number];
-
-/** A tool call content block. */
-type ToolCallBlock = Extract<ContentBlock, { type: "toolCall" }>;
+// (Content/ToolCall block types are accessed inline where needed.)
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -149,12 +142,16 @@ interface RawTurn {
 	user_message_entry_id: string | null;
 }
 
+function is_message_entry(entry: SessionEntry): entry is MessageEntry {
+	return entry.type === "message" && "message" in entry;
+}
+
 function group_into_turns(entries: SessionEntry[]): RawTurn[] {
 	const turns: RawTurn[] = [];
 	let current_turn: RawTurn | null = null;
 
 	for (const entry of entries) {
-		if (entry.type !== "message") continue;
+		if (!is_message_entry(entry)) continue;
 
 		const role = entry.message.role;
 

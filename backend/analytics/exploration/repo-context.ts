@@ -176,7 +176,7 @@ function parse_markdown(
 function parse_imports(
 	content: string,
 	file_dir: string,
-	project_root: string,
+	_project_root: string,
 	fs_ops: FsOps,
 ): string[] {
 	const imports: string[] = [];

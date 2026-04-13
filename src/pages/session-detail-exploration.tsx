@@ -1,6 +1,14 @@
-import type { ExplorationPayload } from "@contracts/exploration";
+/**
+ * Session Exploration route — graph-first.
+ *
+ * Source of truth: the graph IR (SessionGraphPayload) is the sole data
+ * source for this route. The visualization components consume the
+ * graph directly via graph-native view models.
+ */
+
+import type { SessionGraphPayload } from "@contracts/graph";
 import { useEffect, useState } from "react";
-import { get_session_exploration } from "@/api/exploration";
+import { get_session_graph } from "@/api/graph";
 import { ExplorationView } from "@/components/exploration/exploration-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { error_message } from "@/lib/utils";
@@ -12,7 +20,7 @@ export function SessionDetailExploration() {
 		loading: ctx_loading,
 		error: ctx_error,
 	} = use_session_detail_context();
-	const [payload, set_payload] = useState<ExplorationPayload | null>(null);
+	const [graph, set_graph] = useState<SessionGraphPayload | null>(null);
 	const [loading, set_loading] = useState(false);
 	const [error, set_error] = useState<string | null>(null);
 
@@ -25,9 +33,9 @@ export function SessionDetailExploration() {
 		set_loading(true);
 		set_error(null);
 
-		get_session_exploration(session_id)
+		get_session_graph(session_id)
 			.then((result) => {
-				if (!cancelled) set_payload(result);
+				if (!cancelled) set_graph(result);
 			})
 			.catch((err) => {
 				if (!cancelled)
@@ -70,7 +78,7 @@ export function SessionDetailExploration() {
 		);
 	}
 
-	if (!payload) {
+	if (!graph) {
 		return (
 			<div className="flex items-center justify-center h-full p-8">
 				<p className="text-muted-foreground text-sm">
@@ -80,5 +88,5 @@ export function SessionDetailExploration() {
 		);
 	}
 
-	return <ExplorationView payload={payload} />;
+	return <ExplorationView graph={graph} />;
 }

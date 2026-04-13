@@ -1,6 +1,16 @@
 /**
  * Exploration command registration: wires the get_session_exploration
  * handler into the request router.
+ *
+ * NOTE (2026-04-13): This handler is NO LONGER the source of truth for
+ * the /sessions/:id/exploration route. That route now fetches graph IR
+ * only (via get_session_graph) and renders graph-native components
+ * directly from SessionGraphPayload.
+ *
+ * This handler is retained only for backward compatibility with any
+ * remaining callers that still consume ExplorationPayload directly.
+ * It derives from replay independently of graph IR and may diverge.
+ * If you need the canonical exploration view, use the graph-first path.
  */
 
 import type { ExplorationPayload } from "../../../contracts/exploration/types.js";

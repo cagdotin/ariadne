@@ -1,111 +1,122 @@
-import type { ExplorationPayload } from "@contracts/exploration";
-import { useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+/**
+ * Exploration view — graph-native composition layer.
+ *
+ * Orchestrates the path pane, context map, controls strip,
+ * framing panel, and inspector. All state derives from
+ * SessionGraphPayload.
+ */
+
+import type { SessionGraphPayload } from "@contracts/graph";
+import { useEffect, useMemo, useState } from "react";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { ExplorationGraph } from "./exploration-graph";
-import { ExplorationInspector } from "./exploration-inspector";
 import {
-	compute_highlight_ids,
-	compute_related_relations,
-	type SelectionTarget,
-} from "./exploration-selection";
-import { ExplorationTimeline } from "./exploration-timeline";
+	compute_selection_subgraph,
+	type FocusMode,
+} from "@/lib/exploration-graph-view-model";
+import { ExplorationControls } from "./exploration-controls";
+import { ExplorationFraming } from "./exploration-framing";
+import { ExplorationInspectorV2 } from "./exploration-inspector-v2";
+import { ExplorationMap } from "./exploration-map";
+import { ExplorationPath } from "./exploration-path";
 
 interface ExplorationViewProps {
-	payload: ExplorationPayload;
+	graph?: SessionGraphPayload | null;
 }
 
+export function ExplorationView({ graph }: ExplorationViewProps) {
+	const [selected_node_id, set_selected_node_id] = useState<string | null>(
+		null,
+	);
+	const [focus_mode, set_focus_mode] = useState<FocusMode>("path");
+	const [show_ambient, set_show_ambient] = useState(true);
 
-export function ExplorationView({ payload }: ExplorationViewProps) {
-	const [selection, set_selection] = useState<SelectionTarget | null>(null);
+	useEffect(() => {
+		if (!graph || show_ambient || !selected_node_id) return;
+		const selected_node = graph.nodes.find((node) => node.id === selected_node_id);
+		if (selected_node?.availability === "available_ambient") {
+			set_selected_node_id(null);
+		}
+	}, [graph, show_ambient, selected_node_id]);
 
-	const stats = useMemo(() => {
-		const explored_artifacts = payload.artifacts.filter((a) => a.explored);
-		const unexplored_artifacts = payload.artifacts.filter((a) => !a.explored);
-		return {
-			turns: payload.turns.length,
-			events: payload.events.length,
-			explored: explored_artifacts.length,
-			unexplored: unexplored_artifacts.length,
-		};
-	}, [payload]);
-
-	const highlight_ids = useMemo(
-		() => compute_highlight_ids(selection, payload),
-		[selection, payload],
+	// Derive highlighted subgraph from selection + focus mode
+	const selection_subgraph = useMemo(
+		() =>
+			graph
+				? compute_selection_subgraph(selected_node_id, graph, focus_mode)
+				: { highlighted_node_ids: new Set<string>(), highlighted_edge_keys: new Set<string>() },
+		[selected_node_id, graph, focus_mode],
 	);
 
-	const related_relations = useMemo(
-		() => compute_related_relations(highlight_ids, payload.relations),
-		[highlight_ids, payload.relations],
-	);
+	// If no graph, fall back to a simple message
+	if (!graph) {
+		return (
+			<div className="flex items-center justify-center h-full p-8">
+				<p className="text-muted-foreground text-sm">
+					No graph data available
+				</p>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex h-full min-h-0 flex-col overflow-hidden">
-			{/* Stats bar */}
-			<div className="flex items-center gap-3 px-3 py-1.5 border-b border-border bg-muted/30 flex-none">
-				<Badge variant="outline" className="text-[10px]">
-					{stats.turns} turns
-				</Badge>
-				<Badge variant="outline" className="text-[10px]">
-					{stats.events} events
-				</Badge>
-				<Badge variant="outline" className="text-[10px]">
-					{stats.explored} explored
-				</Badge>
-				{stats.unexplored > 0 && (
-					<Badge variant="secondary" className="text-[10px]">
-						{stats.unexplored} neighbors
-					</Badge>
-				)}
-				{!payload.has_repo_context && (
-					<span className="text-[10px] text-muted-foreground italic">
-						repo context unavailable
-					</span>
-				)}
-			</div>
+			{/* Session framing */}
+			<ExplorationFraming
+				graph={graph}
+				show_ambient={show_ambient}
+				on_select_node={(node) => set_selected_node_id(node.id)}
+			/>
+
+			{/* Controls strip with summary chips and focus mode */}
+			<ExplorationControls
+				graph={graph}
+				focus_mode={focus_mode}
+				on_focus_mode_change={set_focus_mode}
+				show_ambient={show_ambient}
+				on_toggle_ambient={() => set_show_ambient((v) => !v)}
+			/>
 
 			{/* Main split view */}
 			<ResizablePanelGroup
 				orientation="horizontal"
 				className="flex-1 min-h-0 min-w-0"
 			>
-				{/* Left: Timeline */}
+				{/* Left: Exploration Path */}
 				<ResizablePanel defaultSize="35%" minSize="25%" className="min-w-0">
-					<ExplorationTimeline
-						turns={payload.turns}
-						events={payload.events}
-						selection={selection}
-						highlight_ids={highlight_ids}
-						on_select={set_selection}
+					<ExplorationPath
+						graph={graph}
+						selected_node_id={selected_node_id}
+						highlighted_node_ids={selection_subgraph.highlighted_node_ids}
+						on_select_node={set_selected_node_id}
 					/>
 				</ResizablePanel>
 
 				<ResizableHandle />
 
-				{/* Right: List + Inspector */}
+				{/* Right: Context Map + Inspector */}
 				<ResizablePanel defaultSize="65%" minSize="35%" className="min-w-0">
 					<ResizablePanelGroup orientation="horizontal" className="min-h-0">
 						<ResizablePanel
-							defaultSize={selection ? "60%" : "100%"}
+							defaultSize={selected_node_id ? "60%" : "100%"}
 							minSize="40%"
 							className="min-w-0"
 						>
-							<ExplorationGraph
-								artifacts={payload.artifacts}
-								relations={payload.relations}
-								events={payload.events}
-								selection={selection}
-								highlight_ids={highlight_ids}
-								on_select={set_selection}
+							<ExplorationMap
+								graph={graph}
+								selected_node_id={selected_node_id}
+								highlighted_node_ids={
+									selection_subgraph.highlighted_node_ids
+								}
+								show_ambient={show_ambient}
+								on_select_node={set_selected_node_id}
 							/>
 						</ResizablePanel>
 
-						{selection && (
+						{selected_node_id && (
 							<>
 								<ResizableHandle />
 								<ResizablePanel
@@ -114,12 +125,11 @@ export function ExplorationView({ payload }: ExplorationViewProps) {
 									maxSize="50%"
 									className="min-w-0"
 								>
-									<ExplorationInspector
-										selection={selection}
-										payload={payload}
-										related_relations={related_relations}
-										on_select={set_selection}
-										on_close={() => set_selection(null)}
+									<ExplorationInspectorV2
+										selected_node_id={selected_node_id}
+										graph={graph}
+										on_select_node={set_selected_node_id}
+										on_close={() => set_selected_node_id(null)}
 									/>
 								</ResizablePanel>
 							</>
