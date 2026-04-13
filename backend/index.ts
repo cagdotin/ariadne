@@ -26,6 +26,9 @@ import "./analytics/commands.js";
 // Register exploration handlers
 import "./analytics/exploration/commands.js";
 
+// Register graph IR handlers
+import "./analytics/graph/commands.js";
+
 // ---- IPC message listener ---------------------------------------------------
 
 function send_message(

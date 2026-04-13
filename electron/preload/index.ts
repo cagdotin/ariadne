@@ -75,6 +75,9 @@ contextBridge.exposeInMainWorld("ariadne", {
 
 			get_session_exploration: (payload: { sessionId: string }) =>
 				invoke_command("get_session_exploration", payload),
+
+			get_session_graph: (payload: { sessionId: string }) =>
+				invoke_command("get_session_graph", payload),
 		},
 
 		// ── QMD ───────────────────────────────────────────────────────────────
