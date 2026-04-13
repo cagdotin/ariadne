@@ -5,6 +5,7 @@ export * from "./analytics";
 export * from "./channels";
 export * from "./dialogs";
 export * from "./exploration";
+export * from "./graph";
 export * from "./ipc-commands";
 export * from "./provider-limits";
 export * from "./qmd";

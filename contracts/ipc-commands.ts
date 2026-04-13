@@ -15,6 +15,7 @@ import type {
 	PickDirectoryResult,
 } from "./dialogs/filesystem";
 import type { ExplorationPayload } from "./exploration";
+import type { SessionGraphPayload } from "./graph";
 import type { ProviderLimitsResponse } from "./provider-limits/snapshots";
 import type { QmdAvailability } from "./qmd/availability";
 import type {
@@ -69,6 +70,9 @@ export interface AnalyticsCommandSignatures {
 	get_session_exploration(payload: {
 		sessionId: string;
 	}): Promise<ExplorationPayload>;
+	get_session_graph(payload: {
+		sessionId: string;
+	}): Promise<SessionGraphPayload>;
 }
 
 // ─── QMD commands ───────────────────────────────────────────────────────────
