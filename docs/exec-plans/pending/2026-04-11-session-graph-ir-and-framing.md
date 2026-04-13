@@ -29,11 +29,11 @@ Verification target:
 
 ## Progress
 
-- [ ] (2026-04-11) Milestone 1: Lock `contracts/graph/` schemas and export surface.
-- [ ] (2026-04-11) Milestone 2: Implement backend session graph derivation from replay plus framing context.
-- [ ] (2026-04-11) Milestone 3: Add current-tree augmentation for ambient repo instruction/doc/code context with provenance.
-- [ ] (2026-04-11) Milestone 4: Expose typed graph transport across backend, preload, and renderer.
-- [ ] (2026-04-11) Milestone 5: Integrate graph-derived framing/provenance into the Exploration UI.
+- [x] (2026-04-11) Milestone 1: Lock `contracts/graph/` schemas and export surface.
+- [x] (2026-04-11) Milestone 2: Implement backend session graph derivation from replay plus framing context.
+- [x] (2026-04-11) Milestone 3: Add current-tree augmentation for ambient repo instruction/doc/code context with provenance.
+- [x] (2026-04-11) Milestone 4: Expose typed graph transport across backend, preload, and renderer.
+- [x] (2026-04-11) Milestone 5: Integrate graph-derived framing/provenance into the Exploration UI.
 - [ ] (2026-04-11) Milestone 6: Validate on real sessions, document confirmed limitations, and prepare follow-up notes.
 
 ## Surprises & Discoveries
