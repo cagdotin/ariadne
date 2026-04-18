@@ -213,7 +213,7 @@ Session detail is a **layout route** with shared data context (`SessionDetailPro
 
 - **Conversation** (`/sessions/:id/conversation`) — branch-aware conversation replay via `SessionViewer`
 - **Traces** (`/sessions/:id/traces`) — horizontal swim-lane timeline showing all session events on a time axis, with an inspector panel for selected events
-- **Exploration** (`/sessions/:id/exploration`) — split view showing how the agent explored the codebase: chronological timeline grouped by turn (left), session-scoped artifact graph with one-hop unexplored neighbors (right), and a selection-driven inspector
+- **Exploration** (`/sessions/:id/exploration`) — split view with three panes, each owning a distinct job: left narrative pane (session framing + collapsed-by-default turns), artifact-first context map (docs, files, outputs, adjacent context; narrative scaffolding appears only when a selection needs it), and a selection-driven inspector
 
 Navigation from Conversation exposes both Traces and Exploration quick actions. From Traces or Exploration, a Conversation back action is shown.
 
