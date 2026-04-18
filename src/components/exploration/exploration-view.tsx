@@ -7,7 +7,10 @@
  */
 
 import type { SessionGraphPayload } from "@contracts/graph";
-import { useEffect, useMemo, useState } from "react";
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PanelImperativeHandle } from "react-resizable-panels";
+import { Button } from "@/components/ui/button";
 import {
 	ResizableHandle,
 	ResizablePanel,
@@ -51,6 +54,28 @@ export function ExplorationView({ graph }: ExplorationViewProps) {
 	const [show_unexplored, set_show_unexplored] = useState(true);
 	const [middle_pane_mode, set_middle_pane_mode] =
 		useState<MiddlePaneMode>("map");
+
+	// ── Collapsible panel state ──────────────────────────────────────────────
+	const left_panel_ref = useRef<PanelImperativeHandle>(null);
+	const right_panel_ref = useRef<PanelImperativeHandle>(null);
+	const [left_collapsed, set_left_collapsed] = useState(false);
+	const [right_collapsed, set_right_collapsed] = useState(false);
+
+	const toggle_left_panel = useCallback(() => {
+		if (left_collapsed) {
+			left_panel_ref.current?.expand();
+		} else {
+			left_panel_ref.current?.collapse();
+		}
+	}, [left_collapsed]);
+
+	const toggle_right_panel = useCallback(() => {
+		if (right_collapsed) {
+			right_panel_ref.current?.expand();
+		} else {
+			right_panel_ref.current?.collapse();
+		}
+	}, [right_collapsed]);
 
 	useEffect(() => {
 		if (!graph || show_ambient || !selected_node_id) return;
@@ -239,6 +264,10 @@ export function ExplorationView({ graph }: ExplorationViewProps) {
 				on_toggle_inferred={() => set_show_inferred((v) => !v)}
 				show_unexplored={show_unexplored}
 				on_toggle_unexplored={() => set_show_unexplored((v) => !v)}
+				left_collapsed={left_collapsed}
+				on_toggle_left={toggle_left_panel}
+				right_collapsed={right_collapsed}
+				on_toggle_right={toggle_right_panel}
 			/>
 
 			{/* Main split view */}
@@ -246,8 +275,16 @@ export function ExplorationView({ graph }: ExplorationViewProps) {
 				orientation="horizontal"
 				className="flex-1 min-h-0 min-w-0"
 			>
-				{/* Left: Exploration Path */}
-				<ResizablePanel defaultSize="35%" minSize="25%" className="min-w-0">
+				{/* Left: Exploration Path (collapsible) */}
+				<ResizablePanel
+					defaultSize="35%"
+					minSize="20%"
+					collapsible
+					collapsedSize={0}
+					panelRef={left_panel_ref}
+					onResize={(size) => set_left_collapsed(size.asPercentage === 0)}
+					className="min-w-0"
+				>
 					<ExplorationPath
 						graph={graph}
 						selected_node_id={selected_node_id}
@@ -257,14 +294,28 @@ export function ExplorationView({ graph }: ExplorationViewProps) {
 					/>
 				</ResizablePanel>
 
-				<ResizableHandle />
+				{/* Left handle with collapse toggle */}
+				<ResizableHandle className="relative group/handle">
+					<Button
+						variant="ghost"
+						size="icon"
+						className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-20 size-5 rounded-sm opacity-0 group-hover/handle:opacity-100 transition-opacity bg-background border border-border shadow-sm hover:bg-accent"
+						onClick={toggle_left_panel}
+					>
+						{left_collapsed
+							? <PanelLeftOpen className="size-3" />
+							: <PanelLeftClose className="size-3" />
+						}
+					</Button>
+				</ResizableHandle>
 
-				{/* Right: Context Map + Inspector */}
+				{/* Center + Right: Context Map + Inspector */}
 				<ResizablePanel defaultSize="65%" minSize="35%" className="min-w-0">
 					<ResizablePanelGroup orientation="horizontal" className="min-h-0">
+						{/* Center: Map / Graph */}
 						<ResizablePanel
-							defaultSize={selected_node_id ? "60%" : "100%"}
-							minSize="40%"
+							defaultSize="60%"
+							minSize="30%"
 							className="min-w-0"
 						>
 							{middle_pane_mode === "map" ? (
@@ -293,30 +344,51 @@ export function ExplorationView({ graph }: ExplorationViewProps) {
 							)}
 						</ResizablePanel>
 
-						{selected_node_id && (
-							<>
-								<ResizableHandle />
-								<ResizablePanel
-									defaultSize="40%"
-									minSize="25%"
-									maxSize="50%"
-									className="min-w-0"
-								>
-									<ExplorationInspectorV2
-										selected_node_id={selected_node_id}
-										graph={graph}
-										temporal_lens={temporal_lens}
-										middle_pane_mode={middle_pane_mode}
-										insight_subgraph={insight_subgraph}
-										on_select_node={set_selected_node_id}
-										on_close={() => set_selected_node_id(null)}
-										on_apply_action={(action) => {
-											set_focus_mode(action.focus_mode);
-										}}
-									/>
-								</ResizablePanel>
-							</>
-						)}
+						{/* Right handle with collapse toggle */}
+						<ResizableHandle className="relative group/handle">
+							<Button
+								variant="ghost"
+								size="icon"
+								className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-20 size-5 rounded-sm opacity-0 group-hover/handle:opacity-100 transition-opacity bg-background border border-border shadow-sm hover:bg-accent"
+								onClick={toggle_right_panel}
+							>
+								{right_collapsed
+									? <PanelRightOpen className="size-3" />
+									: <PanelRightClose className="size-3" />
+								}
+							</Button>
+						</ResizableHandle>
+
+						{/* Right: Inspector (collapsible, always mounted) */}
+						<ResizablePanel
+							defaultSize="40%"
+							minSize="20%"
+							maxSize="50%"
+							collapsible
+							collapsedSize={0}
+							panelRef={right_panel_ref}
+							onResize={(size) => set_right_collapsed(size.asPercentage === 0)}
+							className="min-w-0"
+						>
+							{selected_node_id ? (
+								<ExplorationInspectorV2
+									selected_node_id={selected_node_id}
+									graph={graph}
+									temporal_lens={temporal_lens}
+									middle_pane_mode={middle_pane_mode}
+									insight_subgraph={insight_subgraph}
+									on_select_node={set_selected_node_id}
+									on_close={toggle_right_panel}
+									on_apply_action={(action) => {
+										set_focus_mode(action.focus_mode);
+									}}
+								/>
+							) : (
+								<div className="flex items-center justify-center h-full p-4">
+									<p className="text-xs text-muted-foreground">Select a node to inspect</p>
+								</div>
+							)}
+						</ResizablePanel>
 					</ResizablePanelGroup>
 				</ResizablePanel>
 			</ResizablePanelGroup>

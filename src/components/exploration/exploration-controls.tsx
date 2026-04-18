@@ -9,6 +9,10 @@ import {
 	Eye,
 	FileEdit,
 	MessageSquare,
+	PanelLeftClose,
+	PanelLeftOpen,
+	PanelRightClose,
+	PanelRightOpen,
 	Search,
 	Sparkles,
 } from "lucide-react";
@@ -29,6 +33,10 @@ interface ExplorationControlsProps {
 	on_toggle_inferred: () => void;
 	show_unexplored: boolean;
 	on_toggle_unexplored: () => void;
+	left_collapsed?: boolean;
+	on_toggle_left?: () => void;
+	right_collapsed?: boolean;
+	on_toggle_right?: () => void;
 }
 
 const focus_mode_labels: Record<FocusMode, string> = {
@@ -47,11 +55,30 @@ export function ExplorationControls({
 	on_toggle_inferred,
 	show_unexplored,
 	on_toggle_unexplored,
+	left_collapsed,
+	on_toggle_left,
+	right_collapsed,
+	on_toggle_right,
 }: ExplorationControlsProps) {
 	const summary = useMemo(() => compute_graph_summary(graph), [graph]);
 
 	return (
 		<div className="flex items-center gap-3 px-3 py-1.5 border-b border-border bg-muted/30 flex-none flex-wrap">
+			{/* Left sidebar toggle */}
+			{on_toggle_left && (
+				<button
+					type="button"
+					className="p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+					onClick={on_toggle_left}
+					title={left_collapsed ? "Show exploration path" : "Hide exploration path"}
+				>
+					{left_collapsed
+						? <PanelLeftOpen className="size-3.5" />
+						: <PanelLeftClose className="size-3.5" />
+					}
+				</button>
+			)}
+
 			{/* Focus mode toggle */}
 			<div className="flex items-center gap-0.5 border border-border rounded-md overflow-hidden">
 				{(["path", "influence", "neighborhood"] as const).map((mode) => (
@@ -163,6 +190,24 @@ export function ExplorationControls({
 				<span className="text-[10px] text-muted-foreground italic ml-auto">
 					repo context unavailable
 				</span>
+			)}
+
+			{/* Right sidebar toggle — pushed to far right */}
+			{on_toggle_right && (
+				<button
+					type="button"
+					className={cn(
+						"p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors",
+						graph.has_repo_context && "ml-auto",
+					)}
+					onClick={on_toggle_right}
+					title={right_collapsed ? "Show inspector" : "Hide inspector"}
+				>
+					{right_collapsed
+						? <PanelRightOpen className="size-3.5" />
+						: <PanelRightClose className="size-3.5" />
+					}
+				</button>
 			)}
 		</div>
 	);
