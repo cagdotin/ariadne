@@ -2,9 +2,9 @@ name: session-exploration-graph
 purpose: "Visualize how AI explores the codebase with each prompt — solidify the session details/exploration feature to show how changing prompts, docs, AGENTS.md, etc. changes agent behavior patterns across the codebase."
 status: active
 created_at: "2026-04-18T08:53:32.654Z"
-updated_at: "2026-04-18T11:44:58.551Z"
-last_synced_at: "2026-04-18T11:44:58.551Z"
-session_count: 5
+updated_at: "2026-04-18T12:26:53.566Z"
+last_synced_at: "2026-04-18T12:17:36.261Z"
+session_count: 7
 summary_version: 1
 related_paths:
   - src/app/sessions

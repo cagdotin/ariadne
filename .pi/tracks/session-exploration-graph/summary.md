@@ -6,8 +6,8 @@
 - Track: session-exploration-graph
 - Purpose: Visualize how AI explores the codebase with each prompt — solidify the session details/exploration feature to show how changing prompts, docs, AGENTS.md, etc. changes agent behavior patterns across the codebase.
 - Status: active
-- Last synced: 2026-04-18T11:44:58.551Z
-- Session count: 5
+- Last synced: 2026-04-18T12:17:36.261Z
+- Session count: 6
 - Summary version: 1
 
 ## Related paths
@@ -31,7 +31,7 @@
 
 ## Findings
 - `src/components/exploration/exploration-view.tsx` already centralizes shared selection in `selected_node_id`, which means the graph rewrite can keep one selection contract across left pane, middle pane, and inspector.
-- The current Exploration `Graph` mode is not full-session topology; it is a reduced explanation graph derived from `compute_insight_subgraph()` and laid out by `src/lib/exploration-graph-layout.ts`.
+- The current Exploration `Graph` mode now renders a full-session topology projection rather than the older selection-centered explanation graph. That makes the route better at showing session-wide structure, but it also increases the risk of exposing too much narrative scaffolding as peer-visible topology.
 - The left pane is turn/action oriented, not a flat node index. Reverse-sync from graph selection will therefore require expansion and scroll behavior inside `src/components/exploration/exploration-path.tsx`.
 - The current middle-pane mode type is already `"map" | "graph"`, which fits an in-place Graph rewrite better than adding a third mode.
 

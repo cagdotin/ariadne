@@ -151,6 +151,35 @@ Expected direction:
 
 The current DOM card treatment can remain the visual reference for close-range node styling, but not necessarily for every zoom level.
 
+### 7.3 Recommended sequencing for the next slice
+
+Low-zoom density treatment and session-level grouping are related, but they should not be treated as the same task.
+
+Recommended order:
+1. **Density-sensitive zoom-band rendering first**
+2. **Session-level grouping evaluation second**
+
+Rationale:
+- the current product-level failure at fit scale is that dense sessions still collapse into a low-information sheet of equally weighted cards
+- that problem remains even if prompt roots are visually grouped better
+- judging whether a session spine is still necessary becomes easier once the overview rendering is no longer dominated by card chrome
+
+The next implementation slice should therefore keep the current graph truth and layout semantics intact while making the renderer scale-aware.
+
+Expected first-pass zoom bands:
+- **overview** — nodes render as compact pills/glyphs; labels are suppressed except for the selected node and selected path
+- **mid zoom** — prompts, turns, and selected/path nodes can carry truncated labels; artifacts stay visually lighter
+- **detail** — current card-like treatment remains the reference
+
+Invariants for that slice:
+- no graph-IR changes
+- no new middle-pane mode
+- no graph-local transcript or inspector surface
+- no clustering/collapse behavior that changes node identity or selection semantics
+- hit-testing and selected-node reveal continue to operate on the same layout bounds
+
+Only after that pass should the team evaluate whether multi-turn sessions still need an additional presentational grouping treatment such as a subtle session spine, grouped root rail, or root-lane background.
+
 ## 8. Selection and sync requirements for the canvas phase
 
 The current two-way binding remains mandatory.
@@ -191,11 +220,13 @@ The next manual validation bar should include:
 - [x] Introduce a graph viewport model for pan/zoom/fit/reveal behavior.
 - [x] Decide the first actual-canvas rendering split: hybrid canvas + minimal DOM overlay for the active selected node.
 - [x] Prototype canvas hit-testing and node selection without moving shared selection ownership out of `ExplorationView`.
-- [ ] Validate whether the current forest of prompt roots needs an implicit session spine or grouped-root treatment.
 - [x] Re-run real-session validation on dense sessions and document whether the canvas phase resolves the current 4k–8kpx scroll-sheet problem.
+- [x] Add scale-aware zoom-band rendering so overview, mid-zoom, and detail states do not all use the same visual weight.
+- [x] Re-validate dense and small real sessions at fit scale after the density pass and tune thresholds for selected-path emphasis, label visibility, and node chrome.
+- [ ] Validate whether the current forest of prompt roots still needs an implicit session spine or grouped-root treatment after the density pass.
 
 ## 11. Open questions
 
-1. Should the first canvas milestone render both nodes and edges on canvas, or only edges plus compact nodes while keeping selected-node DOM affordances?
-2. Should left-pane selection always auto-center the selected node, or only when the node is outside the viewport?
-3. What is the lightest session-level grouping treatment that makes multi-turn sessions read as one whole without introducing fake causality?
+1. Which zoom thresholds best separate overview, mid-zoom, and detail states on real sessions without making labels flicker too aggressively?
+2. At overview scale, should prompt roots keep labels, or should text be reserved strictly for selected/path nodes?
+3. After density-aware rendering lands, what is the lightest session-level grouping treatment that improves the whole-session read without introducing fake causality?

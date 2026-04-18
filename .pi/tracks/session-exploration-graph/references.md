@@ -31,3 +31,10 @@
 - `docs/specs/2026-04-13-exploration-graph-visualization-upgrade.md`
 - `docs/specs/2026-04-13-exploration-path-insight-graph.md`
 - `docs/specs/2026-04-13-exploration-visualization-rewrite.md`
+
+## Investigations worth reading
+
+- `reports/2026-04-18-real-session-validation.md`
+- `reports/2026-04-18-canvas-viewport-validation.md`
+- `reports/2026-04-18-density-tuning-validation.md`
+- `reports/2026-04-18-session-graph-structure-evaluation.md`

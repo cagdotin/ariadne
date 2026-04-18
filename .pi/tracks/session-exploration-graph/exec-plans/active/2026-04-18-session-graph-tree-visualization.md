@@ -30,6 +30,11 @@ After this work, a user should be able to:
 - [x] (2026-04-18 13:49 CEST) Plan the viewported actual-canvas-oriented graph surface that should follow the SVG/DOM stepping-stone renderer.
 - [x] (2026-04-18 15:28 CEST) Implement the first Milestone 3 slice: add viewport math/hook, convert Graph mode to a viewported canvas-oriented surface, and preserve shared selection sync.
 - [x] (2026-04-18 15:41 CEST) Re-run targeted tests and real-session validation for the viewport slice; record results and remaining density follow-ups.
+- [x] (2026-04-18 14:01 CEST) Fix the zoomed-edge visibility regression so canvas edges remain visible under Ariadne's OKLCH theme tokens.
+- [x] (2026-04-18 14:01 CEST) Plan the next Milestone 3 follow-up as a two-step sequence: density-sensitive zoom-band rendering first, then session-grouping evaluation on top of the improved overview.
+- [x] (2026-04-18 14:08 CEST) Implement the density-sensitive zoom-band renderer so overview, mid-zoom, and detail states no longer all render with the same node chrome and label policy.
+- [x] (2026-04-18 14:08 CEST) Add targeted renderer-policy tests and re-run graph/path/viewport validation after the density pass.
+- [x] (2026-04-18 14:08 CEST) Run a focused real-session tuning pass, raise the overview boundary for ambiguous medium sessions, and document the remaining session-grouping judgment.
 
 ## Surprises & Discoveries
 
@@ -56,6 +61,15 @@ After this work, a user should be able to:
 
 - Observation: Real-session layouts still collapse to very small overview scales once the graph is camera-framed, which confirms that density-sensitive rendering is the next readability problem.
   Evidence: The viewport validation rerun in `reports/2026-04-18-canvas-viewport-validation.md` found fit scales of `0.08` on a recent 240-node session and roughly `0.14–0.18` on several 100+ node sessions, with zero selected-node reveal failures.
+
+- Observation: Low-zoom density treatment and session-level grouping are coupled in the user experience, but they are not the same implementation step.
+  Evidence: The graph remains hard to read at fit scale even before root grouping is considered; improving zoom-band rendering first preserves current graph truth while making it easier to judge whether an extra session-spine treatment is still necessary.
+
+- Observation: A scale-aware renderer can simplify overview nodes and suppress artifact labels without changing layout bounds, hit-testing, or selection ownership.
+  Evidence: `src/lib/exploration-graph-render-style.ts` now derives zoom bands, label policy, accent policy, and visual weight from viewport scale plus node kind/role, while `src/components/exploration/exploration-graph.tsx` still picks nodes against the same layout rectangles.
+
+- Observation: The ambiguous fit-scale range for real sessions is wider than the first draft threshold suggested. Sessions around `0.21–0.27` still behave like overview topology rather than readable mid-zoom graphs.
+  Evidence: The focused tuning pass in `reports/2026-04-18-density-tuning-validation.md` showed that these sessions produced many accent dots but no meaningful labels under the earlier boundary; moving them back into overview removed chrome clutter while preserving structure.
 
 ## Decision Log
 
@@ -87,6 +101,10 @@ After this work, a user should be able to:
   Rationale: Left-pane selection and graph clicks should preserve spatial continuity when the user is already looking at the relevant neighborhood.
   Date/Author: 2026-04-18 / pi
 
+- Decision: Sequence the remaining Milestone 3 work as density-sensitive zoom-band rendering first, then session-level grouping evaluation.
+  Rationale: Fit-scale readability is the immediate product problem. A session spine or grouped-root treatment is easier to judge once overview rendering is no longer dominated by equally weighted card chrome.
+  Date/Author: 2026-04-18 / pi
+
 ## Outcomes & Retrospective
 
 Current outcome:
@@ -96,10 +114,11 @@ Current outcome:
 - Milestone 2 reverse-sync wiring is implemented in code for turn/action rows and framing rows
 - the first Milestone 3 slice is now implemented: Graph mode has a viewport/camera model, pan/zoom/fit/reveal behavior, and a canvas-oriented bulk renderer with a minimal DOM active-node overlay
 - a real-session validation rerun confirmed that the viewport math behaves correctly on sampled Ariadne sessions and that the graph now behaves like a bounded camera surface rather than only a static sheet
+- the next density pass is now implemented in code: overview, mid-zoom, and detail states use different node chrome, label visibility, accent behavior, and edge emphasis while preserving the same graph truth and shared-selection contract
 
 Remaining work:
-- improve lower-zoom density treatment so very small fit scales still communicate structure clearly
-- validate whether the current prompt-forest presentation needs an implicit session-spine treatment
+- re-run interactive in-app review to confirm the tuned overview/mid/detail boundaries feel right during actual pan/zoom use, not only in offline fit-scale analysis
+- evaluate whether the current prompt-forest presentation now warrants a subtle session-spine or grouped-root treatment, and keep it presentation-only if pursued
 - capture any repeated-artifact, framing, or density-polish follow-up work
 - re-run interactive app validation after any additional camera/grouping polish
 
