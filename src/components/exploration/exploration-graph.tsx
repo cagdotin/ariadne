@@ -395,9 +395,9 @@ export function ExplorationGraph({
 	const selected_layout_node = useMemo(
 		() =>
 			layout.selected_projection_node_id
-				? layout.nodes.find(
+				? (layout.nodes.find(
 						(node) => node.id === layout.selected_projection_node_id,
-					) ?? null
+					) ?? null)
 				: null,
 		[layout.nodes, layout.selected_projection_node_id],
 	);
@@ -825,11 +825,20 @@ function draw_graph_canvas(
 	theme: GraphCanvasTheme,
 ) {
 	const zoom_band = get_graph_zoom_band(viewport.scale);
+	const has_active_selection = layout.selected_projection_node_id !== null;
 	context.fillStyle = theme.background;
 	context.fillRect(0, 0, size.width, size.height);
 
 	for (const edge of layout.edges) {
-		draw_graph_edge(context, edge, viewport, size, theme, zoom_band);
+		draw_graph_edge(
+			context,
+			edge,
+			viewport,
+			size,
+			theme,
+			zoom_band,
+			has_active_selection,
+		);
 	}
 
 	const ordered_nodes = [...layout.nodes].sort((left, right) => {
@@ -843,7 +852,15 @@ function draw_graph_canvas(
 	});
 
 	for (const node of ordered_nodes) {
-		draw_graph_node(context, node, viewport, size, theme, zoom_band);
+		draw_graph_node(
+			context,
+			node,
+			viewport,
+			size,
+			theme,
+			zoom_band,
+			has_active_selection,
+		);
 	}
 }
 
@@ -854,6 +871,7 @@ function draw_graph_edge(
 	size: { width: number; height: number },
 	theme: GraphCanvasTheme,
 	zoom_band: GraphZoomBand,
+	has_active_selection: boolean,
 ) {
 	const screen_points = edge.points.map(([x, y]) =>
 		world_to_screen_point({ x, y }, viewport),
@@ -880,34 +898,36 @@ function draw_graph_edge(
 				? 1.05
 				: 1.2
 			: clamp_number(
-				edge.role === "artifact"
-					? 1 + viewport.scale * 0.22
-					: 1.1 + viewport.scale * 0.25,
-				1,
-				1.9,
-			);
+					edge.role === "artifact"
+						? 1 + viewport.scale * 0.22
+						: 1.1 + viewport.scale * 0.25,
+					1,
+					1.9,
+				);
 	context.lineWidth = edge.is_on_selected_path
 		? base_line_width + (zoom_band === "overview" ? 0.7 : 1)
-		: base_line_width;
-	context.globalAlpha = edge.is_on_selected_path
-		? 1
-		: edge.role === "framing"
-			? zoom_band === "overview"
-				? 0.68
-				: 0.8
-			: edge.role === "artifact"
-				? zoom_band === "overview"
-					? 0.5
-					: 0.72
-				: zoom_band === "overview"
-					? 0.62
-					: 0.85;
+		: has_active_selection
+			? base_line_width * 0.92
+			: base_line_width;
+	context.globalAlpha = get_edge_alpha(edge, zoom_band, has_active_selection);
 	context.lineJoin = "round";
 	context.lineCap = "round";
 	context.setLineDash(edge.role === "framing" ? [6, 4] : []);
 	context.stroke();
 	context.setLineDash([]);
 	context.globalAlpha = 1;
+}
+
+function get_edge_alpha(
+	edge: SessionGraphLayoutEdge,
+	zoom_band: GraphZoomBand,
+	has_active_selection: boolean,
+): number {
+	if (edge.is_on_selected_path) return 1;
+	if (has_active_selection) return 0;
+	if (edge.role === "framing") return zoom_band === "overview" ? 0.68 : 0.8;
+	if (edge.role === "artifact") return zoom_band === "overview" ? 0.5 : 0.72;
+	return zoom_band === "overview" ? 0.62 : 0.85;
 }
 
 function draw_graph_node(
@@ -917,6 +937,7 @@ function draw_graph_node(
 	size: { width: number; height: number },
 	theme: GraphCanvasTheme,
 	zoom_band: GraphZoomBand,
+	has_active_selection: boolean,
 ) {
 	const screen_rect = world_rect_to_screen_rect(
 		get_layout_node_bounds(node),
@@ -926,6 +947,8 @@ function draw_graph_node(
 
 	const palette = get_node_palette(node, theme);
 	const visual_weight = get_graph_node_visual_weight(node.kind, node.role);
+	const is_dimmed =
+		has_active_selection && !node.is_selected && !node.is_on_selected_path;
 	const chrome_mode = get_graph_node_chrome_mode(viewport.scale);
 	const render_rect = get_node_render_rect(
 		screen_rect,
@@ -966,7 +989,12 @@ function draw_graph_node(
 
 	context.save();
 	context.fillStyle = palette.fill;
-	context.globalAlpha = get_node_fill_alpha(zoom_band, visual_weight, node);
+	context.globalAlpha = get_node_fill_alpha(
+		zoom_band,
+		visual_weight,
+		node,
+		has_active_selection,
+	);
 	draw_round_rect(
 		context,
 		render_rect.x,
@@ -979,7 +1007,12 @@ function draw_graph_node(
 
 	context.strokeStyle = node.is_selected ? theme.primary : palette.stroke;
 	context.lineWidth = stroke_width;
-	context.globalAlpha = get_node_stroke_alpha(zoom_band, visual_weight, node);
+	context.globalAlpha = get_node_stroke_alpha(
+		zoom_band,
+		visual_weight,
+		node,
+		has_active_selection,
+	);
 	context.stroke();
 	context.globalAlpha = 1;
 
@@ -992,9 +1025,11 @@ function draw_graph_node(
 		context.globalAlpha =
 			node.is_selected || node.is_on_selected_path
 				? 1
-				: zoom_band === "mid" && visual_weight === "secondary"
-					? 0.85
-					: 0.78;
+				: is_dimmed
+					? 0.24
+					: zoom_band === "mid" && visual_weight === "secondary"
+						? 0.85
+						: 0.78;
 		context.beginPath();
 		context.arc(
 			render_rect.x + Math.max(7, accent_size + 3),
@@ -1019,6 +1054,7 @@ function draw_graph_node(
 			!node.is_on_selected_path
 				? theme.muted_foreground
 				: theme.foreground;
+		context.globalAlpha = is_dimmed ? 0.42 : 1;
 		context.font = `${font_size}px "Geist Variable", ui-sans-serif, system-ui, sans-serif`;
 		context.textBaseline = "middle";
 		const text_x = render_rect.x + Math.max(11, accent_size + 9);
@@ -1028,6 +1064,7 @@ function draw_graph_node(
 			render_rect.width - (text_x - render_rect.x) - 8,
 		);
 		draw_truncated_text(context, node.label, text_x, text_y, max_text_width);
+		context.globalAlpha = 1;
 	}
 	context.restore();
 }
@@ -1071,9 +1108,15 @@ function get_node_fill_alpha(
 	zoom_band: GraphZoomBand,
 	visual_weight: ReturnType<typeof get_graph_node_visual_weight>,
 	node: SessionGraphLayoutNode,
+	has_active_selection: boolean,
 ) {
 	if (node.is_selected) return 1;
 	if (node.is_on_selected_path) return zoom_band === "overview" ? 0.98 : 0.94;
+	if (has_active_selection) {
+		if (zoom_band === "overview") return 0.14;
+		if (zoom_band === "mid") return 0.18;
+		return 0.24;
+	}
 	if (zoom_band === "overview") {
 		if (visual_weight === "primary") return 0.9;
 		if (visual_weight === "secondary") return 0.78;
@@ -1095,9 +1138,15 @@ function get_node_stroke_alpha(
 	zoom_band: GraphZoomBand,
 	visual_weight: ReturnType<typeof get_graph_node_visual_weight>,
 	node: SessionGraphLayoutNode,
+	has_active_selection: boolean,
 ) {
 	if (node.is_selected) return 1;
 	if (node.is_on_selected_path) return 0.98;
+	if (has_active_selection) {
+		if (zoom_band === "overview") return 0.2;
+		if (zoom_band === "mid") return 0.24;
+		return 0.3;
+	}
 	if (zoom_band === "overview") {
 		if (visual_weight === "artifact") return 0.62;
 		return 0.9;
