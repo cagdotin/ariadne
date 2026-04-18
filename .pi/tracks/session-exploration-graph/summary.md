@@ -6,8 +6,8 @@
 - Track: session-exploration-graph
 - Purpose: Visualize how AI explores the codebase with each prompt — solidify the session details/exploration feature to show how changing prompts, docs, AGENTS.md, etc. changes agent behavior patterns across the codebase.
 - Status: active
-- Last synced: 2026-04-18T12:17:36.261Z
-- Session count: 6
+- Last synced: 2026-04-18T13:33:50.128Z
+- Session count: 7
 - Summary version: 1
 
 ## Related paths
@@ -16,7 +16,7 @@
 - docs/information-architecture.md
 
 ## Next steps
-- Phase 0 — planning and track-doc refactor for the session graph/tree visualization rewrite
+- Phase 1 — graph readability polish plus causal-lineage follow-up on top of the new full-session Graph surface
 - Refactor the track so the root is the documentation root.
 - Capture stable copies of the current Ariadne walkthrough and graph screenshots inside the track.
 - Rewrite the old single tree-visualization spec into a focused spec set and create an execution plan.
@@ -24,10 +24,8 @@
 - Replace the current Exploration `Graph` renderer with the new full-session tree/graph surface.
 
 ## Open checklist
-- Prototype the full-session graph projection and pick the first-ship default orientation.
-- Replace the current Exploration `Graph` renderer with the new full-session tree/graph surface.
-- Add graph-to-left expansion/scroll synchronization.
-- Validate on real sessions and record deferred polish items.
+- Re-run focused interactive review for the current density/grouping thresholds and record any remaining presentation-only follow-ups.
+- Validate the new same-turn search/file → action → artifact lineage on real sessions in-app and document any broaden/defer decisions.
 
 ## Findings
 - `src/components/exploration/exploration-view.tsx` already centralizes shared selection in `selected_node_id`, which means the graph rewrite can keep one selection contract across left pane, middle pane, and inspector.

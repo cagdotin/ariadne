@@ -11,6 +11,7 @@ Execution plans are the living implementation documents for this track.
 ## Current active plans
 
 - `active/2026-04-18-session-graph-tree-visualization.md` — rollout plan for replacing Exploration Graph mode with the new full-session tree/graph canvas.
+- `active/2026-04-18-session-graph-discovery-lineage.md` — rollout plan for adding evidence-backed same-turn search → action lineage via `discovered` and `influenced_by` edges.
 
 ## Working rule
 

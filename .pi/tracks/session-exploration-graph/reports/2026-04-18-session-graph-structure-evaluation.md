@@ -173,3 +173,397 @@ The current session graph is better understood as an **internal causal/provenanc
 The main problem is not that the model distinguishes tools from files; that distinction is valid. The main problem is that the current Graph mode renders too much of the IR's explanatory scaffolding as if it were primary topology.
 
 That is why the graph currently feels duplicated even where the underlying node identities are technically correct.
+
+---
+
+## Follow-on spec — discovery lineage and inferred causal influence
+
+Status: Proposed
+Date: 2026-04-18
+Builds on:
+- `artifacts/session-graph-structure-reference.md`
+- `docs/specs/2026-04-11-session-graph-ir-and-framing.md`
+- `docs/specs/2026-04-13-exploration-path-insight-graph.md`
+- `docs/exec-plans/pending/2026-04-13-exploration-visualization-rewrite.md`
+- current derivation in `backend/analytics/graph/derive-session-graph.ts`
+- current projections in `src/lib/exploration-session-graph-view-model.ts` and `src/lib/exploration-insight-graph-view-model.ts`
+
+### Purpose
+
+Define a graph-level and projection-level extension that makes Ariadne answer the question:
+
+> what led the agent to read this file, not just which turn it happened in?
+
+The immediate motivating gap is intra-turn discovery lineage. Today the graph can show:
+- `user_prompt -> assistant_turn -> search_query`
+- `user_prompt -> assistant_turn -> tool_call(read)`
+- `tool_call(read) -> file`
+
+But it does not yet show the missing explanatory chain:
+- `user_prompt -> assistant_turn -> search_query -> tool_call(read) -> file`
+
+That missing chain is what makes search/grep/bash discovery actions and later reads feel visually flattened into the same layer.
+
+### 1. Problem statement
+
+The current graph IR preserves chronology and provenance, but it does not yet preserve enough **intra-turn causal lineage** to explain why later file reads happened.
+
+As a result:
+- search queries and later reads often appear as siblings under the same turn
+- the graph answers **what happened in this turn** better than **what likely caused this action**
+- the UI can show arrival order but not the decision trail that led to a specific file read/edit/write
+- the full-session tree projection further amplifies this issue because it chooses a single parent and currently prefers the turn scaffold over inferred causal parents
+
+This is not only a rendering issue. It is a graph-semantic gap between:
+- **chronology** — the order in which actions happened
+- **causal lineage** — which earlier actions materially led to later actions
+
+The spec below defines how to add that missing explanatory layer without collapsing the distinction between events and artifacts.
+
+### 2. Goals
+
+- Preserve the current event/artifact separation in the graph IR
+- Make discovery chains legible as:
+  - `prompt -> turn -> search -> read -> artifact`
+- Distinguish clearly between:
+  - observed discovery facts
+  - inferred likely causal influence
+- Reuse the existing graph contract edge kinds where possible, rather than introducing new node families
+- Improve both:
+  - graph derivation semantics
+  - graph projection behavior
+- Keep provenance, availability, confidence, and evidence visible and honest
+- Build on top of the current Path / Influence / inspector model rather than replacing it
+
+### 3. Non-goals
+
+- Reconstructing hidden model reasoning or chain-of-thought
+- Claiming a perfect, exhaustive causal graph for every action
+- Collapsing `tool_call` and `source_file` / `doc_file` identities into one node type
+- Making the main graph a free-form many-parent canvas by default
+- Adding broad cross-turn causal inference in the first pass
+- Emitting weak low-signal causal edges simply to make the graph look more connected
+
+### 4. Core decisions
+
+#### 4.1 Keep the current event vs artifact distinction
+
+The graph must continue to distinguish:
+- discovery/action nodes: `search_query`, `tool_call`
+- artifact nodes: `source_file`, `doc_file`, `agents_doc`
+
+The issue is not that those are different things. The issue is that the graph does not yet encode enough relationships **between** them.
+
+#### 4.2 Activate existing edge kinds instead of adding new node families
+
+The existing graph contract already defines:
+- `discovered`
+- `influenced_by`
+
+This work should primarily activate and operationalize those edge kinds rather than introduce a new parallel concept.
+
+#### 4.3 Split the problem into two relationship types
+
+Two different questions must be represented separately:
+
+1. **What did a search surface?**
+   - represented by `search_query -> artifact` using `discovered`
+
+2. **What later action did that earlier node likely lead to?**
+   - represented by `influencer -> later_action` using `influenced_by`
+
+These are related but not interchangeable.
+
+#### 4.4 Preserve current forward edge direction even for `influenced_by`
+
+Although the name reads like a reverse phrase, current repository usage already treats `influenced_by` as a forward edge:
+- `influencer -> influenced_node`
+
+Examples already present in tests and view models follow that convention, e.g.:
+- `claude_md -> file_b` with kind `influenced_by`
+
+This spec preserves that directional convention for compatibility and consistency.
+
+### 5. Edge semantics
+
+#### 5.1 `discovered`
+
+**Shape**
+- source: `search_query`
+- target: `source_file | doc_file | agents_doc | directory` (directory remains future-compatible)
+
+**Meaning**
+- this discovery action surfaced this artifact as a candidate during the session
+
+**When to emit**
+- when search output or replay-observable search evidence explicitly mentions the target artifact path, or strongly and uniquely identifies it
+- initial implementation should prefer touched artifacts that already exist as graph nodes, rather than creating a large population of never-opened search-result nodes
+
+**Provenance expectation**
+- typically `availability: derived_inferred`
+- `confidence: high` for exact explicit path match
+- `confidence: medium` for uniquely resolvable basename/stem-level match
+- evidence should cite the search replay entry/tool call and explain the basis of the path match
+
+#### 5.2 `influenced_by`
+
+**Initial preferred shape**
+- source: `search_query | tool_call | source_file | doc_file | agents_doc | instruction_source`
+- target: primarily `tool_call` in the first implementation pass
+
+**Meaning**
+- this earlier node materially influenced the later action
+
+**Why target `tool_call` first**
+The user-facing question is usually:
+- why did the agent read this file?
+- why did the agent edit this file?
+
+That is first a question about an **action**, and only secondarily about an artifact. Modeling the causal edge onto the action node makes the explanation chain more precise:
+- `search_query -> tool_call(read x.ts)`
+- then `tool_call(read x.ts) -> source_file(x.ts)`
+
+**Compatibility note**
+Existing and future artifact-level `influenced_by` edges remain valid for coarser summaries, inspector explanations, or broader influence views. This spec does not ban them. It only says the first rollout should prefer action-targeted influence for discovery lineage.
+
+### 6. Inference scope and sequencing
+
+This should be implemented in phases so the graph becomes more explanatory without becoming noisy or speculative.
+
+#### 6.1 Phase 1 — same-turn discovery lineage
+
+This phase directly addresses the user-visible flattening issue.
+
+Scope:
+- same `assistant_turn` only
+- search/discovery actions leading to later file/doc reads, edits, or writes in that same turn
+- no broad cross-turn inference in the first pass
+
+Primary outputs:
+- `search_query -> artifact` via `discovered`
+- `search_query -> tool_call` via `influenced_by`
+
+#### 6.2 Phase 2 — broader supporting influence
+
+Only after Phase 1 proves useful and honest, broaden influence inference to other contributor types such as:
+- earlier doc reads influencing later edits
+- earlier source file reads influencing later edits/writes
+- instruction sources and `AGENTS.md` influencing later actions more explicitly
+
+This broader phase should reuse the same `influenced_by` contract and provenance rules, not invent a second causal system.
+
+### 7. Phase 1 inference rules
+
+#### 7.1 Candidate search window
+
+For a target non-search tool call:
+- only consider `search_query` nodes in the same `assistant_turn`
+- only consider search queries with smaller `tool_index` than the target action
+- prefer the nearest prior search queries first, but do not use proximity alone as sufficient evidence
+
+#### 7.2 High-confidence discovery
+
+Emit `discovered(search_query -> artifact)` when:
+- the search result output explicitly contains a path that normalizes to the artifact path later touched by the session
+- or the output contains a uniquely matching relative path/basename that resolves unambiguously to that touched artifact within the current project and turn context
+
+Recommended treatment:
+- `availability: derived_inferred`
+- `confidence: high` for exact normalized path match
+- `confidence: medium` only when uniqueness is strong and explainable
+
+#### 7.3 High/medium-confidence causal influence from search to action
+
+Emit `influenced_by(search_query -> tool_call)` when:
+- the target tool later reads/edits/writes an artifact already linked from that search by `discovered`
+- or, if no `discovered` edge is emitted, there is still a strong unique match between the search query/result and the later target artifact
+
+Recommended treatment:
+- `availability: derived_inferred`
+- `confidence: high` when backed by an exact surfaced-artifact match
+- `confidence: medium` for a strong unique match that is still one step more inferential
+
+#### 7.4 What should *not* be emitted in Phase 1
+
+Do **not** emit causal edges when the only signal is:
+- simple temporal adjacency
+- "this was the last search before the read"
+- vague token overlap with multiple plausible candidate files
+- ambiguous multi-search scenarios with no deterministic strongest parent
+
+The first implementation should favor under-linking over over-claiming.
+
+### 8. Primary-parent projection rules
+
+The graph IR is allowed to remain multi-edge. The main flattening issue shows up when a tree projection chooses only one visible parent.
+
+To make the visible graph explain discovery lineage better, tree-style projections should adopt a **primary causal parent** rule.
+
+#### 8.1 Tool parent priority
+
+For visible `tool_call` nodes, choose the primary visible parent using this priority:
+
+1. a same-turn incoming `influenced_by` edge from a visible earlier action/search with `confidence: high`
+2. a same-turn incoming `influenced_by` edge from a visible earlier action/search with `confidence: medium`
+3. the owning `assistant_turn` via `invoked_tool`
+4. existing fallback behavior
+
+This changes the visible hierarchy from:
+- `turn -> [search, read, read, read]`
+
+toward:
+- `turn -> search -> read -> artifact`
+- `turn -> search -> read -> artifact`
+- `turn -> search -> edit -> artifact`
+
+when the graph actually supports that inference.
+
+#### 8.2 Artifact parent rule
+
+Artifact nodes should continue to prefer the action node that touched them:
+- `tool_call(read) -> file`
+- `tool_call(edit) -> file`
+- `tool_call(write) -> file`
+
+This preserves the action/artifact distinction while allowing the action node itself to be nested under the more explanatory search/discovery parent.
+
+#### 8.3 Multiple possible influences
+
+If multiple incoming `influenced_by` edges exist:
+- select one deterministic primary parent for tree layout
+- keep the remaining influence edges available for:
+  - Influence mode
+  - inspector explanations
+  - future richer graph layouts
+
+Recommended tie-breakers:
+- highest confidence first
+- exact surfaced-artifact match over fuzzy match
+- nearest prior same-turn search over earlier same-turn search
+- deterministic final tie-break by node id / tool index
+
+### 9. Relationship to current visualization modes
+
+#### 9.1 Full-session tree / Graph mode
+
+The current full-session graph projection should stop forcing all tool nodes to be turn-level siblings when a stronger same-turn causal parent exists.
+
+This does **not** require the entire UI to become a freeform graph. It only requires the projection to prefer more explanatory parentage where the graph supports it.
+
+#### 9.2 Insight / selection-centered graph
+
+`src/lib/exploration-insight-graph-view-model.ts` already has the right conceptual direction.
+
+This spec extends that model by making `discovered` and action-targeted `influenced_by` edges first-class explanation edges for:
+- primary route construction
+- supporting contributor summaries
+- clearer arrival-path explanations
+
+#### 9.3 Path vs Influence semantics
+
+Path and Influence should remain distinct, but both should benefit from better lineage.
+
+Recommended interpretation:
+- **Path** should remain the cleaner route spine and may use the selected primary parent when tree layout requires one
+- **Influence** should surface the wider set of supporting `influenced_by` / `discovered` relationships without pretending they are all equal-strength route steps
+
+### 10. Provenance, evidence, and confidence rules
+
+#### 10.1 Availability
+
+For this feature, the default expectation is:
+- `discovered`: `derived_inferred`
+- `influenced_by`: `derived_inferred`
+
+Even when the raw search output is present in replay text, the edge itself is still being derived from that text into a structured graph relationship.
+
+#### 10.2 Confidence policy
+
+Recommended initial policy:
+- emit only `high` and `medium` confidence discovery/influence edges in the graph payload
+- do not emit `low` confidence causal edges in the first rollout
+
+This keeps the graph readable and preserves trust.
+
+#### 10.3 Evidence expectations
+
+Each emitted edge should explain *why it exists*.
+
+Expected evidence sources include:
+- the search tool call entry id
+- the later tool call entry id
+- optionally the replay entry/tool result that contained the surfaced path text
+- a human-readable `detail` string such as:
+  - `search result explicitly mentioned src/lib/foo.ts`
+  - `later read matched uniquely surfaced artifact within same turn`
+  - `nearest prior exact-path search result in same turn`
+
+### 11. Error handling and honesty rules
+
+- If search output is unavailable, truncated, or too ambiguous to map confidently, do not emit `discovered`
+- If multiple prior searches are equally plausible and no deterministic strongest parent emerges, do not invent a single causal edge just to improve the picture
+- Do not let repo augmentation create the appearance that replay observed a discovery path it did not actually observe
+- Do not backfill broad cross-turn causal claims in Phase 1
+- Prefer a flat but truthful graph over a more satisfying but speculative one
+
+### 12. Implementation surfaces
+
+Primary surfaces expected to change:
+- `backend/analytics/graph/derive-session-graph.ts`
+  - derive same-turn discovery lineage and causal influence edges
+- `contracts/graph/types.ts`
+  - no new enum values required, but tests/docs should reflect activated semantics
+- `src/lib/exploration-session-graph-view-model.ts`
+  - allow `influenced_by` to participate in parent selection for visible action nodes
+- `src/lib/exploration-insight-graph-view-model.ts`
+  - treat `discovered` and action-targeted `influenced_by` as first-class explanation edges
+- `contracts/graph/graph-to-exploration-adapter.ts`
+  - update only if downstream consumers need explicit relation mapping or summaries
+- tests covering derivation, projection, and inspector/path semantics
+
+A small focused helper module for search-result parsing and same-turn lineage inference is recommended if `derive-session-graph.ts` becomes too dense.
+
+### 13. Testing strategy
+
+#### 13.1 Unit tests — derivation
+
+Add derivation tests that prove:
+- exact search result path -> touched artifact emits `discovered`
+- search query that surfaced a later-read file emits `influenced_by` onto the read tool
+- same-turn ambiguity does not emit a false strong edge
+- no edge is emitted from pure temporal adjacency alone
+- multiple reads can legitimately share the same influencing search query
+
+#### 13.2 Unit tests — projection/view models
+
+Add projection tests that prove:
+- a read tool nests under a search query when a higher-priority `influenced_by` edge exists
+- the graph still falls back to `assistant_turn -> tool_call` when no supported influence exists
+- artifact arrival explanations include the richer route when discovery lineage exists
+- Influence mode can surface secondary influence edges without breaking primary path clarity
+
+#### 13.3 Real-session validation
+
+Validate against real Ariadne development sessions that include:
+- multiple `rg` / `grep` / `find` commands before a read
+- repeated reads of similar filenames
+- ambiguous searches that should remain unlinked
+- sessions where the improved topology visibly changes from flat siblings to causal nesting
+
+### 14. Implementation checklist
+
+- [ ] Document `discovered` and active `influenced_by` semantics in the canonical graph reference
+- [ ] Add same-turn discovery-lineage inference to graph derivation
+- [ ] Emit `discovered` edges only when search-to-artifact evidence is explicit or strongly unique
+- [ ] Emit search-to-action `influenced_by` edges only when supported by discovery evidence or strong unique same-turn matching
+- [ ] Update tree projection parent selection to prefer primary causal parents over flat turn-level sibling layout
+- [ ] Update insight/path summaries to use surfaced-by / likely-led-to wording
+- [ ] Add unit tests for derivation, ambiguity handling, and projection behavior
+- [ ] Validate with real sessions and screenshots before broadening inference scope
+
+### 15. Open questions
+
+- Do we need a dedicated evidence kind for parsed search-result output, or is `observed_replay` with a detailed explanation sufficient?
+- Should the current full-session Graph mode adopt this causal nesting directly, or should the change be introduced first in the selection-centered insight graph?
+- When a search surfaces many files but only one is later touched, should untouched surfaced files remain outside the graph in Phase 1?
+- Should a future cleanup phase replace `user_prompt + assistant_turn` with a single first-class `turn` node, or is causal nesting enough to solve the current flattening issue?
