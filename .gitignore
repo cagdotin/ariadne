@@ -22,7 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.pi/
+.pi/*
+!.pi/tracks/
+.pi/tracks/*
+!.pi/tracks/session-exploration-graph/
 
 # Electron build output
 electron/main/dist/
