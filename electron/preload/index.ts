@@ -78,6 +78,12 @@ contextBridge.exposeInMainWorld("ariadne", {
 
 			get_session_graph: (payload: { sessionId: string }) =>
 				invoke_command("get_session_graph", payload),
+
+			get_sessions_for_files: (payload: {
+				projectPath: string;
+				filePaths: string[];
+				rangeDays?: number | null;
+			}) => invoke_command("get_sessions_for_files", payload),
 		},
 
 		// ── QMD ───────────────────────────────────────────────────────────────

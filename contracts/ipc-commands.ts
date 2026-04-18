@@ -7,6 +7,7 @@
 // safety net — these types provide compile-time guarantees only.
 
 import type { FileSizeResult, ProjectFileStats } from "./analytics/files";
+import type { FileSessionsResponse } from "./analytics/file-sessions";
 import type { AnalyticsOverview } from "./analytics/overview";
 import type { TimeBreakdown } from "./analytics/time";
 import type { ToolDetailResponse } from "./analytics/tools";
@@ -73,6 +74,11 @@ export interface AnalyticsCommandSignatures {
 	get_session_graph(payload: {
 		sessionId: string;
 	}): Promise<SessionGraphPayload>;
+	get_sessions_for_files(payload: {
+		projectPath: string;
+		filePaths: string[];
+		rangeDays?: number | null;
+	}): Promise<FileSessionsResponse>;
 }
 
 // ─── QMD commands ───────────────────────────────────────────────────────────
