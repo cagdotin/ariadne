@@ -8,6 +8,7 @@
 
 import type { SessionGraphPayload } from "@contracts/graph";
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
+import type { SessionEntry } from "@/components/session-viewer/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { Button } from "@/components/ui/button";
@@ -42,9 +43,10 @@ export type MiddlePaneMode = "map" | "graph";
 
 interface ExplorationViewProps {
 	graph?: SessionGraphPayload | null;
+	entries?: SessionEntry[];
 }
 
-export function ExplorationView({ graph }: ExplorationViewProps) {
+export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 	const [selected_node_id, set_selected_node_id] = useState<string | null>(
 		null,
 	);
@@ -59,7 +61,7 @@ export function ExplorationView({ graph }: ExplorationViewProps) {
 	const left_panel_ref = useRef<PanelImperativeHandle>(null);
 	const right_panel_ref = useRef<PanelImperativeHandle>(null);
 	const [left_collapsed, set_left_collapsed] = useState(false);
-	const [right_collapsed, set_right_collapsed] = useState(false);
+	const [right_collapsed, set_right_collapsed] = useState(true);
 
 	const toggle_left_panel = useCallback(() => {
 		if (left_collapsed) {
@@ -76,6 +78,18 @@ export function ExplorationView({ graph }: ExplorationViewProps) {
 			right_panel_ref.current?.collapse();
 		}
 	}, [right_collapsed]);
+
+	// Collapse right panel on mount
+	useEffect(() => {
+		right_panel_ref.current?.collapse();
+	}, []);
+
+	// Auto-expand right panel when a node is selected
+	useEffect(() => {
+		if (selected_node_id && right_collapsed) {
+			right_panel_ref.current?.expand();
+		}
+	}, [selected_node_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect(() => {
 		if (!graph || show_ambient || !selected_node_id) return;
@@ -374,6 +388,7 @@ export function ExplorationView({ graph }: ExplorationViewProps) {
 								<ExplorationInspectorV2
 									selected_node_id={selected_node_id}
 									graph={graph}
+									entries={entries}
 									temporal_lens={temporal_lens}
 									middle_pane_mode={middle_pane_mode}
 									insight_subgraph={insight_subgraph}
