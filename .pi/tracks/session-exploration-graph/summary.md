@@ -6,8 +6,8 @@
 - Track: session-exploration-graph
 - Purpose: Visualize how AI explores the codebase with each prompt — solidify the session details/exploration feature to show how changing prompts, docs, AGENTS.md, etc. changes agent behavior patterns across the codebase.
 - Status: active
-- Last synced: 2026-04-18T09:46:52.088Z
-- Session count: 3
+- Last synced: 2026-04-18T11:44:58.551Z
+- Session count: 5
 - Summary version: 1
 
 ## Related paths

@@ -8,6 +8,7 @@ Related:
 - [[specs/session-graph-tree-visualization/graph-mode-canvas.md]]
 - [[specs/session-graph-tree-visualization/selection-and-sync.md]]
 - [[specs/session-graph-tree-visualization/milestone-1-full-session-projection.md]]
+- [[specs/session-graph-tree-visualization/milestone-3-canvas-viewport-and-density.md]]
 - [[specs/session-graph-tree-visualization/milestones.md]]
 - historical context: [[docs/specs/2026-04-13-exploration-graph-visualization-upgrade.md]]
 
@@ -117,6 +118,7 @@ This work is broken into focused docs instead of one monolithic spec:
 - `graph-mode-canvas.md` — what the new middle-pane graph owns, what it suppresses, how it projects the graph IR, and how it should render topology.
 - `selection-and-sync.md` — how graph selection must bind to the left pane and existing inspector.
 - `milestone-1-full-session-projection.md` — the first implementation slice for full-session projection, deterministic tree rules, and default-orientation validation.
+- `milestone-3-canvas-viewport-and-density.md` — the next renderer-focused slice for viewport behavior, density handling, and the actual canvas-oriented graph surface.
 - `milestones.md` — implementation slices, exit criteria, and deferred items.
 
 ## 7. Acceptance criteria

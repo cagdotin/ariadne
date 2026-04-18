@@ -126,10 +126,14 @@ For Ariadne, first ship only needs **one strong default orientation**. If an ori
 
 ### 6.1 Rendering approach
 
-Preferred implementation direction:
-- pure renderer-side projection/model helpers
-- a custom SVG or SVG-plus-positioned-elements renderer
-- no heavy graph library unless the in-house path clearly fails to deliver readability
+Current implementation status:
+- Milestone 1 ships with a lightweight SVG + positioned-elements renderer so the team can validate projection, selection, and layout behavior quickly.
+
+Next planned direction:
+- keep pure renderer-side projection/model helpers
+- add an explicit viewport/camera layer for pan, zoom, fit, and selected-node reveal
+- move toward an actual canvas-oriented renderer for dense-session topology, potentially as a hybrid canvas + minimal DOM overlay surface
+- avoid a heavy graph library unless the in-house path clearly fails to deliver readability or interaction quality
 
 ### 6.2 Styling source of truth
 

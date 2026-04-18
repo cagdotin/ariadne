@@ -39,16 +39,18 @@ Exploration `Graph` mode is replaced in the product and stays synchronized with 
 - graph selection can reveal collapsed owning turns in the left pane
 - no graph-local transcript/detail panel was introduced
 
-## Milestone 3 — Usability and density polish
+## Milestone 3 — Viewported canvas graph surface
 
 ### Outcome
-The rewritten graph is comfortable to use on real sessions, visually coherent with Ariadne, and robust enough for wider use.
+The rewritten graph becomes a true navigable graph surface for real sessions rather than a tall scroll sheet, while staying synchronized with the left pane and inspector.
 
 ### Exit criteria
+- Graph mode has an explicit viewport model with pan/zoom behavior
+- selection visibility/centering behavior feels stable on real sessions
+- the renderer no longer depends on one persistent DOM node per graph node as its primary rendering strategy
 - styling uses Ariadne's theme and existing visual language
 - branch density remains readable on real sessions in the target range
-- selection visibility/centering behavior feels stable
-- follow-up decisions are documented for any deferred items such as orientation toggles, minimap experiments, or structural cross-links
+- follow-up decisions are documented for any deferred items such as session-spine treatment, minimap experiments, orientation toggles, or structural cross-links
 
 ## Deferred unless proven necessary
 

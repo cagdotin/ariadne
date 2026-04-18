@@ -25,8 +25,11 @@ After this work, a user should be able to:
 - [x] (2026-04-18 11:31 CEST) Copied the current Ariadne walkthrough/graph screenshots into the track and rewrote the tree-visualization spec as a focused spec set.
 - [x] (2026-04-18 12:33 CEST) Prototype the full-session graph projection and choose a first-ship default orientation (top-down tree with left-to-right depth growth inside the current middle pane).
 - [x] (2026-04-18 12:33 CEST) Replace `src/components/exploration/exploration-graph.tsx` with the new full-session graph renderer while preserving the existing `Map` / `Graph` mode structure.
-- [ ] (2026-04-18 11:31 CEST) Add two-way binding behavior so graph-originated selection expands/scrolls the left pane to the owning turn/action.
-- [ ] (2026-04-18 11:31 CEST) Validate on real sessions and document any deferred polish items.
+- [x] (2026-04-18 13:12 CEST) Add two-way binding behavior so graph-originated selection expands/scrolls the left pane to the owning turn/action.
+- [x] (2026-04-18 13:44 CEST) Validate on real sessions and document the current correctness and density findings.
+- [x] (2026-04-18 13:49 CEST) Plan the viewported actual-canvas-oriented graph surface that should follow the SVG/DOM stepping-stone renderer.
+- [x] (2026-04-18 15:28 CEST) Implement the first Milestone 3 slice: add viewport math/hook, convert Graph mode to a viewported canvas-oriented surface, and preserve shared selection sync.
+- [x] (2026-04-18 15:41 CEST) Re-run targeted tests and real-session validation for the viewport slice; record results and remaining density follow-ups.
 
 ## Surprises & Discoveries
 
@@ -41,6 +44,18 @@ After this work, a user should be able to:
 
 - Observation: A single-parent projection is enough to ship a readable first-pass full-session graph, but repeated artifact touches naturally collapse onto their earliest causal parent.
   Evidence: The new renderer-side projection in `src/lib/exploration-session-graph-view-model.ts` deterministically picks one parent for each artifact and the tests lock that behavior in.
+
+- Observation: Reverse-sync in the left pane can be implemented without moving expansion state into `ExplorationView`; local turn expansion remains viable if the path component derives an owning row from shared selection and self-expands/scrolls when required.
+  Evidence: `src/components/exploration/exploration-path.tsx` now derives a `path_selection_target`, expands the owning turn for action selections, and scrolls the resolved turn/action row into view.
+
+- Observation: The current renderer is structurally correct on recent real sessions, but dense sessions already exceed the comfort zone of a static scroll sheet.
+  Evidence: The real-session validation pass in `reports/2026-04-18-real-session-validation.md` found a recent implementation session with 211 projected nodes / 202 edges and a computed surface of `976 × 8186`, plus another dense session at `976 × 4244`.
+
+- Observation: A pure viewport math layer plus a hybrid canvas renderer is a safe incremental bridge away from persistent per-node DOM without changing the graph IR or selection architecture.
+  Evidence: `src/lib/exploration-graph-viewport.ts` now owns fit/pan/zoom/reveal math, `src/components/exploration/use-graph-viewport.ts` owns camera state, and `src/components/exploration/exploration-graph.tsx` now draws bulk topology on `<canvas>` while keeping selection in `ExplorationView`.
+
+- Observation: Real-session layouts still collapse to very small overview scales once the graph is camera-framed, which confirms that density-sensitive rendering is the next readability problem.
+  Evidence: The viewport validation rerun in `reports/2026-04-18-canvas-viewport-validation.md` found fit scales of `0.08` on a recent 240-node session and roughly `0.14–0.18` on several 100+ node sessions, with zero selected-node reveal failures.
 
 ## Decision Log
 
@@ -60,17 +75,33 @@ After this work, a user should be able to:
   Rationale: That orientation fits Ariadne's current middle pane, makes prompt/turn/tool/artifact depth readable, and can be implemented with lightweight custom SVG layout helpers instead of a graph library.
   Date/Author: 2026-04-18 / pi
 
+- Decision: Treat the current SVG + positioned-DOM renderer as a stepping stone and plan the next phase around a viewported actual-canvas-oriented graph surface.
+  Rationale: Real-session validation showed the projection and selection model are sound, but dense sessions still become 4k–8kpx scroll sheets. The main remaining problem is camera/density behavior, not correctness.
+  Date/Author: 2026-04-18 / pi
+
+- Decision: The first Milestone 3 slice ships as a hybrid canvas renderer with a minimal DOM selected-node overlay rather than as another per-node DOM surface.
+  Rationale: This moves the product onto an actual canvas-oriented rendering path immediately, keeps active selection affordances crisp, and avoids disturbing the existing shared-selection contract.
+  Date/Author: 2026-04-18 / pi
+
+- Decision: Selected-node reveal is conditional. The camera should only move when the active node falls outside a padded viewport, not on every selection change.
+  Rationale: Left-pane selection and graph clicks should preserve spatial continuity when the user is already looking at the relevant neighborhood.
+  Date/Author: 2026-04-18 / pi
+
 ## Outcomes & Retrospective
 
 Current outcome:
 - planning and track-doc refactor are complete
 - Milestone 1 projection/layout helpers and Graph-mode replacement are implemented in code
 - Graph mode now renders a full-session topology surface from `SessionGraphPayload` instead of depending on `compute_insight_subgraph()`
+- Milestone 2 reverse-sync wiring is implemented in code for turn/action rows and framing rows
+- the first Milestone 3 slice is now implemented: Graph mode has a viewport/camera model, pan/zoom/fit/reveal behavior, and a canvas-oriented bulk renderer with a minimal DOM active-node overlay
+- a real-session validation rerun confirmed that the viewport math behaves correctly on sampled Ariadne sessions and that the graph now behaves like a bounded camera surface rather than only a static sheet
 
 Remaining work:
-- validate the new graph on real sessions and adjust projection/layout if needed
-- add graph-to-left synchronization behavior
-- capture any repeated-artifact or framing-polish follow-up work
+- improve lower-zoom density treatment so very small fit scales still communicate structure clearly
+- validate whether the current prompt-forest presentation needs an implicit session-spine treatment
+- capture any repeated-artifact, framing, or density-polish follow-up work
+- re-run interactive app validation after any additional camera/grouping polish
 
 ## Context and orientation
 
@@ -118,22 +149,26 @@ Run from repository root.
 
 4. Add tests for the new projection/layout and any synchronization helpers.
 
-5. Validate behavior in the app and note observed issues in this plan before pausing.
+5. Validate behavior on real sessions and note observed issues in this plan before pausing.
+6. Plan the viewport/canvas follow-up once real-session validation identifies the next bottleneck.
 
 ## Validation and acceptance
 
 Code-level validation:
 - run the relevant test suite for new view-model/layout helpers
 - run `bun run typecheck`
-- note that the repo-wide `bun test` run currently fails in unrelated pre-existing backend/qmd/provider-limit areas, so milestone verification should use the targeted graph tests until those failures are addressed
+- for Milestone 2, run the targeted path/graph unit tests covering reverse row mapping and layout/projection behavior
+- note that the repo-wide `bun test` run currently fails in unrelated pre-existing backend/qmd/provider-limit areas, so milestone verification should use the targeted graph/path tests until those failures are addressed
 
-Behavior validation in the app:
-- open `/sessions/:id/exploration`
+Behavior validation in the app / on real sessions:
+- derive recent Ariadne sessions from `~/.pi/agent/sessions` for the current repo path and verify projection/layout/reverse-sync invariants still hold
+- open `/sessions/:id/exploration` when doing interactive review
 - switch to `Graph`
 - verify the middle pane shows full-session topology rather than the old reduced explanation graph
 - click a left-pane turn/action and verify the graph selection updates
 - click a graph node and verify the left pane expands/scrolls to the owning turn/action and the inspector updates
 - switch `Map` ↔ `Graph` and verify selection persists
+- record whether dense sessions still read as a tall scroll sheet rather than a navigable graph surface
 
 Acceptance bar:
 - no duplicate transcript/detail panel exists inside the graph surface
@@ -156,13 +191,23 @@ Planning and implementation artifacts created/updated in this session:
 - `specs/session-graph-tree-visualization/selection-and-sync.md`
 - `specs/session-graph-tree-visualization/milestones.md`
 - `specs/session-graph-tree-visualization/milestone-1-full-session-projection.md`
+- `specs/session-graph-tree-visualization/milestone-3-canvas-viewport-and-density.md`
+- `reports/2026-04-18-real-session-validation.md`
+- `reports/2026-04-18-canvas-viewport-validation.md`
 - `exec-plans/active/2026-04-18-session-graph-tree-visualization.md`
 - `src/lib/exploration-session-graph-view-model.ts`
 - `src/lib/exploration-session-graph-layout.ts`
+- `src/lib/exploration-path-view-model.ts`
+- `src/lib/exploration-graph-viewport.ts`
 - `src/components/exploration/exploration-graph.tsx`
+- `src/components/exploration/use-graph-viewport.ts`
 - `src/components/exploration/exploration-view.tsx`
+- `src/components/exploration/exploration-path.tsx`
+- `src/components/exploration/exploration-framing.tsx`
 - `tests/unit/lib/exploration-session-graph-view-model.test.ts`
 - `tests/unit/lib/exploration-session-graph-layout.test.ts`
+- `tests/unit/lib/exploration-path-view-model.test.ts`
+- `tests/unit/lib/exploration-graph-viewport.test.ts`
 - screenshot copies under `specs/session-graph-tree-visualization/references/`
 
 ## Interfaces and dependencies
