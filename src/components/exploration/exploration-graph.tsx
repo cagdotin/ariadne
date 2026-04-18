@@ -38,16 +38,16 @@ import {
 	zoom_graph_viewport_at_point,
 } from "@/lib/exploration-graph-viewport";
 import {
-	compute_session_graph_layout,
+	compute_grouped_session_graph_layout,
 	SESSION_GRAPH_LAYOUT_NODE_HEIGHT,
 	SESSION_GRAPH_LAYOUT_NODE_WIDTH,
 	type SessionGraphLayoutEdge,
 	type SessionGraphLayoutNode,
-} from "@/lib/exploration-session-graph-layout";
+} from "@/lib/exploration-session-graph-grouped-layout";
 import {
-	project_session_graph_tree,
-	type SessionGraphTreeEdgeRole,
-} from "@/lib/exploration-session-graph-view-model";
+	project_session_graph_grouped,
+	type SessionGraphGroupedEdgeRole as SessionGraphTreeEdgeRole,
+} from "@/lib/exploration-session-graph-grouped-view-model";
 import { cn } from "@/lib/utils";
 import type { MiddlePaneMode } from "./exploration-view";
 import { use_graph_viewport } from "./use-graph-viewport";
@@ -115,6 +115,7 @@ interface GraphCanvasTheme {
 	primary: string;
 	primary_soft: string;
 	session_edge: string;
+	artifact_edge: string;
 	framing_edge: string;
 	selected_edge: string;
 	user_fill: string;
@@ -144,11 +145,13 @@ interface GraphPointerState {
 
 const edge_stroke_colors: Record<SessionGraphTreeEdgeRole, string> = {
 	session: "var(--muted-foreground)",
+	artifact: "hsl(142 71% 45%)",
 	framing: "hsl(38 92% 50%)",
 };
 
 const edge_stroke_dash: Record<SessionGraphTreeEdgeRole, string> = {
 	session: "",
+	artifact: "",
 	framing: "6 4",
 };
 
@@ -312,6 +315,7 @@ function read_graph_canvas_theme(element: HTMLElement): GraphCanvasTheme {
 		primary: resolve_theme_color(style, "--primary"),
 		primary_soft: resolve_theme_color_alpha(style, "--primary", 0.1),
 		session_edge: resolve_theme_color_alpha(style, "--muted-foreground", 0.42),
+		artifact_edge: "hsl(142 71% 45% / 0.4)",
 		framing_edge: "hsl(38 92% 50% / 0.8)",
 		selected_edge: resolve_theme_color(style, "--primary"),
 		user_fill: resolve_theme_color_alpha(style, "--primary", 0.08),
@@ -368,9 +372,9 @@ export function ExplorationGraph({
 	on_set_middle_pane_mode,
 	on_select_node,
 }: ExplorationGraphProps) {
-	const tree = useMemo(
+	const projection = useMemo(
 		() =>
-			project_session_graph_tree(graph, {
+			project_session_graph_grouped(graph, {
 				show_ambient,
 				show_inferred,
 				show_unexplored,
@@ -379,8 +383,8 @@ export function ExplorationGraph({
 	);
 
 	const layout = useMemo(
-		() => compute_session_graph_layout(tree, selected_node_id),
-		[tree, selected_node_id],
+		() => compute_grouped_session_graph_layout(projection, selected_node_id),
+		[projection, selected_node_id],
 	);
 
 	const selected_node = useMemo(
@@ -389,10 +393,14 @@ export function ExplorationGraph({
 	);
 
 	const selected_layout_node = useMemo(
-		() => layout.nodes.find((node) => node.id === selected_node_id) ?? null,
-		[layout.nodes, selected_node_id],
+		() =>
+			layout.selected_projection_node_id
+				? layout.nodes.find(
+						(node) => node.id === layout.selected_projection_node_id,
+					) ?? null
+				: null,
+		[layout.nodes, layout.selected_projection_node_id],
 	);
-
 	const graph_bounds = useMemo(
 		() =>
 			layout.nodes.length > 0
@@ -643,7 +651,7 @@ export function ExplorationGraph({
 				)}
 				{has_content && (
 					<span className="text-[9px] text-muted-foreground tabular-nums">
-						{tree.nodes.length} nodes · {tree.edges.length} edges ·{" "}
+						{projection.nodes.length} nodes · {projection.edges.length} edges ·{" "}
 						{format_zoom_label(viewport)}
 					</span>
 				)}
@@ -661,6 +669,19 @@ export function ExplorationGraph({
 							/>
 						</svg>
 						<span>Session</span>
+					</div>
+					<div className="flex items-center gap-1">
+						<svg width="14" height="8" aria-hidden="true">
+							<line
+								x1="0"
+								y1="4"
+								x2="14"
+								y2="4"
+								stroke={edge_stroke_colors.artifact}
+								strokeWidth="1.5"
+							/>
+						</svg>
+						<span>Artifact</span>
 					</div>
 					<div className="flex items-center gap-1">
 						<svg width="14" height="8" aria-hidden="true">
@@ -798,7 +819,7 @@ function SelectedNodeOverlay({
 
 function draw_graph_canvas(
 	context: CanvasRenderingContext2D,
-	layout: ReturnType<typeof compute_session_graph_layout>,
+	layout: ReturnType<typeof compute_grouped_session_graph_layout>,
 	viewport: GraphViewportState,
 	size: { width: number; height: number },
 	theme: GraphCanvasTheme,
@@ -850,11 +871,21 @@ function draw_graph_edge(
 		? theme.selected_edge
 		: edge.role === "framing"
 			? theme.framing_edge
-			: theme.session_edge;
+			: edge.role === "artifact"
+				? theme.artifact_edge
+				: theme.session_edge;
 	const base_line_width =
 		zoom_band === "overview"
-			? 1.2
-			: clamp_number(1.1 + viewport.scale * 0.25, 1.1, 1.9);
+			? edge.role === "artifact"
+				? 1.05
+				: 1.2
+			: clamp_number(
+				edge.role === "artifact"
+					? 1 + viewport.scale * 0.22
+					: 1.1 + viewport.scale * 0.25,
+				1,
+				1.9,
+			);
 	context.lineWidth = edge.is_on_selected_path
 		? base_line_width + (zoom_band === "overview" ? 0.7 : 1)
 		: base_line_width;
@@ -864,9 +895,13 @@ function draw_graph_edge(
 			? zoom_band === "overview"
 				? 0.68
 				: 0.8
-			: zoom_band === "overview"
-				? 0.62
-				: 0.85;
+			: edge.role === "artifact"
+				? zoom_band === "overview"
+					? 0.5
+					: 0.72
+				: zoom_band === "overview"
+					? 0.62
+					: 0.85;
 	context.lineJoin = "round";
 	context.lineCap = "round";
 	context.setLineDash(edge.role === "framing" ? [6, 4] : []);
