@@ -15,6 +15,9 @@
 - Real-session follow-up on `e8c0c10f-6599-4e15-bcdc-8ba1b279857d` exposed that exact-hit-only influence was still too weak, so the backend now also scores same-turn search-query term affinity, post-search artifact references, and same-artifact follow-up to choose a better immediate cause for later actions.
 - Graph mode is now moving beyond strict single-parent tree rendering: the canvas uses a grouped columnar projection that keeps prompts/turns, searches, actions, and files in stable columns while collapsing repeated semantic nodes such as repeated `write path/to/file.ts` or repeated file nodes across the session.
 - Grouped-column edge routing now uses dedicated inter-column lanes plus bridge rails for skipped-column edges, so lines no longer run through the search/action/file node bodies when a turn connects directly to a later column.
+- Row assignment is now timeline-banded by first seen turn: searches, actions, and files preserve turn-order buckets across columns, while within-band sorting still nudges related chains closer together. When something is selected, non-path nodes and edges are heavily dimmed so the highlighted lineage reads first.
+- Follow-up compacted the timeline ordering so each column stays tightly stacked with no empty band spacer rows. Turn 1, Turn 2, Turn 3, etc. now appear one after another in each column while still preserving first-seen ordering.
+- Selection contrast is now stricter for edges: when a node is selected, non-highlighted edges are hidden entirely rather than merely dimmed, which prevents stacked background routes from reading like false highlights.
 
 ## Changes made
 
