@@ -128,6 +128,82 @@ function make_session_graph(): SessionGraphPayload {
 	);
 }
 
+function make_discovery_lineage_graph(): SessionGraphPayload {
+	return make_graph(
+		[
+			make_node("session_root", "session"),
+			make_node("user_0", "user_prompt", "available_observed", {
+				turn_index: 0,
+			}),
+			make_node("turn_0", "assistant_turn", "available_observed", {
+				turn_index: 0,
+			}),
+			make_node("search_0", "search_query", "available_observed", {
+				turn_index: 0,
+				tool_index: 0,
+			}),
+			make_node("tool_read_0", "tool_call", "available_observed", {
+				turn_index: 0,
+				tool_index: 1,
+			}),
+			make_node("tool_read_1", "tool_call", "available_observed", {
+				turn_index: 0,
+				tool_index: 2,
+			}),
+			make_node("file_a", "source_file"),
+			make_node("file_b", "source_file"),
+		],
+		[
+			make_edge("session_root", "user_0", "prompted"),
+			make_edge("user_0", "turn_0", "prompted"),
+			make_edge("turn_0", "search_0", "invoked_tool"),
+			make_edge("turn_0", "tool_read_0", "invoked_tool"),
+			make_edge("turn_0", "tool_read_1", "invoked_tool"),
+			make_edge("search_0", "tool_read_0", "influenced_by", "derived_inferred"),
+			make_edge("search_0", "file_a", "discovered", "derived_inferred"),
+			make_edge("tool_read_0", "file_a", "read"),
+			make_edge("tool_read_1", "file_b", "read"),
+		],
+	);
+}
+
+function make_tool_led_lineage_graph(): SessionGraphPayload {
+	return make_graph(
+		[
+			make_node("session_root", "session"),
+			make_node("user_0", "user_prompt", "available_observed", {
+				turn_index: 0,
+			}),
+			make_node("turn_0", "assistant_turn", "available_observed", {
+				turn_index: 0,
+			}),
+			make_node("tool_read_0", "tool_call", "available_observed", {
+				turn_index: 0,
+				tool_index: 0,
+			}),
+			make_node("tool_edit_0", "tool_call", "available_observed", {
+				turn_index: 0,
+				tool_index: 1,
+			}),
+			make_node("file_a", "source_file"),
+		],
+		[
+			make_edge("session_root", "user_0", "prompted"),
+			make_edge("user_0", "turn_0", "prompted"),
+			make_edge("turn_0", "tool_read_0", "invoked_tool"),
+			make_edge("turn_0", "tool_edit_0", "invoked_tool"),
+			make_edge(
+				"tool_read_0",
+				"tool_edit_0",
+				"influenced_by",
+				"derived_inferred",
+			),
+			make_edge("tool_read_0", "file_a", "read"),
+			make_edge("tool_edit_0", "file_a", "edited"),
+		],
+	);
+}
+
 describe("project_session_graph_tree", () => {
 	it("projects the full session topology without requiring a selection", () => {
 		const tree = project_session_graph_tree(make_session_graph());
@@ -195,5 +271,32 @@ describe("project_session_graph_tree", () => {
 			"tool_read_0",
 			"tool_write_0",
 		]);
+	});
+
+	it("prefers same-turn influenced_by over invoked_tool for later tool nodes", () => {
+		const tree = project_session_graph_tree(make_discovery_lineage_graph());
+		const read_tool = tree.nodes.find((node) => node.id === "tool_read_0");
+		const file_a = tree.nodes.find((node) => node.id === "file_a");
+
+		expect(read_tool?.parent_id).toBe("search_0");
+		expect(file_a?.parent_id).toBe("tool_read_0");
+	});
+
+	it("falls back to assistant_turn when inferred lineage is hidden", () => {
+		const tree = project_session_graph_tree(make_discovery_lineage_graph(), {
+			show_inferred: false,
+		});
+		const read_tool = tree.nodes.find((node) => node.id === "tool_read_0");
+
+		expect(read_tool?.parent_id).toBe("turn_0");
+	});
+
+	it("allows a prior tool_call to parent a later tool_call when influenced_by is stronger", () => {
+		const tree = project_session_graph_tree(make_tool_led_lineage_graph());
+		const edit_tool = tree.nodes.find((node) => node.id === "tool_edit_0");
+		const file_a = tree.nodes.find((node) => node.id === "file_a");
+
+		expect(edit_tool?.parent_id).toBe("tool_read_0");
+		expect(file_a?.parent_id).toBe("tool_read_0");
 	});
 });

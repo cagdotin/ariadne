@@ -357,6 +357,13 @@ function classify_tree_edge(
 		return null;
 	}
 
+	if (edge.kind === "influenced_by") {
+		if (is_supported_tool_parent_influence(edge, source, target, idx)) {
+			return { edge, role: "session" };
+		}
+		return null;
+	}
+
 	if (session_edge_kinds.has(edge.kind)) {
 		if (
 			tool_node_kinds.has(source.kind) &&
@@ -379,11 +386,41 @@ function classify_tree_edge(
 	return null;
 }
 
+function is_supported_tool_parent_influence(
+	edge: GraphEdge,
+	source: GraphNode,
+	target: GraphNode,
+	idx: EdgeIndex,
+): boolean {
+	if (!tool_node_kinds.has(source.kind)) return false;
+	if (target.kind !== "tool_call") return false;
+	if (edge.confidence !== "high" && edge.confidence !== "medium") return false;
+
+	const source_order = idx.order_map.get(source.id) ?? null;
+	const target_order = idx.order_map.get(target.id) ?? null;
+	if (!source_order || !target_order) return false;
+	if (source_order.turn_index !== target_order.turn_index) return false;
+	if (source_order.tool_index >= target_order.tool_index) return false;
+
+	return true;
+}
+
 function compare_candidates(
 	left: TreeCandidateEdge,
 	right: TreeCandidateEdge,
 	idx: EdgeIndex,
 ): number {
+	const target = idx.node_map.get(left.edge.target_id);
+	if (target && target.id === right.edge.target_id) {
+		const parent_priority_cmp = compare_parent_priority(
+			left.edge,
+			right.edge,
+			target,
+			idx,
+		);
+		if (parent_priority_cmp !== 0) return parent_priority_cmp;
+	}
+
 	const left_order = idx.order_map.get(left.edge.source_id) ?? null;
 	const right_order = idx.order_map.get(right.edge.source_id) ?? null;
 	const temporal_cmp = compare_temporal_orders(left_order, right_order);
@@ -402,6 +439,59 @@ function compare_candidates(
 	if (source_cmp !== 0) return source_cmp;
 
 	return left.edge.target_id.localeCompare(right.edge.target_id);
+}
+
+function compare_parent_priority(
+	left: GraphEdge,
+	right: GraphEdge,
+	target: GraphNode,
+	idx: EdgeIndex,
+): number {
+	const left_priority = get_parent_priority(left, target, idx);
+	const right_priority = get_parent_priority(right, target, idx);
+	if (left_priority !== right_priority) {
+		return left_priority - right_priority;
+	}
+
+	if (target.kind === "tool_call") {
+		const left_source_order = idx.order_map.get(left.source_id) ?? null;
+		const right_source_order = idx.order_map.get(right.source_id) ?? null;
+		if (
+			left.kind === "influenced_by" &&
+			right.kind === "influenced_by" &&
+			left_source_order &&
+			right_source_order &&
+			left_source_order.turn_index === right_source_order.turn_index
+		) {
+			if (left_source_order.tool_index !== right_source_order.tool_index) {
+				return right_source_order.tool_index - left_source_order.tool_index;
+			}
+		}
+	}
+
+	return 0;
+}
+
+function get_parent_priority(
+	edge: GraphEdge,
+	target: GraphNode,
+	idx: EdgeIndex,
+): number {
+	const source = idx.node_map.get(edge.source_id);
+	if (
+		target.kind === "tool_call" &&
+		source &&
+		edge.kind === "influenced_by" &&
+		is_supported_tool_parent_influence(edge, source, target, idx)
+	) {
+		return edge.confidence === "high" ? 0 : 1;
+	}
+
+	if (target.kind === "tool_call" && edge.kind === "invoked_tool") {
+		return 2;
+	}
+
+	return 10;
 }
 
 function derive_node_role(
