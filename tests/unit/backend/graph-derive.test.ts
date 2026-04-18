@@ -22,7 +22,11 @@ function make_user_entry(
 }
 
 function make_assistant_entry(
-	tool_calls: Array<{ name: string; arguments: Record<string, unknown> }>,
+	tool_calls: Array<{
+		id?: string;
+		name: string;
+		arguments: Record<string, unknown>;
+	}>,
 	opts: { id?: string; timestamp?: string } = {},
 ): SessionEntry {
 	return {
@@ -32,12 +36,37 @@ function make_assistant_entry(
 		timestamp: opts.timestamp ?? "2025-06-01T10:00:01Z",
 		message: {
 			role: "assistant",
-			content: tool_calls.map((tc) => ({
+			content: tool_calls.map((tc, index) => ({
 				type: "toolCall" as const,
-				id: `tc_${tc.name}`,
+				id: tc.id ?? `tc_${tc.name}_${index}`,
 				name: tc.name,
 				arguments: tc.arguments,
 			})),
+		},
+	};
+}
+
+function make_tool_result_entry(
+	tool_call_id: string,
+	content: string,
+	opts: {
+		id?: string;
+		timestamp?: string;
+		tool_name?: string;
+		is_error?: boolean;
+	} = {},
+): SessionEntry {
+	return {
+		type: "message",
+		id: opts.id ?? `tr_${tool_call_id}`,
+		parentId: null,
+		timestamp: opts.timestamp ?? "2025-06-01T10:00:02Z",
+		message: {
+			role: "toolResult",
+			toolCallId: tool_call_id,
+			toolName: opts.tool_name,
+			isError: opts.is_error ?? false,
+			content: [{ type: "text", text: content }],
 		},
 	};
 }
@@ -96,9 +125,7 @@ const default_header: SessionHeader = {
 
 describe("derive_session_graph", () => {
 	it("produces a schema-valid payload", () => {
-		const entries: SessionEntry[] = [
-			make_user_entry("hello"),
-		];
+		const entries: SessionEntry[] = [make_user_entry("hello")];
 		const result = derive_session_graph("sess-1", entries, default_header);
 		expect(() => session_graph_payload_schema.parse(result)).not.toThrow();
 	});
@@ -132,7 +159,9 @@ describe("derive_session_graph", () => {
 
 		it("creates model_change framing node", () => {
 			const entries: SessionEntry[] = [
-				make_model_change_entry("anthropic", "claude-opus-4-20250514", { id: "mc1" }),
+				make_model_change_entry("anthropic", "claude-opus-4-20250514", {
+					id: "mc1",
+				}),
 			];
 			const result = derive_session_graph("sess-1", entries, default_header);
 			const model_node = result.nodes.find(
@@ -214,7 +243,9 @@ describe("derive_session_graph", () => {
 		it("connects prompts to framing with unavailable edges", () => {
 			const result = derive_session_graph("sess-1", [], default_header);
 			const framing_edges = result.edges.filter(
-				(e) => e.target_id === "framing_system_prompt" || e.target_id === "framing_developer_prompt",
+				(e) =>
+					e.target_id === "framing_system_prompt" ||
+					e.target_id === "framing_developer_prompt",
 			);
 			expect(framing_edges).toHaveLength(2);
 			for (const e of framing_edges) {
@@ -229,13 +260,16 @@ describe("derive_session_graph", () => {
 		it("creates user_prompt and assistant_turn nodes for each turn", () => {
 			const entries: SessionEntry[] = [
 				make_user_entry("first question", { id: "u1" }),
-				make_assistant_entry([
-					{ name: "Read", arguments: { file_path: "/project/foo.ts" } },
-				], { id: "a1" }),
+				make_assistant_entry(
+					[{ name: "Read", arguments: { file_path: "/project/foo.ts" } }],
+					{ id: "a1" },
+				),
 			];
 			const result = derive_session_graph("sess-1", entries, default_header);
 			const user_nodes = result.nodes.filter((n) => n.kind === "user_prompt");
-			const turn_nodes = result.nodes.filter((n) => n.kind === "assistant_turn");
+			const turn_nodes = result.nodes.filter(
+				(n) => n.kind === "assistant_turn",
+			);
 			expect(user_nodes).toHaveLength(1);
 			expect(turn_nodes).toHaveLength(1);
 			expect(user_nodes[0].label).toContain("first question");
@@ -327,7 +361,9 @@ describe("derive_session_graph", () => {
 				]),
 			];
 			const result = derive_session_graph("sess-1", entries, default_header);
-			const search_nodes = result.nodes.filter((n) => n.kind === "search_query");
+			const search_nodes = result.nodes.filter(
+				(n) => n.kind === "search_query",
+			);
 			expect(search_nodes).toHaveLength(1);
 			expect(search_nodes[0].label).toContain("Grep");
 			expect(search_nodes[0].label).toContain("TODO");
@@ -341,7 +377,9 @@ describe("derive_session_graph", () => {
 				]),
 			];
 			const result = derive_session_graph("sess-1", entries, default_header);
-			const search_nodes = result.nodes.filter((n) => n.kind === "search_query");
+			const search_nodes = result.nodes.filter(
+				(n) => n.kind === "search_query",
+			);
 			expect(search_nodes).toHaveLength(1);
 		});
 
@@ -356,6 +394,514 @@ describe("derive_session_graph", () => {
 			const result = derive_session_graph("sess-1", entries, default_header);
 			const file_nodes = result.nodes.filter((n) => n.kind === "source_file");
 			expect(file_nodes).toHaveLength(1);
+		});
+	});
+
+	// ── Same-turn discovery lineage ─────────────────────────────────────
+
+	describe("same-turn discovery lineage", () => {
+		it("emits discovered and influenced_by for an exact surfaced path", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("find the implementation and read it", { id: "u1" }),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_search",
+							name: "Grep",
+							arguments: { pattern: "derive_session_graph" },
+						},
+					],
+					{ id: "a1", timestamp: "2025-06-01T10:00:01Z" },
+				),
+				make_tool_result_entry(
+					"tc_search",
+					"src/lib/foo.ts:12:export function derive_session_graph()",
+					{ id: "tr1", timestamp: "2025-06-01T10:00:02Z", tool_name: "Grep" },
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read",
+							name: "Read",
+							arguments: { file_path: "/project/src/lib/foo.ts" },
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			const search_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_search",
+			);
+			const read_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_read",
+			);
+			const file_node = result.nodes.find(
+				(n) =>
+					n.kind === "source_file" && n.metadata?.path === "src/lib/foo.ts",
+			);
+			const discovered_edge = result.edges.find(
+				(e) =>
+					e.kind === "discovered" &&
+					e.source_id === search_node?.id &&
+					e.target_id === file_node?.id,
+			);
+			const influenced_edge = result.edges.find(
+				(e) =>
+					e.kind === "influenced_by" &&
+					e.source_id === search_node?.id &&
+					e.target_id === read_node?.id,
+			);
+
+			expect(search_node?.kind).toBe("search_query");
+			expect(search_node?.metadata?.tool_result_entry_id).toBe("tr1");
+			expect(discovered_edge).toBeDefined();
+			expect(discovered_edge?.availability).toBe("derived_inferred");
+			expect(discovered_edge?.confidence).toBe("high");
+			expect(
+				discovered_edge?.evidence.some((ev) => ev.source_ref === "tr1"),
+			).toBe(true);
+			expect(influenced_edge).toBeDefined();
+			expect(influenced_edge?.availability).toBe("derived_inferred");
+			expect(influenced_edge?.confidence).toBe("high");
+		});
+
+		it("uses medium confidence for uniquely resolvable basename matches", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("search then inspect foo", { id: "u1" }),
+				make_assistant_entry(
+					[{ id: "tc_search", name: "Grep", arguments: { pattern: "foo" } }],
+					{ id: "a1" },
+				),
+				make_tool_result_entry("tc_search", "foo.ts:7:match", {
+					id: "tr1",
+					tool_name: "Grep",
+				}),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read",
+							name: "Read",
+							arguments: { file_path: "/project/src/foo.ts" },
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			const search_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_search",
+			);
+			const read_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_read",
+			);
+			const file_node = result.nodes.find(
+				(n) => n.kind === "source_file" && n.metadata?.path === "src/foo.ts",
+			);
+			const discovered_edge = result.edges.find(
+				(e) =>
+					e.kind === "discovered" &&
+					e.source_id === search_node?.id &&
+					e.target_id === file_node?.id,
+			);
+			const influenced_edge = result.edges.find(
+				(e) =>
+					e.kind === "influenced_by" &&
+					e.source_id === search_node?.id &&
+					e.target_id === read_node?.id,
+			);
+
+			expect(discovered_edge?.confidence).toBe("medium");
+			expect(influenced_edge?.confidence).toBe("medium");
+		});
+
+		it("does not emit false lineage for ambiguous basename-only results", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("search ambiguous foo", { id: "u1" }),
+				make_assistant_entry(
+					[{ id: "tc_search", name: "Grep", arguments: { pattern: "foo" } }],
+					{ id: "a1" },
+				),
+				make_tool_result_entry("tc_search", "foo.ts:7:match", {
+					id: "tr1",
+					tool_name: "Grep",
+				}),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read_a",
+							name: "Read",
+							arguments: { file_path: "/project/src/foo.ts" },
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read_b",
+							name: "Read",
+							arguments: { file_path: "/project/tests/foo.ts" },
+						},
+					],
+					{ id: "a3", timestamp: "2025-06-01T10:00:04Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			expect(result.edges.filter((e) => e.kind === "discovered")).toHaveLength(
+				0,
+			);
+			expect(
+				result.edges.filter((e) => e.kind === "influenced_by"),
+			).toHaveLength(0);
+		});
+
+		it("does not emit lineage from temporal adjacency alone", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("search and read something else", { id: "u1" }),
+				make_assistant_entry(
+					[{ id: "tc_search", name: "Grep", arguments: { pattern: "bar" } }],
+					{ id: "a1" },
+				),
+				make_tool_result_entry("tc_search", "src/bar.ts:4:match", {
+					id: "tr1",
+					tool_name: "Grep",
+				}),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read",
+							name: "Read",
+							arguments: { file_path: "/project/src/foo.ts" },
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			expect(result.edges.filter((e) => e.kind === "discovered")).toHaveLength(
+				0,
+			);
+			expect(
+				result.edges.filter((e) => e.kind === "influenced_by"),
+			).toHaveLength(0);
+		});
+
+		it("allows one search query to influence multiple later reads", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("search and open both files", { id: "u1" }),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_search",
+							name: "Bash",
+							arguments: { command: "rg TODO src" },
+						},
+					],
+					{ id: "a1" },
+				),
+				make_tool_result_entry(
+					"tc_search",
+					"src/foo.ts:1:TODO\nsrc/bar.ts:2:TODO",
+					{
+						id: "tr1",
+						tool_name: "Bash",
+					},
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read_a",
+							name: "Read",
+							arguments: { file_path: "/project/src/foo.ts" },
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read_b",
+							name: "Read",
+							arguments: { file_path: "/project/src/bar.ts" },
+						},
+					],
+					{ id: "a3", timestamp: "2025-06-01T10:00:04Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			const search_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_search",
+			);
+			const influenced_edges = result.edges.filter(
+				(e) => e.kind === "influenced_by" && e.source_id === search_node?.id,
+			);
+			const discovered_edges = result.edges.filter(
+				(e) => e.kind === "discovered" && e.source_id === search_node?.id,
+			);
+
+			expect(influenced_edges).toHaveLength(2);
+			expect(discovered_edges).toHaveLength(2);
+		});
+
+		it("uses search query term affinity when later reads stay in the same search topic", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("follow the session graph files", { id: "u1" }),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_search",
+							name: "Bash",
+							arguments: {
+								command:
+									'rg -n "exploration-session-graph|ExplorationGraph|viewport|graph" tests src/lib src/components/exploration',
+							},
+						},
+					],
+					{ id: "a1" },
+				),
+				make_tool_result_entry(
+					"tc_search",
+					"tests/unit/lib/exploration-path-view-model.test.ts:8:import { compute_path_turns }",
+					{ id: "tr1", tool_name: "Bash" },
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read_a",
+							name: "Read",
+							arguments: {
+								file_path:
+									"/project/tests/unit/lib/exploration-session-graph-layout.test.ts",
+							},
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read_b",
+							name: "Read",
+							arguments: {
+								file_path:
+									"/project/tests/unit/lib/exploration-session-graph-view-model.test.ts",
+							},
+						},
+					],
+					{ id: "a3", timestamp: "2025-06-01T10:00:04Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			const search_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_search",
+			);
+			const read_a = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_read_a",
+			);
+			const read_b = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_read_b",
+			);
+			const influenced_a = result.edges.find(
+				(e) =>
+					e.kind === "influenced_by" &&
+					e.source_id === search_node?.id &&
+					e.target_id === read_a?.id,
+			);
+			const influenced_b = result.edges.find(
+				(e) =>
+					e.kind === "influenced_by" &&
+					e.source_id === search_node?.id &&
+					e.target_id === read_b?.id,
+			);
+
+			expect(influenced_a?.confidence).toBe("medium");
+			expect(influenced_b?.confidence).toBe("medium");
+			expect(result.edges.filter((e) => e.kind === "discovered")).toHaveLength(
+				0,
+			);
+		});
+
+		it("lets an earlier read influence a later read when the earlier file explicitly references it", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("follow the reference", { id: "u1" }),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read_a",
+							name: "Read",
+							arguments: { file_path: "/project/docs/guide.md" },
+						},
+					],
+					{ id: "a1" },
+				),
+				make_tool_result_entry(
+					"tc_read_a",
+					"Next inspect src/lib/bar.ts for the implementation details.",
+					{ id: "tr1", tool_name: "Read" },
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read_b",
+							name: "Read",
+							arguments: { file_path: "/project/src/lib/bar.ts" },
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			const read_a = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_read_a",
+			);
+			const read_b = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_read_b",
+			);
+			const influenced_edge = result.edges.find(
+				(e) =>
+					e.kind === "influenced_by" &&
+					e.source_id === read_a?.id &&
+					e.target_id === read_b?.id,
+			);
+
+			expect(influenced_edge?.confidence).toBe("high");
+		});
+
+		it("prefers same-artifact follow-up over an older search when a file is edited after being read", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("find foo then change it", { id: "u1" }),
+				make_assistant_entry(
+					[{ id: "tc_search", name: "Grep", arguments: { pattern: "foo" } }],
+					{ id: "a1" },
+				),
+				make_tool_result_entry("tc_search", "src/foo.ts:7:match", {
+					id: "tr1",
+					tool_name: "Grep",
+				}),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read",
+							name: "Read",
+							arguments: { file_path: "/project/src/foo.ts" },
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+				make_tool_result_entry("tc_read", "export const foo = true;", {
+					id: "tr2",
+					tool_name: "Read",
+				}),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_edit",
+							name: "Edit",
+							arguments: { file_path: "/project/src/foo.ts" },
+						},
+					],
+					{ id: "a3", timestamp: "2025-06-01T10:00:04Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			const search_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_search",
+			);
+			const read_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_read",
+			);
+			const edit_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_edit",
+			);
+			const search_to_read = result.edges.find(
+				(e) =>
+					e.kind === "influenced_by" &&
+					e.source_id === search_node?.id &&
+					e.target_id === read_node?.id,
+			);
+			const read_to_edit = result.edges.find(
+				(e) =>
+					e.kind === "influenced_by" &&
+					e.source_id === read_node?.id &&
+					e.target_id === edit_node?.id,
+			);
+
+			expect(search_to_read).toBeDefined();
+			expect(read_to_edit?.confidence).toBe("high");
+		});
+
+		it("withholds medium-confidence influence when multiple searches tie on the same query term", () => {
+			const entries: SessionEntry[] = [
+				make_user_entry("search twice then read", { id: "u1" }),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_search_a",
+							name: "Bash",
+							arguments: { command: 'rg -n "session-graph" src tests' },
+						},
+					],
+					{ id: "a1" },
+				),
+				make_tool_result_entry(
+					"tc_search_a",
+					"src/other-file.ts:1:session-graph",
+					{
+						id: "tr1",
+						tool_name: "Bash",
+					},
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_search_b",
+							name: "Bash",
+							arguments: { command: 'rg -n "session-graph" tests src/lib' },
+						},
+					],
+					{ id: "a2", timestamp: "2025-06-01T10:00:03Z" },
+				),
+				make_tool_result_entry(
+					"tc_search_b",
+					"tests/another-file.ts:1:session-graph",
+					{
+						id: "tr2",
+						tool_name: "Bash",
+					},
+				),
+				make_assistant_entry(
+					[
+						{
+							id: "tc_read",
+							name: "Read",
+							arguments: {
+								file_path:
+									"/project/tests/unit/lib/exploration-session-graph-view-model.test.ts",
+							},
+						},
+					],
+					{ id: "a3", timestamp: "2025-06-01T10:00:04Z" },
+				),
+			];
+
+			const result = derive_session_graph("sess-1", entries, default_header);
+			const read_node = result.nodes.find(
+				(n) => n.metadata?.tool_call_id === "tc_read",
+			);
+			const influenced_edges = result.edges.filter(
+				(e) => e.kind === "influenced_by" && e.target_id === read_node?.id,
+			);
+
+			expect(influenced_edges).toHaveLength(0);
 		});
 	});
 
@@ -430,7 +976,13 @@ describe("derive_session_graph", () => {
 			const result = derive_session_graph("sess-1", entries, default_header);
 
 			for (const node of result.nodes) {
-				expect(["available_observed", "available_ambient", "derived_inferred", "unavailable", "unknown"]).toContain(node.availability);
+				expect([
+					"available_observed",
+					"available_ambient",
+					"derived_inferred",
+					"unavailable",
+					"unknown",
+				]).toContain(node.availability);
 				expect(["high", "medium", "low"]).toContain(node.confidence);
 			}
 		});
@@ -459,7 +1011,12 @@ describe("derive_session_graph", () => {
 	describe("malformed entries", () => {
 		it("ignores entries with unknown type", () => {
 			const entries: SessionEntry[] = [
-				{ type: "banana", id: "x1", parentId: null, timestamp: "2025-06-01T10:00:00Z" } as unknown as SessionEntry,
+				{
+					type: "banana",
+					id: "x1",
+					parentId: null,
+					timestamp: "2025-06-01T10:00:00Z",
+				} as unknown as SessionEntry,
 				make_user_entry("hello"),
 			];
 			const result = derive_session_graph("sess-1", entries, default_header);
@@ -479,9 +1036,13 @@ describe("derive_session_graph", () => {
 			const result = derive_session_graph("sess-1", entries, default_header);
 			expect(() => session_graph_payload_schema.parse(result)).not.toThrow();
 			// Should still create a tool node but no file node
-			const tool_nodes = result.nodes.filter((n) => n.kind === "tool_call" || n.kind === "search_query");
+			const tool_nodes = result.nodes.filter(
+				(n) => n.kind === "tool_call" || n.kind === "search_query",
+			);
 			expect(tool_nodes.length).toBeGreaterThanOrEqual(1);
-			const file_nodes = result.nodes.filter((n) => n.kind === "source_file" || n.kind === "doc_file");
+			const file_nodes = result.nodes.filter(
+				(n) => n.kind === "source_file" || n.kind === "doc_file",
+			);
 			expect(file_nodes).toHaveLength(0);
 		});
 
@@ -515,7 +1076,12 @@ describe("derive_session_graph", () => {
 
 		it("handles entry missing the message field gracefully", () => {
 			const entries: SessionEntry[] = [
-				{ type: "message", id: "broken", parentId: null, timestamp: "2025-06-01T10:00:00Z" } as unknown as SessionEntry,
+				{
+					type: "message",
+					id: "broken",
+					parentId: null,
+					timestamp: "2025-06-01T10:00:00Z",
+				} as unknown as SessionEntry,
 				make_user_entry("hello"),
 			];
 			// Should not throw even with a malformed message entry
@@ -536,7 +1102,9 @@ describe("derive_session_graph", () => {
 			];
 			const result = derive_session_graph("sess-1", entries, default_header);
 			expect(() => session_graph_payload_schema.parse(result)).not.toThrow();
-			const tool_nodes = result.nodes.filter((n) => n.kind === "tool_call" || n.kind === "search_query");
+			const tool_nodes = result.nodes.filter(
+				(n) => n.kind === "tool_call" || n.kind === "search_query",
+			);
 			expect(tool_nodes).toHaveLength(0);
 		});
 	});
