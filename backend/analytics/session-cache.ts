@@ -10,6 +10,8 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 
 import { invalidate_qmd_log_cache } from "../qmd-logs/cache.js";
+import { clear_cache as clear_exploration_cache } from "./exploration/exploration-cache.js";
+import { clear_graph_cache } from "./graph/graph-cache.js";
 import type { SessionSummary } from "./session-types.js";
 
 /**
@@ -103,11 +105,22 @@ class SessionCache {
 				this.data = sessions;
 				this.pending = null;
 
-				// Invalidate QMD log cache so it rebuilds on next request
+				// Invalidate derived caches so replay-dependent views rebuild
+				// against the refreshed session set on next request.
 				try {
 					invalidate_qmd_log_cache();
 				} catch {
 					// QMD log cache may not be wired yet -- skip
+				}
+				try {
+					clear_graph_cache();
+				} catch {
+					// Graph cache may not be wired yet -- skip
+				}
+				try {
+					clear_exploration_cache();
+				} catch {
+					// Exploration cache may not be wired yet -- skip
 				}
 
 				return sessions;
