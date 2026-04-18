@@ -15,7 +15,7 @@
 - [x] Validate the current full-session graph surface on real sessions and record density/readability findings.
 - [ ] Re-run focused interactive review for the current density/grouping thresholds and record any remaining presentation-only follow-ups.
 - [x] Implement same-turn discovery lineage and inferred causal influence on top of the current graph surface.
-- [ ] Validate the new same-turn search/file → action → artifact lineage on real sessions in-app and document any broaden/defer decisions.
+- [ ] Validate the new grouped-column Graph projection plus same-turn search/file → action → artifact lineage on real sessions in-app and document any broaden/defer decisions.
 
 ## Open threads
 
@@ -23,10 +23,11 @@
 - Decide whether structural cross-links (`imports`, `linked_to`) belong in first ship or a follow-up slice.
 - Decide whether the current prompt-forest presentation still needs a subtle session-spine/grouped-root treatment after the density pass.
 - Decide whether influence inference should stop at same-turn search/file contributors for first ship or broaden immediately into instruction-source contributors.
+- Decide how grouped semantic action nodes should interact with inspector/detail copy when a graph node represents multiple raw tool calls.
 
 ## Next steps
 
-- Run focused in-app validation for the new search/file-led parentage and record any ambiguous-case or presentation follow-ups.
+- Run focused in-app validation for the new grouped search/action/file columns and record any ambiguous-case or presentation follow-ups.
 - Re-run interactive in-app review for the tuned overview / mid-zoom / detail thresholds.
 - Use the new lineage work to judge whether Path, Influence, and inspector wording need additional follow-up beyond the graph parentage change.
 

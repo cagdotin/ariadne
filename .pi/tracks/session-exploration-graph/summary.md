@@ -6,7 +6,7 @@
 - Track: session-exploration-graph
 - Purpose: Visualize how AI explores the codebase with each prompt — solidify the session details/exploration feature to show how changing prompts, docs, AGENTS.md, etc. changes agent behavior patterns across the codebase.
 - Status: active
-- Last synced: 2026-04-18T13:33:50.128Z
+- Last synced: 2026-04-18T14:11:33.850Z
 - Session count: 7
 - Summary version: 1
 
@@ -25,7 +25,7 @@
 
 ## Open checklist
 - Re-run focused interactive review for the current density/grouping thresholds and record any remaining presentation-only follow-ups.
-- Validate the new same-turn search/file → action → artifact lineage on real sessions in-app and document any broaden/defer decisions.
+- Validate the new grouped-column Graph projection plus same-turn search/file → action → artifact lineage on real sessions in-app and document any broaden/defer decisions.
 
 ## Findings
 - `src/components/exploration/exploration-view.tsx` already centralizes shared selection in `selected_node_id`, which means the graph rewrite can keep one selection contract across left pane, middle pane, and inspector.

@@ -28,6 +28,8 @@ A user should be able to verify the change by opening a real session in `/sessio
 - [x] (2026-04-18 14:41 UTC) Milestone 1 — graph derivation now correlates same-turn search `toolCall.id` ↔ `toolResult.toolCallId`, stores tool-call/result metadata on graph nodes, and emits evidence-backed `discovered` plus action-targeted `influenced_by` edges for exact-path and uniquely-resolved basename matches. Added derivation tests covering exact match, unique-basename match, ambiguity rejection, adjacency-only rejection, and one-search-to-many-reads behavior.
 - [x] (2026-04-18 14:51 UTC) Milestone 2 — tree projection now allows same-turn `influenced_by` edges to become the primary parent for later `tool_call` nodes ahead of `assistant_turn -> tool_call`, and insight/path helpers now surface `search -> action -> artifact` as the primary route while keeping `discovered` as supporting context. Added projection/insight/summary tests for parent preference, fallback behavior, artifact lineage, turn lineage, tool selection, and primary-path labels.
 - [~] (2026-04-18 15:25 UTC) Milestone 3 — targeted real-session validation against `e8c0c10f-6599-4e15-bcdc-8ba1b279857d` showed the initial exact-hit-only search lineage was still too weak. The derivation now uses a broader same-turn influence scorer: search-result hits, search-query term affinity, post-search artifact references, and same-artifact follow-up. Added derivation tests for query-term batches, artifact-referenced reads, same-artifact edit follow-up, and tied-query ambiguity suppression. In the validation session, the `rg "exploration-session-graph|ExplorationGraph|viewport|graph" ...` batch now parents the three following reads under the search instead of keeping them as turn-level siblings.
+- [~] (2026-04-18 16:00 UTC) Graph-mode follow-on — the canvas projection is being generalized from a pure tree into a grouped columnar session graph. Repeated semantic nodes such as identical searches, repeated `read/edit/write path` actions, and files now collapse into one visible node per session-level concept while prompts/turns remain explicit. Added grouped-projection and grouped-layout tests to lock fixed columns plus multi-parent file/action highlighting.
+- [~] (2026-04-18 16:10 UTC) Routed grouped Graph edges through dedicated inter-column lanes. Skipped-column edges now use above/below bridge rails instead of dropping vertical segments through node bodies, which fixes the most obvious overlap between turn/search/action/file columns in the live canvas.
 
 ## Surprises & Discoveries
 
@@ -55,6 +57,9 @@ A user should be able to verify the change by opening a real session in `/sessio
 - Observation: `Sync` could still show stale graph parentage unless replay-derived caches were cleared.
   Evidence: `resync_sessions` rebuilt the session list but did not invalidate the in-memory graph cache, so a window reload could continue serving a pre-change `SessionGraphPayload` for up to the graph TTL. `backend/analytics/session-cache.ts` now clears graph and exploration caches during resync.
 
+- Observation: repeated-file behavior exposed a deeper projection mismatch than single-parent artifact parenting alone.
+  Evidence: Sessions like `80cbfcab-24a7-473c-ade2-1870d30744f6` need one canonical file node with multiple incoming touch paths, and the same pressure now applies to repeated semantic action nodes such as repeated `write path/to/file` calls across turns. The grouped columnar projection addresses this without adding a new UI mode.
+
 ## Decision Log
 
 - Decision: Phase 1 is restricted to same-turn lineage from `search_query` nodes to later file-touching actions in the same `assistant_turn`.
@@ -79,6 +84,10 @@ A user should be able to verify the change by opening a real session in `/sessio
 
 - Decision: Search query term affinity is acceptable as a medium-confidence influence signal when the matched term is specific enough.
   Rationale: Exact surfaced-path hits are too narrow for real sessions. Matching a specific query term such as `exploration-session-graph` against later file paths preserves an evidence-backed explanation without collapsing back into pure temporal adjacency.
+  Date/Author: 2026-04-18 / pi
+
+- Decision: Graph mode should evolve in place into a grouped columnar DAG rather than adding a second repeated-file-special-case mode.
+  Rationale: The user-visible problem is broader than files alone. Prompts/turns should stay explicit, but repeated searches, repeated semantic file actions, and repeated file nodes should collapse into one session-level node per concept while selection highlights the relevant upstream/downstream paths.
   Date/Author: 2026-04-18 / pi
 
 ## Outcomes & Retrospective
