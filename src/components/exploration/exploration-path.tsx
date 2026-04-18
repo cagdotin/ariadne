@@ -27,11 +27,13 @@ import {
 	type PathTurn,
 } from "@/lib/exploration-path-view-model";
 import { cn } from "@/lib/utils";
+import { ExplorationFraming } from "./exploration-framing";
 
 interface ExplorationPathProps {
 	graph: SessionGraphPayload;
 	selected_node_id: string | null;
 	highlighted_node_ids: Set<string>;
+	show_ambient?: boolean;
 	on_select_node: (node_id: string) => void;
 }
 
@@ -66,12 +68,13 @@ export function ExplorationPath({
 	graph,
 	selected_node_id,
 	highlighted_node_ids,
+	show_ambient = true,
 	on_select_node,
 }: ExplorationPathProps) {
 	const path_turns = useMemo(() => compute_path_turns(graph), [graph]);
 
 	const [expanded_turns, set_expanded_turns] = useState<Set<number>>(
-		() => new Set(path_turns.map((t) => t.turn_index)),
+		() => new Set<number>(),
 	);
 
 	const toggle_turn = (index: number) => {
@@ -101,6 +104,13 @@ export function ExplorationPath({
 				</span>
 			</div>
 			<div className="flex-1 min-h-0 overflow-y-auto">
+				{/* Session framing — first section of the narrative pane */}
+				<ExplorationFraming
+					graph={graph}
+					show_ambient={show_ambient}
+					on_select_node={(node) => on_select_node(node.id)}
+				/>
+
 				{path_turns.map((turn) => (
 					<PathTurnRow
 						key={turn.turn_index}

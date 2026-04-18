@@ -25,6 +25,10 @@ interface ExplorationControlsProps {
 	on_focus_mode_change: (mode: FocusMode) => void;
 	show_ambient: boolean;
 	on_toggle_ambient: () => void;
+	show_inferred: boolean;
+	on_toggle_inferred: () => void;
+	show_unexplored: boolean;
+	on_toggle_unexplored: () => void;
 }
 
 const focus_mode_labels: Record<FocusMode, string> = {
@@ -39,6 +43,10 @@ export function ExplorationControls({
 	on_focus_mode_change,
 	show_ambient,
 	on_toggle_ambient,
+	show_inferred,
+	on_toggle_inferred,
+	show_unexplored,
+	on_toggle_unexplored,
 }: ExplorationControlsProps) {
 	const summary = useMemo(() => compute_graph_summary(graph), [graph]);
 
@@ -46,7 +54,7 @@ export function ExplorationControls({
 		<div className="flex items-center gap-3 px-3 py-1.5 border-b border-border bg-muted/30 flex-none flex-wrap">
 			{/* Focus mode toggle */}
 			<div className="flex items-center gap-0.5 border border-border rounded-md overflow-hidden">
-				{(["path", "influence"] as const).map((mode) => (
+				{(["path", "influence", "neighborhood"] as const).map((mode) => (
 					<button
 						key={mode}
 						type="button"
@@ -112,18 +120,44 @@ export function ExplorationControls({
 			<div className="h-3.5 w-px bg-border" />
 
 			{/* Visibility toggles */}
-			<button
-				type="button"
-				className={cn(
-					"text-[10px] px-1.5 py-0.5 rounded-sm transition-colors",
-					show_ambient
-						? "bg-blue-500/10 text-blue-600"
-						: "text-muted-foreground hover:bg-accent",
-				)}
-				onClick={on_toggle_ambient}
-			>
-				{show_ambient ? "ambient on" : "ambient off"}
-			</button>
+			<div className="flex items-center gap-1">
+				<button
+					type="button"
+					className={cn(
+						"text-[10px] px-1.5 py-0.5 rounded-sm transition-colors",
+						show_ambient
+							? "bg-blue-500/10 text-blue-600"
+							: "text-muted-foreground hover:bg-accent",
+					)}
+					onClick={on_toggle_ambient}
+				>
+					{show_ambient ? "ambient on" : "ambient off"}
+				</button>
+				<button
+					type="button"
+					className={cn(
+						"text-[10px] px-1.5 py-0.5 rounded-sm transition-colors",
+						show_inferred
+							? "bg-amber-500/10 text-amber-600"
+							: "text-muted-foreground hover:bg-accent",
+					)}
+					onClick={on_toggle_inferred}
+				>
+					{show_inferred ? "inferred on" : "inferred off"}
+				</button>
+				<button
+					type="button"
+					className={cn(
+						"text-[10px] px-1.5 py-0.5 rounded-sm transition-colors",
+						show_unexplored
+							? "bg-purple-500/10 text-purple-600"
+							: "text-muted-foreground hover:bg-accent",
+					)}
+					onClick={on_toggle_unexplored}
+				>
+					{show_unexplored ? "unexplored on" : "unexplored off"}
+				</button>
+			</div>
 
 			{!graph.has_repo_context && (
 				<span className="text-[10px] text-muted-foreground italic ml-auto">

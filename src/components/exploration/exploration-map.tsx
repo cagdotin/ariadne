@@ -34,15 +34,24 @@ import {
 	type LaneId,
 	type MapEdge,
 	type MapNode,
+	type RouteConnector,
 	type StylingState,
+	type VisibilityOptions,
 } from "@/lib/exploration-graph-view-model";
+import type { TemporalLens } from "@/lib/exploration-temporal-view-model";
 import { cn } from "@/lib/utils";
+import type { MiddlePaneMode } from "./exploration-view";
+import { MiddlePaneModeToggle } from "./exploration-graph";
 
 interface ExplorationMapProps {
 	graph: SessionGraphPayload;
 	selected_node_id: string | null;
 	highlighted_node_ids: Set<string>;
-	show_ambient?: boolean;
+	visibility?: VisibilityOptions;
+	route_connectors?: RouteConnector[];
+	temporal_lens?: TemporalLens;
+	middle_pane_mode?: MiddlePaneMode;
+	on_set_middle_pane_mode?: (mode: MiddlePaneMode) => void;
 	on_select_node: (node_id: string) => void;
 }
 
@@ -123,17 +132,21 @@ export function ExplorationMap({
 	graph,
 	selected_node_id,
 	highlighted_node_ids,
-	show_ambient = true,
+	visibility = {},
+	route_connectors = [],
+	temporal_lens,
+	middle_pane_mode,
+	on_set_middle_pane_mode,
 	on_select_node,
 }: ExplorationMapProps) {
 	const lanes = useMemo(() => assign_lanes(graph), [graph]);
 	const map_nodes = useMemo(
-		() => compute_map_nodes(graph, lanes, { show_ambient }),
-		[graph, lanes, show_ambient],
+		() => compute_map_nodes(graph, lanes, visibility),
+		[graph, lanes, visibility],
 	);
 	const map_edges = useMemo(
-		() => compute_map_edges(graph, map_nodes, { show_ambient }),
-		[graph, map_nodes, show_ambient],
+		() => compute_map_edges(graph, map_nodes, visibility),
+		[graph, map_nodes, visibility],
 	);
 
 	// Group nodes by lane
@@ -165,12 +178,47 @@ export function ExplorationMap({
 		);
 	}
 
+	// Count primary connectors for route continuity indicator
+	const primary_connector_count = route_connectors.filter((c) => c.emphasis === "primary").length;
+
+	// Derive temporal lens label
+	const temporal_label = useMemo(() => {
+		if (!temporal_lens || temporal_lens.kind === "full_session") return null;
+		if (temporal_lens.kind === "built_so_far") {
+			return `Built to Turn ${temporal_lens.selected_turn_index + 1}`;
+		}
+		if (temporal_lens.kind === "arrival_path") {
+			const short_label = temporal_lens.target_label.length > 30
+				? `…${temporal_lens.target_label.slice(-28)}`
+				: temporal_lens.target_label;
+			return `Arrival path to ${short_label}`;
+		}
+		return null;
+	}, [temporal_lens]);
+
 	return (
 		<div className="flex flex-col h-full min-h-0 overflow-hidden">
-			<div className="px-3 py-1.5 border-b border-border flex-none">
-				<span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-					Context Map
-				</span>
+			<div className="px-3 py-1.5 border-b border-border flex-none flex items-center gap-2">
+				{middle_pane_mode && on_set_middle_pane_mode ? (
+					<MiddlePaneModeToggle
+						mode={middle_pane_mode}
+						on_set_mode={on_set_middle_pane_mode}
+					/>
+				) : (
+					<span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+						Context Map
+					</span>
+				)}
+				{temporal_label && (
+					<span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary font-medium">
+						{temporal_label}
+					</span>
+				)}
+				{has_selection && primary_connector_count > 0 && (
+					<span className="text-[9px] text-primary/70 tabular-nums">
+						{primary_connector_count} route edges
+					</span>
+				)}
 			</div>
 			<div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
 				{active_lanes.map((lane_id) => {
@@ -181,6 +229,7 @@ export function ExplorationMap({
 							lane_id={lane_id}
 							nodes={lane_nodes}
 							edges={map_edges}
+							route_connectors={route_connectors}
 							selected_node_id={selected_node_id}
 							highlighted_node_ids={highlighted_node_ids}
 							has_selection={has_selection}
@@ -199,6 +248,7 @@ function LaneSection({
 	lane_id,
 	nodes,
 	edges,
+	route_connectors,
 	selected_node_id,
 	highlighted_node_ids,
 	has_selection,
@@ -207,6 +257,7 @@ function LaneSection({
 	lane_id: LaneId;
 	nodes: MapNode[];
 	edges: MapEdge[];
+	route_connectors: RouteConnector[];
 	selected_node_id: string | null;
 	highlighted_node_ids: Set<string>;
 	has_selection: boolean;
@@ -235,18 +286,25 @@ function LaneSection({
 
 			{/* Nodes */}
 			<div className="flex flex-wrap gap-1">
-				{nodes.map((mn) => (
-					<MapNodeButton
-						key={mn.node.id}
-						map_node={mn}
-						lane_id={lane_id}
-						is_selected={selected_node_id === mn.node.id}
-						is_highlighted={highlighted_node_ids.has(mn.node.id)}
-						has_selection={has_selection}
-						edges={edges}
-						on_select={() => on_select_node(mn.node.id)}
-					/>
-				))}
+				{nodes.map((mn) => {
+					const has_primary_connector = route_connectors.some(
+						(c) => c.emphasis === "primary" &&
+							(c.source_id === mn.node.id || c.target_id === mn.node.id),
+					);
+					return (
+						<MapNodeButton
+							key={mn.node.id}
+							map_node={mn}
+							lane_id={lane_id}
+							is_selected={selected_node_id === mn.node.id}
+							is_highlighted={highlighted_node_ids.has(mn.node.id)}
+							has_selection={has_selection}
+							has_primary_connector={has_primary_connector}
+							edges={edges}
+							on_select={() => on_select_node(mn.node.id)}
+						/>
+					);
+				})}
 			</div>
 		</div>
 	);
@@ -260,6 +318,7 @@ function MapNodeButton({
 	is_selected,
 	is_highlighted,
 	has_selection,
+	has_primary_connector,
 	edges,
 	on_select,
 }: {
@@ -268,6 +327,7 @@ function MapNodeButton({
 	is_selected: boolean;
 	is_highlighted: boolean;
 	has_selection: boolean;
+	has_primary_connector: boolean;
 	edges: MapEdge[];
 	on_select: () => void;
 }) {
@@ -297,6 +357,11 @@ function MapNodeButton({
 					!is_selected &&
 					has_selection &&
 					"ring-1 ring-primary/50 opacity-100",
+				// Route continuity emphasis
+				has_primary_connector &&
+					!is_selected &&
+					is_highlighted &&
+					"border-primary/40",
 				// Fade unrelated nodes when something is selected
 				has_selection && !is_selected && !is_highlighted && "opacity-20",
 				// Edited output emphasis
