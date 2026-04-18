@@ -6,25 +6,40 @@
  */
 
 import type { GraphEdge, GraphNode, SessionGraphPayload } from "@contracts/graph";
-import { ArrowDown, ArrowRight, ArrowUp, Info, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Clock, Info, X } from "lucide-react";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	compute_arrival_paths,
+	compute_insight_summary,
+	compute_narrative_summary,
 	compute_node_summary,
+	compute_temporal_narrative,
 	type ArrivalPath,
 	type FileSummary,
+	type InsightSummary,
 	type InstructionSummary,
 	type TurnSummary,
 } from "@/lib/exploration-inspector-summaries";
+import type { InsightSubgraph } from "@/lib/exploration-insight-graph-view-model";
+import {
+	compute_question_actions,
+	type QuestionAction,
+} from "@/lib/exploration-question-actions";
+import type { TemporalLens } from "@/lib/exploration-temporal-view-model";
 import { cn } from "@/lib/utils";
+import type { MiddlePaneMode } from "./exploration-view";
 
 interface ExplorationInspectorV2Props {
 	selected_node_id: string;
 	graph: SessionGraphPayload;
+	temporal_lens?: TemporalLens;
+	middle_pane_mode?: MiddlePaneMode;
+	insight_subgraph?: InsightSubgraph;
 	on_select_node: (node_id: string) => void;
 	on_close: () => void;
+	on_apply_action?: (action: QuestionAction) => void;
 }
 
 const evidence_labels: Record<string, string> = {
@@ -68,8 +83,12 @@ const availability_badge_colors: Record<string, string> = {
 export function ExplorationInspectorV2({
 	selected_node_id,
 	graph,
+	temporal_lens,
+	middle_pane_mode,
+	insight_subgraph,
 	on_select_node,
 	on_close,
+	on_apply_action,
 }: ExplorationInspectorV2Props) {
 	const node = useMemo(
 		() => graph.nodes.find((n) => n.id === selected_node_id) ?? null,
@@ -85,6 +104,32 @@ export function ExplorationInspectorV2({
 	const arrival_paths = useMemo(
 		() => compute_arrival_paths(selected_node_id, graph),
 		[selected_node_id, graph],
+	);
+
+	// Question actions
+	const question_actions = useMemo(
+		() => compute_question_actions(selected_node_id, graph),
+		[selected_node_id, graph],
+	);
+
+	// Narrative summary
+	const narrative = useMemo(
+		() => compute_narrative_summary(selected_node_id, graph),
+		[selected_node_id, graph],
+	);
+
+	// Temporal narrative
+	const temporal_narrative = useMemo(
+		() => temporal_lens ? compute_temporal_narrative(selected_node_id, graph, temporal_lens) : null,
+		[selected_node_id, graph, temporal_lens],
+	);
+
+	// Insight summary (graph-mode aware)
+	const insight_summary = useMemo(
+		() => (middle_pane_mode === "graph" && insight_subgraph)
+			? compute_insight_summary(insight_subgraph)
+			: null,
+		[middle_pane_mode, insight_subgraph],
 	);
 
 	const connected_edges = useMemo(() => {
@@ -121,6 +166,18 @@ export function ExplorationInspectorV2({
 			</div>
 
 			<div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
+				{/* Temporal context banner */}
+				{temporal_lens && temporal_lens.kind !== "full_session" && (
+					<div className="flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/20 px-2.5 py-1.5">
+						<Clock className="size-3 text-primary shrink-0" />
+						<span className="text-[10px] text-primary font-medium">
+							{temporal_lens.kind === "built_so_far"
+								? `Built so far by end of Turn ${temporal_lens.selected_turn_index + 1}`
+								: `Arrival path to ${temporal_lens.target_label}`}
+						</span>
+					</div>
+				)}
+
 				{/* Properties */}
 				<div>
 					<SectionLabel>Properties</SectionLabel>
@@ -155,6 +212,48 @@ export function ExplorationInspectorV2({
 				)}
 				{summary?.kind === "instruction" && (
 					<InstructionSummarySection summary={summary} />
+				)}
+
+				{/* Narrative summary */}
+				{narrative && (
+					<div className="rounded-md bg-muted/40 px-2.5 py-2">
+						<p className="text-[11px] text-foreground leading-relaxed">
+							{narrative}
+						</p>
+					</div>
+				)}
+
+				{/* Temporal narrative */}
+				{temporal_narrative && (
+					<div className="rounded-md bg-primary/5 border border-primary/10 px-2.5 py-2">
+						<p className="text-[10px] text-primary/80 leading-relaxed">
+							{temporal_narrative}
+						</p>
+					</div>
+				)}
+
+				{/* Graph-mode insight summary */}
+				{insight_summary && (
+					<InsightSummarySection summary={insight_summary} />
+				)}
+
+				{/* Question actions */}
+				{question_actions.length > 0 && on_apply_action && (
+					<div>
+						<SectionLabel>Quick actions</SectionLabel>
+						<div className="mt-1 flex flex-wrap gap-1">
+							{question_actions.map((action) => (
+								<button
+									key={action.id}
+									type="button"
+									className="text-[10px] px-2 py-0.5 rounded-md border border-border bg-background hover:bg-accent/50 transition-colors text-left"
+									onClick={() => on_apply_action(action)}
+								>
+									{action.label}
+								</button>
+							))}
+						</div>
+					</div>
 				)}
 
 				{/* Evidence */}
@@ -373,6 +472,12 @@ function FileSummarySection({ summary }: { summary: FileSummary }) {
 						label="Upstream instructions"
 						value={summary.upstream_instructions}
 					/>
+					{summary.nearby_unexplored_count > 0 && (
+						<SummaryItem
+							label="Unexplored neighbors"
+							value={summary.nearby_unexplored_count}
+						/>
+					)}
 				</div>
 				{summary.first_seen_turn !== null && (
 					<div className="text-[10px] text-muted-foreground">
@@ -419,6 +524,60 @@ function SummaryItem({ label, value }: { label: string; value: number }) {
 		<div className="text-[10px]">
 			<span className="text-muted-foreground">{label}: </span>
 			<span className="tabular-nums">{value}</span>
+		</div>
+	);
+}
+
+// ── Insight summary section ──────────────────────────────────────────────────
+
+function InsightSummarySection({ summary }: { summary: InsightSummary }) {
+	return (
+		<div className="rounded-md bg-muted/30 border border-border/50 px-2.5 py-2 space-y-1.5">
+			<SectionLabel>Graph Insight</SectionLabel>
+
+			{summary.primary_path_label && (
+				<div className="space-y-0.5">
+					<span className="text-[9px] text-primary font-medium uppercase tracking-wider">
+						Primary path
+					</span>
+					<p className="text-[10px] text-foreground leading-relaxed font-mono">
+						{summary.primary_path_label}
+					</p>
+				</div>
+			)}
+
+			{summary.supporting_labels.length > 0 && (
+				<div className="space-y-0.5">
+					<span className="text-[9px] text-amber-500 font-medium uppercase tracking-wider">
+						Supporting
+					</span>
+					<p className="text-[10px] text-foreground/80">
+						{summary.supporting_labels.join(", ")}
+					</p>
+				</div>
+			)}
+
+			{summary.structural_ref_labels.length > 0 && (
+				<div className="space-y-0.5">
+					<span className="text-[9px] text-cyan-500 font-medium uppercase tracking-wider">
+						Structural references
+					</span>
+					<p className="text-[10px] text-foreground/80">
+						{summary.structural_ref_labels.join(", ")}
+					</p>
+				</div>
+			)}
+
+			{summary.downstream_labels.length > 0 && (
+				<div className="space-y-0.5">
+					<span className="text-[9px] text-orange-500 font-medium uppercase tracking-wider">
+						Downstream effects
+					</span>
+					<p className="text-[10px] text-foreground/80">
+						{summary.downstream_labels.join(", ")}
+					</p>
+				</div>
+			)}
 		</div>
 	);
 }
