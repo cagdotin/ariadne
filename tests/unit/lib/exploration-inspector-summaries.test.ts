@@ -5,18 +5,18 @@ import type {
 	SessionGraphPayload,
 } from "../../../contracts/graph/types";
 import {
+	compute_insight_subgraph,
+	type InsightSubgraph,
+} from "../../../src/lib/exploration-insight-graph-view-model";
+import {
+	type ArrivalPath,
 	compute_arrival_paths,
 	compute_insight_summary,
 	compute_narrative_summary,
 	compute_node_summary,
 	compute_temporal_narrative,
-	type ArrivalPath,
 	type NodeSummary,
 } from "../../../src/lib/exploration-inspector-summaries";
-import {
-	compute_insight_subgraph,
-	type InsightSubgraph,
-} from "../../../src/lib/exploration-insight-graph-view-model";
 import type { TemporalLens } from "../../../src/lib/exploration-temporal-view-model";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -508,6 +508,33 @@ describe("compute_insight_summary", () => {
 
 		expect(summary).not.toBeNull();
 		expect(summary!.supporting_labels.length).toBeGreaterThan(0);
+	});
+
+	it("includes upstream search lineage in the primary path label when present", () => {
+		const graph = make_graph(
+			[
+				make_node("user_0", "user_prompt", "available_observed", { turn_index: 0, text: "Find it" }),
+				make_node("turn_0", "assistant_turn", "available_observed", { turn_index: 0 }),
+				make_node("search_0", "search_query", "available_observed", { turn_index: 0, tool_index: 0 }),
+				make_node("tool_read", "tool_call", "available_observed", { turn_index: 0, tool_index: 1 }),
+				make_node("file_a", "source_file"),
+			],
+			[
+				make_edge("user_0", "turn_0", "prompted"),
+				make_edge("turn_0", "search_0", "invoked_tool"),
+				make_edge("turn_0", "tool_read", "invoked_tool"),
+				make_edge("search_0", "tool_read", "influenced_by", "derived_inferred"),
+				make_edge("search_0", "file_a", "discovered", "derived_inferred"),
+				make_edge("tool_read", "file_a", "read"),
+			],
+		);
+
+		const insight = compute_insight_subgraph("file_a", graph);
+		const summary = compute_insight_summary(insight);
+
+		expect(summary).not.toBeNull();
+		expect(summary!.primary_path_label).toContain("search_0");
+		expect(summary!.primary_path_label).toContain("tool_read");
 	});
 
 	it("includes structural references when present", () => {
