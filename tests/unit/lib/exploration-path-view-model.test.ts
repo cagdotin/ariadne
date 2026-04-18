@@ -6,8 +6,7 @@ import type {
 } from "../../../contracts/graph/types";
 import {
 	compute_path_turns,
-	type PathAction,
-	type PathTurn,
+	resolve_path_selection_target,
 } from "../../../src/lib/exploration-path-view-model";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -253,5 +252,60 @@ describe("compute_path_turns", () => {
 			"file_read",
 			"file_edit",
 		]);
+	});
+});
+
+describe("resolve_path_selection_target", () => {
+	it("maps prompt and assistant-turn selections to the turn row", () => {
+		const turns = compute_path_turns(make_two_turn_graph());
+
+		expect(resolve_path_selection_target("user_0", turns)).toEqual({
+			turn_index: 0,
+			row_kind: "turn",
+			action_tool_node_id: null,
+		});
+		expect(resolve_path_selection_target("turn_1", turns)).toEqual({
+			turn_index: 1,
+			row_kind: "turn",
+			action_tool_node_id: null,
+		});
+	});
+
+	it("maps tool selections to the matching action row", () => {
+		const turns = compute_path_turns(make_two_turn_graph());
+
+		expect(resolve_path_selection_target("search_0", turns)).toEqual({
+			turn_index: 0,
+			row_kind: "action",
+			action_tool_node_id: "search_0",
+		});
+		expect(resolve_path_selection_target("tool_write_1", turns)).toEqual({
+			turn_index: 1,
+			row_kind: "action",
+			action_tool_node_id: "tool_write_1",
+		});
+	});
+
+	it("maps artifact selections to the earliest matching action row", () => {
+		const turns = compute_path_turns(make_two_turn_graph());
+
+		expect(resolve_path_selection_target("file_auth", turns)).toEqual({
+			turn_index: 0,
+			row_kind: "action",
+			action_tool_node_id: "tool_read_0",
+		});
+		expect(resolve_path_selection_target("file_test", turns)).toEqual({
+			turn_index: 1,
+			row_kind: "action",
+			action_tool_node_id: "tool_write_1",
+		});
+	});
+
+	it("returns null for framing or unknown nodes that have no path row", () => {
+		const turns = compute_path_turns(make_two_turn_graph());
+
+		expect(resolve_path_selection_target("session", turns)).toBeNull();
+		expect(resolve_path_selection_target("missing", turns)).toBeNull();
+		expect(resolve_path_selection_target(null, turns)).toBeNull();
 	});
 });

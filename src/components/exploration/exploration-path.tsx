@@ -18,13 +18,14 @@ import {
 	Search,
 	Terminal,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
-	compute_path_turns,
 	type ActionKind,
+	compute_path_turns,
 	type PathAction,
 	type PathTurn,
+	resolve_path_selection_target,
 } from "@/lib/exploration-path-view-model";
 import { cn } from "@/lib/utils";
 import { ExplorationFraming } from "./exploration-framing";
@@ -72,10 +73,20 @@ export function ExplorationPath({
 	on_select_node,
 }: ExplorationPathProps) {
 	const path_turns = useMemo(() => compute_path_turns(graph), [graph]);
+	const path_selection_target = useMemo(
+		() => resolve_path_selection_target(selected_node_id, path_turns),
+		[selected_node_id, path_turns],
+	);
 
 	const [expanded_turns, set_expanded_turns] = useState<Set<number>>(
 		() => new Set<number>(),
 	);
+	const turn_row_refs = useRef(new Map<number, HTMLDivElement>());
+	const action_row_refs = useRef(new Map<string, HTMLButtonElement>());
+	const last_scrolled_target_key_ref = useRef<string | null>(null);
+	const selected_turn_is_expanded = path_selection_target
+		? expanded_turns.has(path_selection_target.turn_index)
+		: false;
 
 	const toggle_turn = (index: number) => {
 		set_expanded_turns((prev) => {
@@ -85,6 +96,55 @@ export function ExplorationPath({
 			return next;
 		});
 	};
+
+	useEffect(() => {
+		if (!path_selection_target || path_selection_target.row_kind !== "action") {
+			return;
+		}
+
+		set_expanded_turns((prev) => {
+			if (prev.has(path_selection_target.turn_index)) return prev;
+			const next = new Set(prev);
+			next.add(path_selection_target.turn_index);
+			return next;
+		});
+	}, [path_selection_target]);
+
+	useEffect(() => {
+		if (!path_selection_target) {
+			last_scrolled_target_key_ref.current = null;
+			return;
+		}
+		if (
+			path_selection_target.row_kind === "action" &&
+			!selected_turn_is_expanded
+		) {
+			return;
+		}
+
+		const target_key =
+			path_selection_target.row_kind === "action"
+				? `action:${path_selection_target.action_tool_node_id}`
+				: `turn:${path_selection_target.turn_index}`;
+		if (last_scrolled_target_key_ref.current === target_key) return;
+
+		const target_element =
+			path_selection_target.row_kind === "action"
+				? path_selection_target.action_tool_node_id
+					? action_row_refs.current.get(
+							path_selection_target.action_tool_node_id,
+						)
+					: null
+				: turn_row_refs.current.get(path_selection_target.turn_index);
+		if (!target_element) return;
+
+		const frame = requestAnimationFrame(() => {
+			target_element.scrollIntoView({ block: "nearest" });
+			last_scrolled_target_key_ref.current = target_key;
+		});
+
+		return () => cancelAnimationFrame(frame);
+	}, [path_selection_target, selected_turn_is_expanded]);
 
 	if (path_turns.length === 0) {
 		return (
@@ -107,6 +167,7 @@ export function ExplorationPath({
 				{/* Session framing — first section of the narrative pane */}
 				<ExplorationFraming
 					graph={graph}
+					selected_node_id={selected_node_id}
 					show_ambient={show_ambient}
 					on_select_node={(node) => on_select_node(node.id)}
 				/>
@@ -117,16 +178,32 @@ export function ExplorationPath({
 						turn={turn}
 						is_expanded={expanded_turns.has(turn.turn_index)}
 						is_selected={
-							selected_node_id === turn.user_prompt_node_id ||
-							selected_node_id === turn.turn_node_id
+							path_selection_target?.row_kind === "turn" &&
+							path_selection_target.turn_index === turn.turn_index
+						}
+						selected_action_tool_node_id={
+							path_selection_target?.row_kind === "action" &&
+							path_selection_target.turn_index === turn.turn_index
+								? path_selection_target.action_tool_node_id
+								: null
 						}
 						highlighted_node_ids={highlighted_node_ids}
 						has_selection={selected_node_id !== null}
+						row_ref={(element) => {
+							if (element) turn_row_refs.current.set(turn.turn_index, element);
+							else turn_row_refs.current.delete(turn.turn_index);
+						}}
 						on_toggle={() => toggle_turn(turn.turn_index)}
-						on_select_turn={() => on_select_node(turn.turn_node_id ?? turn.user_prompt_node_id)}
+						on_select_turn={() =>
+							on_select_node(turn.turn_node_id ?? turn.user_prompt_node_id)
+						}
 						on_select_action={(action) =>
 							on_select_node(action.target_node_id ?? action.tool_node_id)
 						}
+						register_action_row={(tool_node_id, element) => {
+							if (element) action_row_refs.current.set(tool_node_id, element);
+							else action_row_refs.current.delete(tool_node_id);
+						}}
 					/>
 				))}
 			</div>
@@ -140,20 +217,29 @@ function PathTurnRow({
 	turn,
 	is_expanded,
 	is_selected,
+	selected_action_tool_node_id,
 	highlighted_node_ids,
 	has_selection,
+	row_ref,
 	on_toggle,
 	on_select_turn,
 	on_select_action,
+	register_action_row,
 }: {
 	turn: PathTurn;
 	is_expanded: boolean;
 	is_selected: boolean;
+	selected_action_tool_node_id: string | null;
 	highlighted_node_ids: Set<string>;
 	has_selection: boolean;
+	row_ref: (element: HTMLDivElement | null) => void;
 	on_toggle: () => void;
 	on_select_turn: () => void;
 	on_select_action: (action: PathAction) => void;
+	register_action_row: (
+		tool_node_id: string,
+		element: HTMLButtonElement | null,
+	) => void;
 }) {
 	const is_highlighted =
 		has_selection &&
@@ -163,7 +249,7 @@ function PathTurnRow({
 				highlighted_node_ids.has(turn.turn_node_id)));
 
 	return (
-		<div className="border-b border-border/50">
+		<div ref={row_ref} className="border-b border-border/50">
 			{/* Turn header */}
 			<div
 				className={cn(
@@ -237,15 +323,19 @@ function PathTurnRow({
 			{/* Actions list */}
 			{is_expanded && turn.actions.length > 0 && (
 				<div className="pl-7 pr-3 pb-1.5 space-y-px">
-					{turn.actions.map((action, idx) => (
+					{turn.actions.map((action) => (
 						<PathActionRow
-							key={`${action.tool_node_id}-${idx}`}
+							key={action.tool_node_id}
 							action={action}
+							is_selected={selected_action_tool_node_id === action.tool_node_id}
 							is_highlighted={
 								has_selection &&
 								(highlighted_node_ids.has(action.tool_node_id) ||
 									(action.target_node_id !== null &&
 										highlighted_node_ids.has(action.target_node_id)))
+							}
+							row_ref={(element) =>
+								register_action_row(action.tool_node_id, element)
 							}
 							on_select={() => on_select_action(action)}
 						/>
@@ -260,11 +350,15 @@ function PathTurnRow({
 
 function PathActionRow({
 	action,
+	is_selected,
 	is_highlighted,
+	row_ref,
 	on_select,
 }: {
 	action: PathAction;
+	is_selected: boolean;
 	is_highlighted: boolean;
+	row_ref: (element: HTMLButtonElement | null) => void;
 	on_select: () => void;
 }) {
 	const Icon = action_icons[action.action_kind];
@@ -272,11 +366,13 @@ function PathActionRow({
 
 	return (
 		<button
+			ref={row_ref}
 			type="button"
 			className={cn(
 				"w-full flex items-center gap-2 px-2 py-1 rounded-sm text-left",
 				"hover:bg-accent/50 transition-colors",
-				is_highlighted && "bg-primary/5",
+				is_selected && "bg-accent ring-1 ring-primary/20",
+				is_highlighted && !is_selected && "bg-primary/5",
 				action.precedes_edit && "border-l-2 border-orange-400/60",
 			)}
 			onClick={on_select}
