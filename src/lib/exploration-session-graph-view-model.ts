@@ -7,7 +7,7 @@ import type {
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type SessionGraphTreeNodeRole = "session" | "artifact" | "framing";
-export type SessionGraphTreeEdgeRole = "session" | "framing";
+export type SessionGraphTreeEdgeRole = "session" | "framing" | "artifact";
 
 export interface SessionGraphTreeNode {
 	id: string;
@@ -28,6 +28,7 @@ export interface SessionGraphTreeEdge {
 export interface SessionGraphTree {
 	nodes: SessionGraphTreeNode[];
 	edges: SessionGraphTreeEdge[];
+	artifact_edges: SessionGraphTreeEdge[];
 	roots: string[];
 }
 
@@ -236,13 +237,35 @@ export function project_session_graph_tree(
 			};
 		});
 
-	const edges = [...parent_by_node.values()].sort((left, right) => {
-		const source_cmp = compare_nodes(left.source_id, right.source_id, idx);
-		if (source_cmp !== 0) return source_cmp;
-		return compare_nodes(left.target_id, right.target_id, idx);
-	});
+	const edges = [...parent_by_node.values()]
+		.filter((edge) => edge.role !== "artifact")
+		.sort((left, right) => {
+			const source_cmp = compare_nodes(left.source_id, right.source_id, idx);
+			if (source_cmp !== 0) return source_cmp;
+			return compare_nodes(left.target_id, right.target_id, idx);
+		});
 
-	return { nodes, edges, roots };
+	const artifact_edges = graph.edges
+		.filter(
+			(edge) =>
+				is_visible_edge(edge, normalized_options) &&
+				tool_artifact_edge_kinds.has(edge.kind) &&
+				visible_node_ids.has(edge.source_id) &&
+				visible_node_ids.has(edge.target_id),
+		)
+		.map((edge) => ({
+			source_id: edge.source_id,
+			target_id: edge.target_id,
+			kind: edge.kind,
+			role: "artifact" as const,
+		}))
+		.sort((left, right) => {
+			const source_cmp = compare_nodes(left.source_id, right.source_id, idx);
+			if (source_cmp !== 0) return source_cmp;
+			return compare_nodes(left.target_id, right.target_id, idx);
+		});
+
+	return { nodes, edges, artifact_edges, roots };
 }
 
 // ── Indexing ────────────────────────────────────────────────────────────────
@@ -369,7 +392,7 @@ function classify_tree_edge(
 			tool_node_kinds.has(source.kind) &&
 			artifact_node_kinds.has(target.kind)
 		) {
-			return { edge, role: "session" };
+			return { edge, role: "artifact" };
 		}
 		return null;
 	}
