@@ -1,8 +1,8 @@
 import type {
 	SessionGraphGroupedEdge,
 	SessionGraphGroupedNode,
-	SessionGraphGroupedProjection,
 	SessionGraphGroupedNodeRole,
+	SessionGraphGroupedProjection,
 } from "./exploration-session-graph-grouped-view-model";
 
 export interface SessionGraphLayoutNode {
@@ -41,6 +41,8 @@ const ROW_GAP = 16;
 const NODE_W = 190;
 const NODE_H = 38;
 const PAD = 24;
+const EDGE_LANE_INSET = 10;
+const BRIDGE_RAIL_STEP = 12;
 
 export function compute_grouped_session_graph_layout(
 	projection: SessionGraphGroupedProjection,
@@ -80,7 +82,8 @@ export function compute_grouped_session_graph_layout(
 	}
 
 	const selected_projection_node_id = selected_raw_node_id
-		? (projection.raw_to_group_id.get(selected_raw_node_id) ?? selected_raw_node_id)
+		? (projection.raw_to_group_id.get(selected_raw_node_id) ??
+			selected_raw_node_id)
 		: null;
 	const selected_path = compute_selected_path(
 		selected_projection_node_id,
@@ -89,7 +92,7 @@ export function compute_grouped_session_graph_layout(
 		by_target,
 	);
 
-	const row_by_node = assign_rows(projection, by_source, by_target);
+	const row_by_node = assign_rows(projection, node_map, by_source, by_target);
 
 	const nodes = [...projection.nodes]
 		.sort((left, right) => {
@@ -158,101 +161,182 @@ export function compute_grouped_session_graph_layout(
 
 function assign_rows(
 	projection: SessionGraphGroupedProjection,
+	node_map: Map<string, SessionGraphGroupedNode>,
 	by_source: Map<string, SessionGraphGroupedEdge[]>,
 	by_target: Map<string, SessionGraphGroupedEdge[]>,
 ): Map<string, number> {
-	const column_ids = new Map<number, string[]>();
+	const sorted_columns = [
+		...new Set(projection.nodes.map((node) => node.column)),
+	].sort((left, right) => left - right);
+	const ids_by_column_and_band = new Map<number, Map<number, string[]>>();
+	const band_keys = new Set<number>();
+
 	for (const node of projection.nodes) {
-		let ids = column_ids.get(node.column);
+		const band_key = get_timeline_band_key(node);
+		band_keys.add(band_key);
+		let column_bands = ids_by_column_and_band.get(node.column);
+		if (!column_bands) {
+			column_bands = new Map<number, string[]>();
+			ids_by_column_and_band.set(node.column, column_bands);
+		}
+		let ids = column_bands.get(band_key);
 		if (!ids) {
 			ids = [];
-			column_ids.set(node.column, ids);
+			column_bands.set(band_key, ids);
 		}
 		ids.push(node.id);
 	}
 
-	const sorted_columns = [...column_ids.keys()].sort((left, right) => left - right);
-	const node_map = new Map<string, SessionGraphGroupedNode>();
-	for (const node of projection.nodes) {
-		node_map.set(node.id, node);
-	}
-
+	const sorted_band_keys = [...band_keys].sort((left, right) => left - right);
 	const base_rank = new Map<string, number>();
 	for (const column of sorted_columns) {
-		const ids = column_ids.get(column) ?? [];
-		ids.sort((left_id, right_id) => {
-			const left = node_map.get(left_id);
-			const right = node_map.get(right_id);
-			if (!left || !right) return left_id.localeCompare(right_id);
-			const left_turn = get_turn_anchor(left);
-			const right_turn = get_turn_anchor(right);
-			if (left_turn !== right_turn) return left_turn - right_turn;
-			const left_seen = left.first_seen;
-			const right_seen = right.first_seen;
-			if (left_seen && right_seen) {
-				if (left_seen.turn_index !== right_seen.turn_index) {
-					return left_seen.turn_index - right_seen.turn_index;
-				}
-				if (left_seen.tool_index !== right_seen.tool_index) {
-					return left_seen.tool_index - right_seen.tool_index;
-				}
+		const column_bands = ids_by_column_and_band.get(column);
+		if (!column_bands) continue;
+		for (const band_key of sorted_band_keys) {
+			const ids = column_bands.get(band_key) ?? [];
+			ids.sort((left_id, right_id) =>
+				compare_nodes_within_timeline_band(left_id, right_id, node_map),
+			);
+			for (const [index, id] of ids.entries()) {
+				base_rank.set(id, index);
 			}
-			return left.node.label.localeCompare(right.node.label);
-		});
-		ids.forEach((id, index) => base_rank.set(id, index));
+		}
 	}
 
 	const row_by_id = new Map<string, number>();
-	for (const column of sorted_columns) {
-		const ids = [...(column_ids.get(column) ?? [])];
-		ids.sort((left_id, right_id) => {
-			const left_anchor = get_row_anchor(left_id, row_by_id, by_source, by_target);
-			const right_anchor = get_row_anchor(right_id, row_by_id, by_source, by_target);
-			if (left_anchor !== right_anchor) return left_anchor - right_anchor;
-			return (base_rank.get(left_id) ?? 0) - (base_rank.get(right_id) ?? 0);
-		});
-		ids.forEach((id, index) => row_by_id.set(id, index));
-		column_ids.set(column, ids);
-	}
+	const next_row_by_column = new Map<number, number>();
 
-	for (let index = sorted_columns.length - 1; index >= 0; index--) {
-		const column = sorted_columns[index];
-		const ids = [...(column_ids.get(column) ?? [])];
-		ids.sort((left_id, right_id) => {
-			const left_anchor = get_row_anchor(left_id, row_by_id, by_source, by_target);
-			const right_anchor = get_row_anchor(right_id, row_by_id, by_source, by_target);
-			if (left_anchor !== right_anchor) return left_anchor - right_anchor;
-			return (base_rank.get(left_id) ?? 0) - (base_rank.get(right_id) ?? 0);
-		});
-		ids.forEach((id, row) => row_by_id.set(id, row));
+	for (const band_key of sorted_band_keys) {
+		const local_rank_by_id = new Map<string, number>();
+		const ids_by_column = new Map<number, string[]>();
+
+		for (const column of sorted_columns) {
+			const ids = [
+				...((ids_by_column_and_band.get(column)?.get(band_key) ??
+					[]) as string[]),
+			].sort((left_id, right_id) =>
+				compare_nodes_within_timeline_band(left_id, right_id, node_map),
+			);
+			ids_by_column.set(column, ids);
+			for (const [index, id] of ids.entries()) {
+				local_rank_by_id.set(id, index);
+			}
+		}
+
+		for (const columns of [sorted_columns, [...sorted_columns].reverse()]) {
+			for (const column of columns) {
+				const ids = [...(ids_by_column.get(column) ?? [])];
+				ids.sort((left_id, right_id) => {
+					const left_anchor = get_band_row_anchor(
+						left_id,
+						band_key,
+						local_rank_by_id,
+						node_map,
+						by_source,
+						by_target,
+					);
+					const right_anchor = get_band_row_anchor(
+						right_id,
+						band_key,
+						local_rank_by_id,
+						node_map,
+						by_source,
+						by_target,
+					);
+					if (left_anchor !== right_anchor) return left_anchor - right_anchor;
+					return (base_rank.get(left_id) ?? 0) - (base_rank.get(right_id) ?? 0);
+				});
+				for (const [index, id] of ids.entries()) {
+					local_rank_by_id.set(id, index);
+				}
+				ids_by_column.set(column, ids);
+			}
+		}
+
+		for (const column of sorted_columns) {
+			const ids = ids_by_column.get(column) ?? [];
+			const start_row = next_row_by_column.get(column) ?? 0;
+			for (const [index, id] of ids.entries()) {
+				row_by_id.set(id, start_row + index);
+			}
+			next_row_by_column.set(column, start_row + ids.length);
+		}
 	}
 
 	return row_by_id;
+}
+
+function compare_nodes_within_timeline_band(
+	left_id: string,
+	right_id: string,
+	node_map: Map<string, SessionGraphGroupedNode>,
+): number {
+	const left = node_map.get(left_id);
+	const right = node_map.get(right_id);
+	if (!left || !right) return left_id.localeCompare(right_id);
+	const order_cmp = compare_temporal_orders(left.first_seen, right.first_seen);
+	if (order_cmp !== 0) return order_cmp;
+	const label_cmp = left.node.label.localeCompare(right.node.label);
+	if (label_cmp !== 0) return label_cmp;
+	return left.id.localeCompare(right.id);
+}
+
+function get_timeline_band_key(node: SessionGraphGroupedNode): number {
+	const turn_anchor = get_turn_anchor(node);
+	return Number.isFinite(turn_anchor) ? turn_anchor : -1;
 }
 
 function get_turn_anchor(node: SessionGraphGroupedNode): number {
 	const turn_index = node.node.metadata?.turn_index;
 	if (typeof turn_index === "number") return turn_index;
 	const first_seen_turn = node.first_seen?.turn_index;
-	return typeof first_seen_turn === "number" ? first_seen_turn : Number.MAX_SAFE_INTEGER;
+	return typeof first_seen_turn === "number"
+		? first_seen_turn
+		: Number.MAX_SAFE_INTEGER;
 }
 
-function get_row_anchor(
+function get_band_row_anchor(
 	node_id: string,
-	row_by_id: Map<string, number>,
+	band_key: number,
+	local_rank_by_id: Map<string, number>,
+	node_map: Map<string, SessionGraphGroupedNode>,
 	by_source: Map<string, SessionGraphGroupedEdge[]>,
 	by_target: Map<string, SessionGraphGroupedEdge[]>,
 ): number {
 	const neighbors = [
 		...(by_target.get(node_id) ?? []).map((edge) => edge.source_id),
 		...(by_source.get(node_id) ?? []).map((edge) => edge.target_id),
-	].map((neighbor_id) => row_by_id.get(neighbor_id)).filter((row): row is number => typeof row === "number");
+	]
+		.filter((neighbor_id) => {
+			const neighbor = node_map.get(neighbor_id);
+			return neighbor ? get_timeline_band_key(neighbor) === band_key : false;
+		})
+		.map((neighbor_id) => local_rank_by_id.get(neighbor_id))
+		.filter((row): row is number => typeof row === "number");
 
 	if (neighbors.length === 0) {
-		return row_by_id.get(node_id) ?? Number.MAX_SAFE_INTEGER;
+		return local_rank_by_id.get(node_id) ?? Number.MAX_SAFE_INTEGER;
 	}
 
 	return neighbors.reduce((sum, row) => sum + row, 0) / neighbors.length;
+}
+
+function compare_temporal_orders(
+	left: { turn_index: number; tool_index: number } | null,
+	right: { turn_index: number; tool_index: number } | null,
+): number {
+	if (left && right) {
+		if (left.turn_index !== right.turn_index) {
+			return left.turn_index - right.turn_index;
+		}
+		if (left.tool_index !== right.tool_index) {
+			return left.tool_index - right.tool_index;
+		}
+		return 0;
+	}
+	if (left) return -1;
+	if (right) return 1;
+	return 0;
 }
 
 function compute_selected_path(
@@ -321,19 +405,11 @@ function route_edge(
 	const source_right_x = source.x + NODE_W;
 	const source_left_x = source.x;
 	const target_left_x = target.x;
-	const target_right_lane_x = target.x - COL_GAP / 2;
-	const source_left_lane_x = source.x - COL_GAP / 2;
-	const source_right_lane_x = source.x + NODE_W + COL_GAP / 2;
+	const source_left_lane_x = get_left_gap_lane_x(source, target);
+	const source_right_lane_x = get_right_gap_lane_x(source, target);
+	const target_left_lane_x = get_left_gap_lane_x(target, source);
 
 	if (target.depth <= source.depth) {
-		if (Math.abs(sy - ty) < 2) {
-			return [
-				[source_left_x, sy],
-				[source_left_lane_x, sy],
-				[source_left_lane_x, ty],
-				[target_left_x, ty],
-			];
-		}
 		return [
 			[source_left_x, sy],
 			[source_left_lane_x, sy],
@@ -362,10 +438,52 @@ function route_edge(
 		[source_right_x, sy],
 		[source_right_lane_x, sy],
 		[source_right_lane_x, bridge_y],
-		[target_right_lane_x, bridge_y],
-		[target_right_lane_x, ty],
+		[target_left_lane_x, bridge_y],
+		[target_left_lane_x, ty],
 		[target_left_x, ty],
 	];
+}
+
+function get_right_gap_lane_x(
+	node: SessionGraphLayoutNode,
+	other: SessionGraphLayoutNode,
+): number {
+	const fraction = get_gap_lane_fraction(node, other);
+	return (
+		node.x +
+		NODE_W +
+		EDGE_LANE_INSET +
+		(COL_GAP - EDGE_LANE_INSET * 2) * fraction
+	);
+}
+
+function get_left_gap_lane_x(
+	node: SessionGraphLayoutNode,
+	other: SessionGraphLayoutNode,
+): number {
+	const fraction = get_gap_lane_fraction(node, other);
+	return (
+		node.x -
+		COL_GAP +
+		EDGE_LANE_INSET +
+		(COL_GAP - EDGE_LANE_INSET * 2) * fraction
+	);
+}
+
+function get_gap_lane_fraction(
+	source: SessionGraphLayoutNode,
+	target: SessionGraphLayoutNode,
+): number {
+	const row_delta = target.row - source.row;
+	const base_fraction =
+		row_delta < -0.25 ? 0.28 : row_delta > 0.25 ? 0.72 : 0.5;
+	const lane_jitter =
+		get_edge_hash_bucket(source.id, target.id) === 0
+			? -0.06
+			: get_edge_hash_bucket(source.id, target.id) === 2
+				? 0.06
+				: 0;
+	return clamp_number(base_fraction + lane_jitter, 0.18, 0.82);
 }
 
 function get_intercolumn_bridge_y(
@@ -374,12 +492,14 @@ function get_intercolumn_bridge_y(
 ): number {
 	const source_center_y = source.y + NODE_H / 2;
 	const target_center_y = target.y + NODE_H / 2;
-	const above_band_y = Math.min(source.y, target.y) - ROW_GAP / 2;
-	const below_band_y =
-		Math.max(source.y, target.y) + NODE_H + ROW_GAP / 2;
+	const base_above_band_y = Math.min(source.y, target.y) - ROW_GAP / 2;
+	const base_below_band_y = Math.max(source.y, target.y) + NODE_H + ROW_GAP / 2;
+	const rail_level = get_edge_hash_bucket(source.id, target.id) % 2;
+	const above_band_y = base_above_band_y - rail_level * BRIDGE_RAIL_STEP;
+	const below_band_y = base_below_band_y + rail_level * BRIDGE_RAIL_STEP;
 
 	if (source.row === target.row) {
-		return make_edge_key(source.id, target.id).length % 2 === 0
+		return get_edge_hash_bucket(source.id, target.id) % 2 === 0
 			? above_band_y
 			: below_band_y;
 	}
@@ -392,6 +512,19 @@ function get_intercolumn_bridge_y(
 		Math.abs(target_center_y - below_band_y);
 
 	return above_distance <= below_distance ? above_band_y : below_band_y;
+}
+
+function get_edge_hash_bucket(source_id: string, target_id: string): number {
+	const key = `${source_id}->${target_id}`;
+	let hash = 0;
+	for (let index = 0; index < key.length; index++) {
+		hash = (hash * 31 + key.charCodeAt(index)) >>> 0;
+	}
+	return hash % 3;
+}
+
+function clamp_number(value: number, min: number, max: number): number {
+	return Math.max(min, Math.min(max, value));
 }
 
 export const SESSION_GRAPH_LAYOUT_NODE_WIDTH = NODE_W;

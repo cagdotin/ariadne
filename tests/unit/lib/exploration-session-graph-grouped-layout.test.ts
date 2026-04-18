@@ -113,13 +113,20 @@ describe("compute_grouped_session_graph_layout", () => {
 		expect(layout.nodes.find((node) => node.id === "user_0")?.depth).toBe(1);
 		expect(layout.nodes.find((node) => node.id === "turn_0")?.depth).toBe(2);
 		expect(layout.nodes.find((node) => node.id === "search_0")?.depth).toBe(3);
-		expect(layout.nodes.find((node) => node.id === "tool_write_0")?.depth).toBe(4);
-		expect(layout.nodes.find((node) => node.id === "file_bridge")?.depth).toBe(5);
+		expect(layout.nodes.find((node) => node.id === "tool_write_0")?.depth).toBe(
+			4,
+		);
+		expect(layout.nodes.find((node) => node.id === "file_bridge")?.depth).toBe(
+			5,
+		);
 	});
 
 	it("highlights all upstream paths for a selected file", () => {
 		const projection = project_session_graph_grouped(make_graph_fixture());
-		const layout = compute_grouped_session_graph_layout(projection, "file_bridge");
+		const layout = compute_grouped_session_graph_layout(
+			projection,
+			"file_bridge",
+		);
 		const highlighted_ids = layout.nodes
 			.filter((node) => node.is_on_selected_path || node.is_selected)
 			.map((node) => node.id);
@@ -164,16 +171,36 @@ describe("compute_grouped_session_graph_layout", () => {
 			.map((node) => node.id);
 
 		expect(highlighted_ids).toEqual(
-			expect.arrayContaining(["turn_0", "search_0", "tool_write_0", "file_bridge"]),
+			expect.arrayContaining([
+				"turn_0",
+				"search_0",
+				"tool_write_0",
+				"file_bridge",
+			]),
 		);
 		expect(highlighted_ids).not.toContain("turn_1");
+	});
+
+	it("keeps grouped columns ordered by first-seen timeline bands without per-column gaps", () => {
+		const projection = project_session_graph_grouped(make_graph_fixture());
+		const layout = compute_grouped_session_graph_layout(projection, null);
+		const row = (id: string) =>
+			layout.nodes.find((node) => node.id === id)?.row ?? -1;
+
+		expect(row("turn_0")).toBe(0);
+		expect(row("turn_1")).toBe(1);
+		expect(row("turn_2")).toBe(2);
+		expect(row("tool_write_0")).toBeLessThan(row("tool_edit_1"));
+		expect(row("tool_edit_1")).toBeLessThanOrEqual(row("tool_write_0") + 2);
+		expect(row("file_bridge")).toBe(0);
 	});
 
 	it("routes skipped-column edges through edge lanes instead of through node boxes", () => {
 		const projection = project_session_graph_grouped(make_graph_fixture());
 		const layout = compute_grouped_session_graph_layout(projection, null);
 		const turn_to_action_edge = layout.edges.find(
-			(edge) => edge.source_id === "turn_0" && edge.target_id === "tool_write_0",
+			(edge) =>
+				edge.source_id === "turn_0" && edge.target_id === "tool_write_0",
 		);
 		const search_node = layout.nodes.find((node) => node.id === "search_0");
 
@@ -188,9 +215,14 @@ describe("compute_grouped_session_graph_layout", () => {
 
 	it("resolves later repeated raw action selections to the grouped action node", () => {
 		const projection = project_session_graph_grouped(make_graph_fixture());
-		const layout = compute_grouped_session_graph_layout(projection, "tool_write_2");
+		const layout = compute_grouped_session_graph_layout(
+			projection,
+			"tool_write_2",
+		);
 
 		expect(layout.selected_projection_node_id).toBe("tool_write_0");
-		expect(layout.nodes.find((node) => node.id === "tool_write_0")?.is_selected).toBe(true);
+		expect(
+			layout.nodes.find((node) => node.id === "tool_write_0")?.is_selected,
+		).toBe(true);
 	});
 });
