@@ -47,16 +47,11 @@ export interface InsightOptions {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-/** Edge kinds that form the temporal/invocation spine. */
-const path_edge_kinds = new Set<string>([
-	"prompted",
-	"invoked_tool",
-	"searched_for",
-	"discovered",
-	"read",
-	"edited",
-	"wrote",
-]);
+/** Edge kinds that directly represent a tool touching an artifact. */
+const action_edge_kinds = new Set<string>(["read", "edited", "wrote"]);
+
+/** Discovery edges that explain what a search surfaced. */
+const discovery_edge_kinds = new Set<string>(["discovered", "searched_for"]);
 
 /** Edge kinds that indicate supporting/influence relationships. */
 const influence_edge_kinds = new Set<string>([
@@ -77,14 +72,6 @@ const suppressed_node_kinds = new Set<string>([
 	"session",
 	"session_framing",
 	"runtime_context",
-]);
-
-/** Node kinds that represent turns/prompts (temporal spine). */
-const temporal_node_kinds = new Set<string>([
-	"user_prompt",
-	"assistant_turn",
-	"tool_call",
-	"search_query",
 ]);
 
 /** Node kinds that represent artifacts. */
@@ -203,11 +190,11 @@ export function compute_insight_subgraph(
 	// Start with the focal node
 	add_node(selected_node_id, "primary_path");
 
-	if (temporal_node_kinds.has(node.kind)) {
-		// Selected a turn/prompt/tool — show downstream path
+	if (node.kind === "user_prompt" || node.kind === "assistant_turn") {
 		derive_turn_insight(selected_node_id, idx, add_node, add_edge, is_visible);
+	} else if (node.kind === "tool_call" || node.kind === "search_query") {
+		derive_tool_insight(selected_node_id, idx, add_node, add_edge, is_visible);
 	} else if (artifact_node_kinds.has(node.kind)) {
-		// Selected a file/doc — show arrival path + downstream
 		derive_artifact_insight(
 			selected_node_id,
 			idx,
@@ -216,7 +203,6 @@ export function compute_insight_subgraph(
 			is_visible,
 		);
 	} else {
-		// Instruction/framing node — show downstream influence
 		derive_instruction_insight(
 			selected_node_id,
 			idx,
@@ -272,69 +258,73 @@ function derive_turn_insight(
 		kind: string,
 		role: InsightRole,
 	) => void,
-	_is_visible: (id: string) => boolean,
+	is_visible: (id: string) => boolean,
 ): void {
 	const node = idx.node_map.get(selected_id);
 	if (!node) return;
 
-	// Resolve the assistant_turn that owns the tools.
-	// If user_prompt is selected, follow prompted → assistant_turn.
-	// If assistant_turn is selected, use it directly.
 	let assistant_turn_id: string | null = null;
-
 	if (node.kind === "user_prompt") {
-		// Follow prompted edge to assistant_turn
 		const outgoing = idx.by_source.get(selected_id) ?? [];
 		for (const edge of outgoing) {
-			if (edge.kind === "prompted") {
-				const target = idx.node_map.get(edge.target_id);
-				if (target?.kind === "assistant_turn") {
-					assistant_turn_id = edge.target_id;
-					add_node(assistant_turn_id, "primary_path");
-					add_edge(selected_id, assistant_turn_id, edge.kind, "primary_path");
-					break;
-				}
-			}
+			if (edge.kind !== "prompted") continue;
+			const target = idx.node_map.get(edge.target_id);
+			if (target?.kind !== "assistant_turn") continue;
+			assistant_turn_id = target.id;
+			add_node(target.id, "primary_path");
+			add_edge(selected_id, target.id, edge.kind, "primary_path");
+			break;
 		}
 	} else if (node.kind === "assistant_turn") {
 		assistant_turn_id = selected_id;
-		// Find the user_prompt for this turn
-		const turn_index = node.metadata?.turn_index;
-		if (typeof turn_index === "number") {
-			for (const [id, n] of idx.node_map) {
-				if (
-					n.kind === "user_prompt" &&
-					(n.metadata?.turn_index as number) === turn_index
-				) {
-					add_node(id, "primary_path");
-					break;
-				}
-			}
-		}
-	} else {
-		// tool_call or search_query — treat as mini-turn, derive from self
-		assistant_turn_id = selected_id;
+		add_turn_prompt_context(selected_id, idx, add_node, add_edge, is_visible);
 	}
 
 	if (!assistant_turn_id) return;
+	derive_turn_downstream(
+		assistant_turn_id,
+		idx,
+		add_node,
+		add_edge,
+		is_visible,
+	);
+}
 
-	// Walk downstream from assistant_turn: invoked tools, then their artifacts
-	const outgoing = idx.by_source.get(assistant_turn_id) ?? [];
-	for (const edge of outgoing) {
-		if (edge.kind === "invoked_tool") {
-			add_node(edge.target_id, "primary_path");
-			add_edge(assistant_turn_id, edge.target_id, edge.kind, "primary_path");
-
-			// Tool's downstream artifacts
-			const tool_out = idx.by_source.get(edge.target_id) ?? [];
-			for (const te of tool_out) {
-				if (path_edge_kinds.has(te.kind)) {
-					add_node(te.target_id, "primary_path");
-					add_edge(edge.target_id, te.target_id, te.kind, "primary_path");
-				}
-			}
-		}
-	}
+function derive_tool_insight(
+	selected_tool_id: string,
+	idx: EdgeIndex,
+	add_node: (id: string, role: InsightRole) => void,
+	add_edge: (
+		source: string,
+		target: string,
+		kind: string,
+		role: InsightRole,
+	) => void,
+	is_visible: (id: string) => boolean,
+): void {
+	trace_primary_tool_upstream(
+		selected_tool_id,
+		idx,
+		add_node,
+		add_edge,
+		is_visible,
+		new Set(),
+	);
+	trace_tool_primary_descendants(
+		selected_tool_id,
+		idx,
+		add_node,
+		add_edge,
+		is_visible,
+		new Set(),
+	);
+	add_supporting_tool_influences(
+		selected_tool_id,
+		idx,
+		add_node,
+		add_edge,
+		is_visible,
+	);
 }
 
 // ── Artifact insight ────────────────────────────────────────────────────────
@@ -351,62 +341,403 @@ function derive_artifact_insight(
 	) => void,
 	is_visible: (id: string) => boolean,
 ): void {
-	// Phase 1: Trace upstream primary path (tool→turn→prompt)
 	const incoming = idx.by_target.get(artifact_id) ?? [];
-	const contributing_turn_ids = new Set<string>();
+	const contributing_tool_ids = new Set<string>();
+	let has_primary_action = false;
 
 	for (const edge of incoming) {
-		if (!path_edge_kinds.has(edge.kind)) continue;
-
+		if (!action_edge_kinds.has(edge.kind)) continue;
 		const source = idx.node_map.get(edge.source_id);
-		if (!source) continue;
+		if (!source || !is_visible(source.id)) continue;
 
-		// Tool that accessed this artifact
-		add_node(edge.source_id, "primary_path");
-		add_edge(edge.source_id, artifact_id, edge.kind, "primary_path");
+		has_primary_action = true;
+		contributing_tool_ids.add(source.id);
+		add_node(source.id, "primary_path");
+		add_edge(source.id, artifact_id, edge.kind, "primary_path");
+		trace_primary_tool_upstream(
+			source.id,
+			idx,
+			add_node,
+			add_edge,
+			is_visible,
+			new Set(),
+		);
+	}
 
-		// Trace tool → turn → prompt
-		if (source.kind === "tool_call" || source.kind === "search_query") {
-			trace_tool_to_turn(
-				edge.source_id,
+	if (!has_primary_action) {
+		for (const edge of incoming) {
+			if (!discovery_edge_kinds.has(edge.kind)) continue;
+			const source = idx.node_map.get(edge.source_id);
+			if (!source || !is_visible(source.id)) continue;
+			add_node(source.id, "primary_path");
+			add_edge(source.id, artifact_id, edge.kind, "primary_path");
+			trace_primary_tool_upstream(
+				source.id,
 				idx,
 				add_node,
 				add_edge,
-				contributing_turn_ids,
+				is_visible,
+				new Set(),
 			);
 		}
 	}
 
-	// Phase 2: Add user_prompts for contributing turns
-	for (const turn_id of contributing_turn_ids) {
-		const turn_node = idx.node_map.get(turn_id);
-		if (turn_node?.kind === "assistant_turn") {
-			const ti = turn_node.metadata?.turn_index;
-			if (typeof ti === "number") {
-				for (const [id, n] of idx.node_map) {
-					if (
-						n.kind === "user_prompt" &&
-						(n.metadata?.turn_index as number) === ti
-					) {
-						add_node(id, "primary_path");
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	// Phase 3: Supporting contributors (influence/constraint edges)
 	for (const edge of incoming) {
+		if (discovery_edge_kinds.has(edge.kind)) {
+			add_node(edge.source_id, "supporting");
+			add_edge(edge.source_id, artifact_id, edge.kind, "supporting");
+			continue;
+		}
 		if (influence_edge_kinds.has(edge.kind)) {
 			add_node(edge.source_id, "supporting");
 			add_edge(edge.source_id, artifact_id, edge.kind, "supporting");
 		}
 	}
 
-	// Phase 4: Downstream effects — tools that read this artifact
-	// then produced other artifacts
+	for (const tool_id of contributing_tool_ids) {
+		add_supporting_tool_influences(
+			tool_id,
+			idx,
+			add_node,
+			add_edge,
+			is_visible,
+		);
+	}
+
 	derive_downstream_effects(artifact_id, idx, add_node, add_edge, is_visible);
+}
+
+function derive_turn_downstream(
+	assistant_turn_id: string,
+	idx: EdgeIndex,
+	add_node: (id: string, role: InsightRole) => void,
+	add_edge: (
+		source: string,
+		target: string,
+		kind: string,
+		role: InsightRole,
+	) => void,
+	is_visible: (id: string) => boolean,
+): void {
+	const outgoing = idx.by_source.get(assistant_turn_id) ?? [];
+	for (const edge of outgoing) {
+		if (edge.kind !== "invoked_tool") continue;
+		if (!is_visible(edge.target_id)) continue;
+		if (get_primary_tool_influence(edge.target_id, idx, is_visible)) continue;
+
+		add_node(edge.target_id, "primary_path");
+		add_edge(assistant_turn_id, edge.target_id, edge.kind, "primary_path");
+		trace_tool_primary_descendants(
+			edge.target_id,
+			idx,
+			add_node,
+			add_edge,
+			is_visible,
+			new Set(),
+		);
+	}
+}
+
+function trace_primary_tool_upstream(
+	tool_id: string,
+	idx: EdgeIndex,
+	add_node: (id: string, role: InsightRole) => void,
+	add_edge: (
+		source: string,
+		target: string,
+		kind: string,
+		role: InsightRole,
+	) => void,
+	is_visible: (id: string) => boolean,
+	visited_tool_ids: Set<string>,
+): void {
+	if (visited_tool_ids.has(tool_id)) return;
+	visited_tool_ids.add(tool_id);
+
+	const primary_influence = get_primary_tool_influence(
+		tool_id,
+		idx,
+		is_visible,
+	);
+	if (primary_influence) {
+		add_node(primary_influence.source_id, "primary_path");
+		add_edge(
+			primary_influence.source_id,
+			tool_id,
+			primary_influence.kind,
+			"primary_path",
+		);
+		trace_primary_tool_upstream(
+			primary_influence.source_id,
+			idx,
+			add_node,
+			add_edge,
+			is_visible,
+			visited_tool_ids,
+		);
+		return;
+	}
+
+	const turn_edge = get_tool_invocation_edge(tool_id, idx, is_visible);
+	if (!turn_edge) return;
+
+	add_node(turn_edge.source_id, "primary_path");
+	add_edge(turn_edge.source_id, tool_id, turn_edge.kind, "primary_path");
+	add_turn_prompt_context(
+		turn_edge.source_id,
+		idx,
+		add_node,
+		add_edge,
+		is_visible,
+	);
+}
+
+function trace_tool_primary_descendants(
+	tool_id: string,
+	idx: EdgeIndex,
+	add_node: (id: string, role: InsightRole) => void,
+	add_edge: (
+		source: string,
+		target: string,
+		kind: string,
+		role: InsightRole,
+	) => void,
+	is_visible: (id: string) => boolean,
+	visited_tool_ids: Set<string>,
+): void {
+	if (visited_tool_ids.has(tool_id)) return;
+	visited_tool_ids.add(tool_id);
+
+	add_tool_supporting_discovery_outputs(tool_id, idx, add_node, add_edge);
+
+	const outgoing = idx.by_source.get(tool_id) ?? [];
+	for (const edge of outgoing) {
+		const target = idx.node_map.get(edge.target_id);
+		if (!target || !is_visible(target.id)) continue;
+
+		if (
+			action_edge_kinds.has(edge.kind) &&
+			artifact_node_kinds.has(target.kind)
+		) {
+			add_node(target.id, "primary_path");
+			add_edge(tool_id, target.id, edge.kind, "primary_path");
+			continue;
+		}
+
+		if (edge.kind === "influenced_by" && target.kind === "tool_call") {
+			const primary_influence = get_primary_tool_influence(
+				target.id,
+				idx,
+				is_visible,
+			);
+			if (!primary_influence || primary_influence.source_id !== tool_id)
+				continue;
+
+			add_node(target.id, "primary_path");
+			add_edge(tool_id, target.id, edge.kind, "primary_path");
+			trace_tool_primary_descendants(
+				target.id,
+				idx,
+				add_node,
+				add_edge,
+				is_visible,
+				visited_tool_ids,
+			);
+		}
+	}
+}
+
+function add_tool_supporting_discovery_outputs(
+	tool_id: string,
+	idx: EdgeIndex,
+	add_node: (id: string, role: InsightRole) => void,
+	add_edge: (
+		source: string,
+		target: string,
+		kind: string,
+		role: InsightRole,
+	) => void,
+): void {
+	const outgoing = idx.by_source.get(tool_id) ?? [];
+	for (const edge of outgoing) {
+		const target = idx.node_map.get(edge.target_id);
+		if (!target || !artifact_node_kinds.has(target.kind)) continue;
+		if (!discovery_edge_kinds.has(edge.kind)) continue;
+		add_node(target.id, "supporting");
+		add_edge(tool_id, target.id, edge.kind, "supporting");
+	}
+}
+
+function add_supporting_tool_influences(
+	tool_id: string,
+	idx: EdgeIndex,
+	add_node: (id: string, role: InsightRole) => void,
+	add_edge: (
+		source: string,
+		target: string,
+		kind: string,
+		role: InsightRole,
+	) => void,
+	is_visible: (id: string) => boolean,
+): void {
+	const incoming = idx.by_target.get(tool_id) ?? [];
+	const primary_influence = get_primary_tool_influence(
+		tool_id,
+		idx,
+		is_visible,
+	);
+
+	for (const edge of incoming) {
+		if (edge.kind !== "influenced_by") continue;
+		if (!is_visible(edge.source_id)) continue;
+		if (
+			primary_influence &&
+			primary_influence.source_id === edge.source_id &&
+			primary_influence.target_id === edge.target_id
+		) {
+			continue;
+		}
+		add_node(edge.source_id, "supporting");
+		add_edge(edge.source_id, tool_id, edge.kind, "supporting");
+	}
+}
+
+function add_turn_prompt_context(
+	turn_id: string,
+	idx: EdgeIndex,
+	add_node: (id: string, role: InsightRole) => void,
+	add_edge: (
+		source: string,
+		target: string,
+		kind: string,
+		role: InsightRole,
+	) => void,
+	is_visible: (id: string) => boolean,
+): void {
+	const user_prompt_id = find_turn_user_prompt_id(turn_id, idx);
+	if (!user_prompt_id || !is_visible(user_prompt_id)) return;
+	add_node(user_prompt_id, "primary_path");
+	add_edge(user_prompt_id, turn_id, "prompted", "primary_path");
+}
+
+function find_turn_user_prompt_id(
+	turn_id: string,
+	idx: EdgeIndex,
+): string | null {
+	const turn_node = idx.node_map.get(turn_id);
+	if (turn_node?.kind !== "assistant_turn") return null;
+
+	const incoming = idx.by_target.get(turn_id) ?? [];
+	for (const edge of incoming) {
+		if (edge.kind !== "prompted") continue;
+		const source = idx.node_map.get(edge.source_id);
+		if (source?.kind === "user_prompt") return source.id;
+	}
+
+	const turn_index = turn_node.metadata?.turn_index;
+	if (typeof turn_index !== "number") return null;
+	for (const [id, node] of idx.node_map) {
+		if (
+			node.kind === "user_prompt" &&
+			(node.metadata?.turn_index as number) === turn_index
+		) {
+			return id;
+		}
+	}
+
+	return null;
+}
+
+function get_tool_invocation_edge(
+	tool_id: string,
+	idx: EdgeIndex,
+	is_visible: (id: string) => boolean,
+): GraphEdge | null {
+	const incoming = idx.by_target.get(tool_id) ?? [];
+	for (const edge of incoming) {
+		if (edge.kind !== "invoked_tool") continue;
+		const source = idx.node_map.get(edge.source_id);
+		if (source?.kind !== "assistant_turn") continue;
+		if (!is_visible(source.id)) continue;
+		return edge;
+	}
+	return null;
+}
+
+function get_primary_tool_influence(
+	tool_id: string,
+	idx: EdgeIndex,
+	is_visible: (id: string) => boolean,
+): GraphEdge | null {
+	const target = idx.node_map.get(tool_id);
+	if (target?.kind !== "tool_call") return null;
+
+	const incoming = idx.by_target.get(tool_id) ?? [];
+	const candidates = incoming.filter((edge) => {
+		if (edge.kind !== "influenced_by") return false;
+		if (edge.confidence !== "high" && edge.confidence !== "medium")
+			return false;
+		if (!is_visible(edge.source_id)) return false;
+
+		const source = idx.node_map.get(edge.source_id);
+		if (source?.kind !== "tool_call" && source?.kind !== "search_query") {
+			return false;
+		}
+
+		const source_turn_index = source.metadata?.turn_index;
+		const target_turn_index = target.metadata?.turn_index;
+		const source_tool_index = source.metadata?.tool_index;
+		const target_tool_index = target.metadata?.tool_index;
+		if (
+			typeof source_turn_index !== "number" ||
+			typeof target_turn_index !== "number" ||
+			source_turn_index !== target_turn_index
+		) {
+			return false;
+		}
+		if (
+			typeof source_tool_index !== "number" ||
+			typeof target_tool_index !== "number" ||
+			source_tool_index >= target_tool_index
+		) {
+			return false;
+		}
+		return true;
+	});
+
+	candidates.sort((left, right) => {
+		const confidence_cmp = compare_edge_confidence(right, left);
+		if (confidence_cmp !== 0) return confidence_cmp;
+
+		const left_source = idx.node_map.get(left.source_id);
+		const right_source = idx.node_map.get(right.source_id);
+		const left_tool_index = left_source?.metadata?.tool_index;
+		const right_tool_index = right_source?.metadata?.tool_index;
+		if (
+			typeof left_tool_index === "number" &&
+			typeof right_tool_index === "number" &&
+			left_tool_index !== right_tool_index
+		) {
+			return right_tool_index - left_tool_index;
+		}
+
+		return left.source_id.localeCompare(right.source_id);
+	});
+
+	return candidates[0] ?? null;
+}
+
+function compare_edge_confidence(left: GraphEdge, right: GraphEdge): number {
+	return (
+		get_confidence_rank(left.confidence) - get_confidence_rank(right.confidence)
+	);
+}
+
+function get_confidence_rank(confidence: GraphEdge["confidence"]): number {
+	if (confidence === "high") return 2;
+	if (confidence === "medium") return 1;
+	if (confidence === "low") return 0;
+	return -1;
 }
 
 // ── Instruction insight ─────────────────────────────────────────────────────
@@ -507,34 +838,6 @@ function derive_downstream_effects(
 						}
 					}
 				}
-			}
-		}
-	}
-}
-
-// ── Trace tool → turn ───────────────────────────────────────────────────────
-
-function trace_tool_to_turn(
-	tool_id: string,
-	idx: EdgeIndex,
-	add_node: (id: string, role: InsightRole) => void,
-	add_edge: (
-		source: string,
-		target: string,
-		kind: string,
-		role: InsightRole,
-	) => void,
-	contributing_turn_ids: Set<string>,
-): void {
-	const incoming = idx.by_target.get(tool_id) ?? [];
-
-	for (const edge of incoming) {
-		if (edge.kind === "invoked_tool") {
-			const turn = idx.node_map.get(edge.source_id);
-			if (turn?.kind === "assistant_turn") {
-				add_node(turn.id, "primary_path");
-				add_edge(turn.id, tool_id, edge.kind, "primary_path");
-				contributing_turn_ids.add(turn.id);
 			}
 		}
 	}

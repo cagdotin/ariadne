@@ -4,12 +4,7 @@ import type {
 	GraphNode,
 	SessionGraphPayload,
 } from "../../../contracts/graph/types";
-import {
-	compute_insight_subgraph,
-	type InsightEdge,
-	type InsightNode,
-	type InsightSubgraph,
-} from "../../../src/lib/exploration-insight-graph-view-model";
+import { compute_insight_subgraph } from "../../../src/lib/exploration-insight-graph-view-model";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -69,16 +64,38 @@ function make_multi_turn_graph(): SessionGraphPayload {
 			make_node("session", "session"),
 			make_node("framing", "session_framing"),
 			make_node("claude_md", "instruction_source", "available_ambient"),
-			make_node("user_0", "user_prompt", "available_observed", { turn_index: 0, text: "Fix the bug" }),
-			make_node("turn_0", "assistant_turn", "available_observed", { turn_index: 0 }),
-			make_node("search_0", "search_query", "available_observed", { turn_index: 0, tool_index: 0 }),
-			make_node("tool_read_0", "tool_call", "available_observed", { turn_index: 0, tool_index: 1 }),
-			make_node("tool_read_doc", "tool_call", "available_observed", { turn_index: 0, tool_index: 2 }),
+			make_node("user_0", "user_prompt", "available_observed", {
+				turn_index: 0,
+				text: "Fix the bug",
+			}),
+			make_node("turn_0", "assistant_turn", "available_observed", {
+				turn_index: 0,
+			}),
+			make_node("search_0", "search_query", "available_observed", {
+				turn_index: 0,
+				tool_index: 0,
+			}),
+			make_node("tool_read_0", "tool_call", "available_observed", {
+				turn_index: 0,
+				tool_index: 1,
+			}),
+			make_node("tool_read_doc", "tool_call", "available_observed", {
+				turn_index: 0,
+				tool_index: 2,
+			}),
 			make_node("doc_readme", "doc_file", "available_observed"),
 			make_node("file_a", "source_file", "available_observed"),
-			make_node("user_1", "user_prompt", "available_observed", { turn_index: 1, text: "Now edit it" }),
-			make_node("turn_1", "assistant_turn", "available_observed", { turn_index: 1 }),
-			make_node("tool_edit_1", "tool_call", "available_observed", { turn_index: 1, tool_index: 0 }),
+			make_node("user_1", "user_prompt", "available_observed", {
+				turn_index: 1,
+				text: "Now edit it",
+			}),
+			make_node("turn_1", "assistant_turn", "available_observed", {
+				turn_index: 1,
+			}),
+			make_node("tool_edit_1", "tool_call", "available_observed", {
+				turn_index: 1,
+				tool_index: 0,
+			}),
 			make_node("file_b", "source_file", "available_observed"),
 			make_node("file_c", "source_file", "available_observed"),
 		],
@@ -103,6 +120,39 @@ function make_multi_turn_graph(): SessionGraphPayload {
 			make_edge("doc_readme", "file_b", "linked_to"),
 			// claude_md influenced file_b
 			make_edge("claude_md", "file_b", "influenced_by"),
+		],
+	);
+}
+
+function make_discovery_lineage_graph(): SessionGraphPayload {
+	return make_graph(
+		[
+			make_node("session", "session"),
+			make_node("user_0", "user_prompt", "available_observed", {
+				turn_index: 0,
+				text: "Find and inspect the file",
+			}),
+			make_node("turn_0", "assistant_turn", "available_observed", {
+				turn_index: 0,
+			}),
+			make_node("search_0", "search_query", "available_observed", {
+				turn_index: 0,
+				tool_index: 0,
+			}),
+			make_node("tool_read_0", "tool_call", "available_observed", {
+				turn_index: 0,
+				tool_index: 1,
+			}),
+			make_node("file_a", "source_file", "available_observed"),
+		],
+		[
+			make_edge("session", "user_0", "prompted"),
+			make_edge("user_0", "turn_0", "prompted"),
+			make_edge("turn_0", "search_0", "invoked_tool"),
+			make_edge("turn_0", "tool_read_0", "invoked_tool"),
+			make_edge("search_0", "tool_read_0", "influenced_by", "derived_inferred"),
+			make_edge("search_0", "file_a", "discovered", "derived_inferred"),
+			make_edge("tool_read_0", "file_a", "read"),
 		],
 	);
 }
@@ -169,7 +219,10 @@ describe("compute_insight_subgraph", () => {
 
 			// file_b imports file_a — structural reference
 			const struct_edge = result.edges.find(
-				(e) => e.source_id === "file_b" && e.target_id === "file_a" && e.kind === "imports",
+				(e) =>
+					e.source_id === "file_b" &&
+					e.target_id === "file_a" &&
+					e.kind === "imports",
 			);
 			expect(struct_edge).toBeDefined();
 			expect(struct_edge!.role).toBe("structural_ref");
@@ -187,7 +240,9 @@ describe("compute_insight_subgraph", () => {
 
 			// file_a was read by tool_read_0 (turn_0) and tool_edit_1 (turn_1)
 			// downstream: after being read, tool_edit_1 edited file_b
-			const downstream_nodes = result.nodes.filter((n) => n.role === "downstream");
+			const downstream_nodes = result.nodes.filter(
+				(n) => n.role === "downstream",
+			);
 			// file_b should be downstream of file_a (read in turn_1 that also edited file_b)
 			const file_b_downstream = downstream_nodes.find((n) => n.id === "file_b");
 			expect(file_b_downstream).toBeDefined();
@@ -198,12 +253,39 @@ describe("compute_insight_subgraph", () => {
 			const result = compute_insight_subgraph("file_b", graph);
 
 			// Primary path edges
-			const primary_edges = result.edges.filter((e) => e.role === "primary_path");
+			const primary_edges = result.edges.filter(
+				(e) => e.role === "primary_path",
+			);
 			expect(primary_edges.length).toBeGreaterThan(0);
 
 			// Structural ref edges
-			const struct_edges = result.edges.filter((e) => e.role === "structural_ref");
+			const struct_edges = result.edges.filter(
+				(e) => e.role === "structural_ref",
+			);
 			expect(struct_edges.length).toBeGreaterThan(0);
+		});
+
+		it("surfaces search-to-action lineage for selected artifacts", () => {
+			const graph = make_discovery_lineage_graph();
+			const result = compute_insight_subgraph("file_a", graph);
+
+			const search_node = result.nodes.find((n) => n.id === "search_0");
+			const influence_edge = result.edges.find(
+				(e) =>
+					e.source_id === "search_0" &&
+					e.target_id === "tool_read_0" &&
+					e.kind === "influenced_by",
+			);
+			const discovered_edge = result.edges.find(
+				(e) =>
+					e.source_id === "search_0" &&
+					e.target_id === "file_a" &&
+					e.kind === "discovered",
+			);
+
+			expect(search_node?.role).toBe("primary_path");
+			expect(influence_edge?.role).toBe("primary_path");
+			expect(discovered_edge?.role).toBe("supporting");
 		});
 	});
 
@@ -259,6 +341,56 @@ describe("compute_insight_subgraph", () => {
 			// Must have edges, not 0
 			expect(result.edges.length).toBeGreaterThan(0);
 		});
+
+		it("uses influenced_by as the downstream spine when a turn contains discovery lineage", () => {
+			const graph = make_discovery_lineage_graph();
+			const result = compute_insight_subgraph("turn_0", graph);
+
+			expect(
+				result.edges.some(
+					(e) =>
+						e.source_id === "search_0" &&
+						e.target_id === "tool_read_0" &&
+						e.kind === "influenced_by" &&
+						e.role === "primary_path",
+				),
+			).toBe(true);
+			expect(
+				result.edges.some(
+					(e) =>
+						e.source_id === "turn_0" &&
+						e.target_id === "tool_read_0" &&
+						e.kind === "invoked_tool" &&
+						e.role === "primary_path",
+				),
+			).toBe(false);
+		});
+	});
+
+	describe("selected tool/search", () => {
+		it("shows upstream search context for an influenced tool selection", () => {
+			const graph = make_discovery_lineage_graph();
+			const result = compute_insight_subgraph("tool_read_0", graph);
+
+			expect(
+				result.edges.some(
+					(e) =>
+						e.source_id === "search_0" &&
+						e.target_id === "tool_read_0" &&
+						e.kind === "influenced_by" &&
+						e.role === "primary_path",
+				),
+			).toBe(true);
+			expect(
+				result.edges.some(
+					(e) =>
+						e.source_id === "tool_read_0" &&
+						e.target_id === "file_a" &&
+						e.kind === "read" &&
+						e.role === "primary_path",
+				),
+			).toBe(true);
+		});
 	});
 
 	describe("selected instruction/framing node", () => {
@@ -300,10 +432,16 @@ describe("compute_insight_subgraph", () => {
 
 			// Simulate built-so-far for turn_0: only turn_0 era nodes visible
 			const temporally_visible = new Set([
-				"session", "framing", "claude_md",
-				"user_0", "turn_0", "search_0",
-				"tool_read_0", "tool_read_doc",
-				"doc_readme", "file_a",
+				"session",
+				"framing",
+				"claude_md",
+				"user_0",
+				"turn_0",
+				"search_0",
+				"tool_read_0",
+				"tool_read_doc",
+				"doc_readme",
+				"file_a",
 			]);
 
 			const result = compute_insight_subgraph("file_a", graph, {
@@ -322,10 +460,16 @@ describe("compute_insight_subgraph", () => {
 
 			// file_a is visible but file_b is not
 			const temporally_visible = new Set([
-				"session", "framing", "claude_md",
-				"user_0", "turn_0", "search_0",
-				"tool_read_0", "tool_read_doc",
-				"doc_readme", "file_a",
+				"session",
+				"framing",
+				"claude_md",
+				"user_0",
+				"turn_0",
+				"search_0",
+				"tool_read_0",
+				"tool_read_doc",
+				"doc_readme",
+				"file_a",
 			]);
 
 			const result = compute_insight_subgraph("file_a", graph, {
@@ -333,9 +477,7 @@ describe("compute_insight_subgraph", () => {
 			});
 
 			// imports edge from file_b→file_a should not appear
-			const imports_edge = result.edges.find(
-				(e) => e.kind === "imports",
-			);
+			const imports_edge = result.edges.find((e) => e.kind === "imports");
 			expect(imports_edge).toBeUndefined();
 		});
 	});
@@ -351,10 +493,7 @@ describe("compute_insight_subgraph", () => {
 		});
 
 		it("handles a node with no edges", () => {
-			const graph = make_graph(
-				[make_node("lonely_file", "source_file")],
-				[],
-			);
+			const graph = make_graph([make_node("lonely_file", "source_file")], []);
 			const result = compute_insight_subgraph("lonely_file", graph);
 
 			expect(result.nodes).toHaveLength(1);
