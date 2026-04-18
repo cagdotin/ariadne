@@ -22,6 +22,14 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+	type GraphZoomBand,
+	get_graph_node_chrome_mode,
+	get_graph_node_visual_weight,
+	get_graph_zoom_band,
+	should_render_graph_node_accent,
+	should_render_graph_node_label,
+} from "@/lib/exploration-graph-render-style";
+import {
 	type GraphViewportState,
 	type GraphWorldPoint,
 	screen_to_world_point,
@@ -795,11 +803,12 @@ function draw_graph_canvas(
 	size: { width: number; height: number },
 	theme: GraphCanvasTheme,
 ) {
+	const zoom_band = get_graph_zoom_band(viewport.scale);
 	context.fillStyle = theme.background;
 	context.fillRect(0, 0, size.width, size.height);
 
 	for (const edge of layout.edges) {
-		draw_graph_edge(context, edge, viewport, size, theme);
+		draw_graph_edge(context, edge, viewport, size, theme, zoom_band);
 	}
 
 	const ordered_nodes = [...layout.nodes].sort((left, right) => {
@@ -813,7 +822,7 @@ function draw_graph_canvas(
 	});
 
 	for (const node of ordered_nodes) {
-		draw_graph_node(context, node, viewport, size, theme);
+		draw_graph_node(context, node, viewport, size, theme, zoom_band);
 	}
 }
 
@@ -823,6 +832,7 @@ function draw_graph_edge(
 	viewport: GraphViewportState,
 	size: { width: number; height: number },
 	theme: GraphCanvasTheme,
+	zoom_band: GraphZoomBand,
 ) {
 	const screen_points = edge.points.map(([x, y]) =>
 		world_to_screen_point({ x, y }, viewport),
@@ -841,15 +851,22 @@ function draw_graph_edge(
 		: edge.role === "framing"
 			? theme.framing_edge
 			: theme.session_edge;
-	const base_line_width = clamp_number(1.1 + viewport.scale * 0.25, 1.1, 1.9);
+	const base_line_width =
+		zoom_band === "overview"
+			? 1.2
+			: clamp_number(1.1 + viewport.scale * 0.25, 1.1, 1.9);
 	context.lineWidth = edge.is_on_selected_path
-		? base_line_width + 1
+		? base_line_width + (zoom_band === "overview" ? 0.7 : 1)
 		: base_line_width;
 	context.globalAlpha = edge.is_on_selected_path
 		? 1
 		: edge.role === "framing"
-			? 0.8
-			: 0.85;
+			? zoom_band === "overview"
+				? 0.68
+				: 0.8
+			: zoom_band === "overview"
+				? 0.62
+				: 0.85;
 	context.lineJoin = "round";
 	context.lineCap = "round";
 	context.setLineDash(edge.role === "framing" ? [6, 4] : []);
@@ -864,6 +881,7 @@ function draw_graph_node(
 	viewport: GraphViewportState,
 	size: { width: number; height: number },
 	theme: GraphCanvasTheme,
+	zoom_band: GraphZoomBand,
 ) {
 	const screen_rect = world_rect_to_screen_rect(
 		get_layout_node_bounds(node),
@@ -872,59 +890,189 @@ function draw_graph_node(
 	if (!rect_intersects_view(screen_rect, size, 32)) return;
 
 	const palette = get_node_palette(node, theme);
-	const radius = Math.max(4, Math.min(screen_rect.height * 0.24, 9));
+	const visual_weight = get_graph_node_visual_weight(node.kind, node.role);
+	const chrome_mode = get_graph_node_chrome_mode(viewport.scale);
+	const render_rect = get_node_render_rect(
+		screen_rect,
+		chrome_mode,
+		node.is_selected || node.is_on_selected_path,
+	);
+	const radius =
+		chrome_mode === "pill"
+			? Math.min(render_rect.height / 2, 999)
+			: Math.max(4, Math.min(render_rect.height * 0.24, 9));
 	const stroke_width = node.is_selected
 		? 2.5
 		: node.is_on_selected_path
-			? 1.8
-			: 1.1;
+			? chrome_mode === "pill"
+				? 2.05
+				: 1.8
+			: chrome_mode === "pill"
+				? 1.25
+				: chrome_mode === "compact"
+					? 1.2
+					: 1.1;
+	const should_draw_label = should_render_graph_node_label({
+		scale: viewport.scale,
+		screen_width: render_rect.width,
+		kind: node.kind,
+		role: node.role,
+		is_selected: node.is_selected,
+		is_on_selected_path: node.is_on_selected_path,
+	});
+	const should_draw_accent = should_render_graph_node_accent({
+		scale: viewport.scale,
+		screen_width: render_rect.width,
+		kind: node.kind,
+		role: node.role,
+		is_selected: node.is_selected,
+		is_on_selected_path: node.is_on_selected_path,
+	});
 
 	context.save();
 	context.fillStyle = palette.fill;
-	context.strokeStyle = node.is_selected ? theme.primary : palette.stroke;
-	context.lineWidth = stroke_width;
-	context.globalAlpha = node.role === "framing" && !node.is_selected ? 0.92 : 1;
+	context.globalAlpha = get_node_fill_alpha(zoom_band, visual_weight, node);
 	draw_round_rect(
 		context,
-		screen_rect.x,
-		screen_rect.y,
-		screen_rect.width,
-		screen_rect.height,
+		render_rect.x,
+		render_rect.y,
+		render_rect.width,
+		render_rect.height,
 		radius,
 	);
 	context.fill();
-	context.stroke();
 
-	const accent_size = Math.max(3, Math.min(screen_rect.height * 0.26, 8));
-	if (screen_rect.width >= 24) {
+	context.strokeStyle = node.is_selected ? theme.primary : palette.stroke;
+	context.lineWidth = stroke_width;
+	context.globalAlpha = get_node_stroke_alpha(zoom_band, visual_weight, node);
+	context.stroke();
+	context.globalAlpha = 1;
+
+	const accent_size = Math.max(
+		chrome_mode === "pill" ? 2.6 : 3,
+		Math.min(render_rect.height * 0.26, chrome_mode === "pill" ? 6 : 8),
+	);
+	if (should_draw_accent) {
 		context.fillStyle = palette.accent;
+		context.globalAlpha =
+			node.is_selected || node.is_on_selected_path
+				? 1
+				: zoom_band === "mid" && visual_weight === "secondary"
+					? 0.85
+					: 0.78;
 		context.beginPath();
 		context.arc(
-			screen_rect.x + Math.max(8, accent_size + 4),
-			screen_rect.y + screen_rect.height / 2,
+			render_rect.x + Math.max(7, accent_size + 3),
+			render_rect.y + render_rect.height / 2,
 			accent_size / 2,
 			0,
 			Math.PI * 2,
 		);
 		context.fill();
+		context.globalAlpha = 1;
 	}
 
-	const should_draw_label =
-		node.is_selected || node.is_on_selected_path || screen_rect.width >= 96;
 	if (should_draw_label) {
-		const font_size = clamp_number(screen_rect.height * 0.36, 9, 11.5);
-		context.fillStyle = theme.foreground;
+		const font_size = clamp_number(
+			render_rect.height * (chrome_mode === "compact" ? 0.44 : 0.36),
+			8.5,
+			11.5,
+		);
+		context.fillStyle =
+			visual_weight === "artifact" &&
+			!node.is_selected &&
+			!node.is_on_selected_path
+				? theme.muted_foreground
+				: theme.foreground;
 		context.font = `${font_size}px "Geist Variable", ui-sans-serif, system-ui, sans-serif`;
 		context.textBaseline = "middle";
-		const text_x = screen_rect.x + Math.max(14, accent_size + 10);
-		const text_y = screen_rect.y + screen_rect.height / 2;
+		const text_x = render_rect.x + Math.max(11, accent_size + 9);
+		const text_y = render_rect.y + render_rect.height / 2;
 		const max_text_width = Math.max(
 			16,
-			screen_rect.width - (text_x - screen_rect.x) - 8,
+			render_rect.width - (text_x - render_rect.x) - 8,
 		);
 		draw_truncated_text(context, node.label, text_x, text_y, max_text_width);
 	}
 	context.restore();
+}
+
+function get_node_render_rect(
+	screen_rect: { x: number; y: number; width: number; height: number },
+	chrome_mode: ReturnType<typeof get_graph_node_chrome_mode>,
+	is_emphasized: boolean,
+) {
+	if (chrome_mode === "detail") {
+		return screen_rect;
+	}
+
+	const target_width =
+		chrome_mode === "pill"
+			? screen_rect.width * 0.88
+			: screen_rect.width * 0.94;
+	const max_extra_width = chrome_mode === "pill" ? 3 : 0;
+	const width = Math.min(
+		Math.max(target_width, chrome_mode === "pill" ? 10 : 20),
+		screen_rect.width + max_extra_width,
+	);
+	const target_height =
+		chrome_mode === "pill"
+			? screen_rect.height * (is_emphasized ? 0.78 : 0.68)
+			: screen_rect.height * (is_emphasized ? 0.9 : 0.82);
+	const height = Math.min(
+		Math.max(target_height, chrome_mode === "pill" ? 3.5 : 7),
+		screen_rect.height + (chrome_mode === "pill" ? 2 : 3),
+	);
+
+	return {
+		x: screen_rect.x + (screen_rect.width - width) / 2,
+		y: screen_rect.y + (screen_rect.height - height) / 2,
+		width,
+		height,
+	};
+}
+
+function get_node_fill_alpha(
+	zoom_band: GraphZoomBand,
+	visual_weight: ReturnType<typeof get_graph_node_visual_weight>,
+	node: SessionGraphLayoutNode,
+) {
+	if (node.is_selected) return 1;
+	if (node.is_on_selected_path) return zoom_band === "overview" ? 0.98 : 0.94;
+	if (zoom_band === "overview") {
+		if (visual_weight === "primary") return 0.9;
+		if (visual_weight === "secondary") return 0.78;
+		if (visual_weight === "framing") return 0.74;
+		return 0.52;
+	}
+	if (zoom_band === "mid") {
+		if (visual_weight === "primary") return 0.9;
+		if (visual_weight === "secondary") return 0.82;
+		if (visual_weight === "framing") return 0.78;
+		return 0.62;
+	}
+	if (visual_weight === "artifact") return 0.82;
+	if (visual_weight === "framing") return 0.86;
+	return 1;
+}
+
+function get_node_stroke_alpha(
+	zoom_band: GraphZoomBand,
+	visual_weight: ReturnType<typeof get_graph_node_visual_weight>,
+	node: SessionGraphLayoutNode,
+) {
+	if (node.is_selected) return 1;
+	if (node.is_on_selected_path) return 0.98;
+	if (zoom_band === "overview") {
+		if (visual_weight === "artifact") return 0.62;
+		return 0.9;
+	}
+	if (zoom_band === "mid") {
+		if (visual_weight === "artifact") return 0.72;
+		return 0.92;
+	}
+	if (visual_weight === "artifact") return 0.84;
+	return node.role === "framing" ? 0.92 : 1;
 }
 
 function draw_round_rect(
