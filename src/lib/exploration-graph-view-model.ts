@@ -55,8 +55,40 @@ export interface GraphSummary {
 	unavailable_framing: number;
 }
 
+export type ConnectorEmphasis = "primary" | "secondary";
+
+export interface RouteConnector {
+	source_id: string;
+	target_id: string;
+	kind: GraphEdge["kind"];
+	emphasis: ConnectorEmphasis;
+	styling: StylingState;
+}
+
 export interface VisibilityOptions {
 	show_ambient?: boolean;
+	show_inferred?: boolean;
+	show_unexplored?: boolean;
+	only_selected_subgraph?: boolean;
+	only_edited_path?: boolean;
+	/** Required when only_selected_subgraph is true */
+	highlighted_node_ids?: Set<string>;
+	/**
+	 * When true, the map defaults to artifact lanes only (docs, files,
+	 * outputs, context). Narrative lanes (framing, prompts, discovery)
+	 * are hidden unless they appear in `scaffolding_node_ids`.
+	 */
+	artifact_first?: boolean;
+	/**
+	 * Node IDs to reintroduce from narrative lanes even when
+	 * artifact_first is true (selection-driven scaffolding).
+	 */
+	scaffolding_node_ids?: Set<string>;
+	/**
+	 * When set, only nodes in this set pass the temporal filter.
+	 * Used for built-so-far and arrival-path views.
+	 */
+	temporally_visible_node_ids?: Set<string>;
 }
 
 // ── Lane ordering (for rendering) ───────────────────────────────────────────
@@ -82,6 +114,9 @@ export const lane_labels: Record<LaneId, string> = {
 };
 
 // ── Lane assignment ─────────────────────────────────────────────────────────
+
+/** Lanes hidden by default when artifact_first is true. */
+const narrative_lanes = new Set<LaneId>(["framing", "prompts", "discovery"]);
 
 const framing_kinds = new Set<string>([
 	"session_framing",
@@ -153,13 +188,72 @@ export function assign_lanes(
 /**
  * Compute the set of nodes visible in the context map.
  * Excludes the top-level session node.
+ * Respects all VisibilityOptions filters.
  */
 export function compute_map_nodes(
 	graph: SessionGraphPayload,
 	lanes: Map<string, LaneId>,
 	options: VisibilityOptions = {},
 ): MapNode[] {
-	const { show_ambient = true } = options;
+	const {
+		show_ambient = true,
+		show_inferred = true,
+		show_unexplored = true,
+		only_selected_subgraph = false,
+		only_edited_path = false,
+		highlighted_node_ids,
+		artifact_first = false,
+		scaffolding_node_ids,
+		temporally_visible_node_ids,
+	} = options;
+
+	const edited_file_ids = new Set<string>();
+	const adjacent_file_ids = new Set<string>();
+	for (const edge of graph.edges) {
+		if (edge.kind === "edited" || edge.kind === "wrote") {
+			edited_file_ids.add(edge.target_id);
+		}
+		if (edge.kind === "adjacent_unexplored") {
+			adjacent_file_ids.add(edge.target_id);
+		}
+	}
+
+	// Pre-compute edited path node IDs if needed
+	let edited_path_ids: Set<string> | null = null;
+	if (only_edited_path) {
+		edited_path_ids = compute_edited_path_ids(graph);
+	}
+
+	return graph.nodes
+		.filter((n) => n.kind !== "session")
+		.filter((n) => show_ambient || n.availability !== "available_ambient")
+		.filter((n) => show_inferred || n.availability !== "derived_inferred")
+		.filter((n) => show_unexplored || !adjacent_file_ids.has(n.id))
+		.filter((n) => !only_selected_subgraph || !highlighted_node_ids || highlighted_node_ids.has(n.id))
+		.filter((n) => !only_edited_path || !edited_path_ids || edited_path_ids.has(n.id))
+		.filter((n) => !temporally_visible_node_ids || temporally_visible_node_ids.has(n.id))
+		.filter((n) => {
+			if (!artifact_first) return true;
+			const lane = lanes.get(n.id) ?? "context";
+			if (!narrative_lanes.has(lane)) return true;
+			// Allow scaffolding nodes through even in artifact-first mode
+			return scaffolding_node_ids?.has(n.id) ?? false;
+		})
+		.map((node) => ({
+			node,
+			lane: lanes.get(node.id) ?? "context",
+			is_edited: edited_file_ids.has(node.id),
+		}));
+}
+
+/**
+ * Compute the set of node IDs on the path to any edited file.
+ * Traces: edited_file ← tool ← turn (via edited/wrote, invoked_tool edges).
+ */
+function compute_edited_path_ids(graph: SessionGraphPayload): Set<string> {
+	const result = new Set<string>();
+
+	// Find edited file IDs
 	const edited_file_ids = new Set<string>();
 	for (const edge of graph.edges) {
 		if (edge.kind === "edited" || edge.kind === "wrote") {
@@ -167,14 +261,37 @@ export function compute_map_nodes(
 		}
 	}
 
-	return graph.nodes
-		.filter((n) => n.kind !== "session")
-		.filter((n) => show_ambient || n.availability !== "available_ambient")
-		.map((node) => ({
-			node,
-			lane: lanes.get(node.id) ?? "context",
-			is_edited: edited_file_ids.has(node.id),
-		}));
+	// Add edited files
+	for (const id of edited_file_ids) {
+		result.add(id);
+	}
+
+	// Build incoming index
+	const by_target = new Map<string, GraphEdge[]>();
+	for (const edge of graph.edges) {
+		let arr = by_target.get(edge.target_id);
+		if (!arr) { arr = []; by_target.set(edge.target_id, arr); }
+		arr.push(edge);
+	}
+
+	// Trace upstream from each edited file
+	for (const file_id of edited_file_ids) {
+		const incoming = by_target.get(file_id) ?? [];
+		for (const edge of incoming) {
+			if (edge.kind === "edited" || edge.kind === "wrote" || edge.kind === "read") {
+				result.add(edge.source_id); // tool_call
+				// Find turn that invoked this tool
+				const tool_incoming = by_target.get(edge.source_id) ?? [];
+				for (const te of tool_incoming) {
+					if (te.kind === "invoked_tool") {
+						result.add(te.source_id); // turn
+					}
+				}
+			}
+		}
+	}
+
+	return result;
 }
 
 // ── Map edges ───────────────────────────────────────────────────────────────
@@ -298,13 +415,32 @@ export function compute_selection_subgraph(
 		};
 	}
 
-	const allowed_edges =
-		mode === "influence" ? influence_edge_kinds : path_edge_kinds;
-
 	const highlighted_node_ids = new Set<string>();
 	const highlighted_edge_keys = new Set<string>();
 
 	highlighted_node_ids.add(selected_node_id);
+
+	const edge_key = (e: GraphEdge) =>
+		`${e.source_id}->${e.target_id}:${e.kind}`;
+
+	// Neighborhood mode: one-hop only, all edge kinds
+	if (mode === "neighborhood") {
+		for (const edge of graph.edges) {
+			if (edge.source_id === selected_node_id) {
+				highlighted_node_ids.add(edge.target_id);
+				highlighted_edge_keys.add(edge_key(edge));
+			}
+			if (edge.target_id === selected_node_id) {
+				highlighted_node_ids.add(edge.source_id);
+				highlighted_edge_keys.add(edge_key(edge));
+			}
+		}
+		return { highlighted_node_ids, highlighted_edge_keys };
+	}
+
+	// Path and Influence: full BFS with mode-specific edge filtering
+	const allowed_edges =
+		mode === "influence" ? influence_edge_kinds : path_edge_kinds;
 
 	// Build adjacency from edges, filtered by mode
 	const outgoing = new Map<string, GraphEdge[]>();
@@ -317,9 +453,6 @@ export function compute_selection_subgraph(
 		if (!incoming.has(edge.target_id)) incoming.set(edge.target_id, []);
 		incoming.get(edge.target_id)!.push(edge);
 	}
-
-	const edge_key = (e: GraphEdge) =>
-		`${e.source_id}->${e.target_id}:${e.kind}`;
 
 	// Walk upstream (incoming edges) — BFS
 	const upstream_queue = [selected_node_id];
@@ -354,6 +487,67 @@ export function compute_selection_subgraph(
 	}
 
 	return { highlighted_node_ids, highlighted_edge_keys };
+}
+
+// ── Route connectors ────────────────────────────────────────────────────────
+
+/**
+ * Compute visible connectors for the context map with emphasis levels.
+ *
+ * - **primary**: edge is part of the current selection subgraph
+ * - **secondary**: edge is visible but not part of the selection
+ *
+ * Respects ambient visibility. Excludes edges involving the session node.
+ */
+export function compute_route_connectors(
+	graph: SessionGraphPayload,
+	selection_subgraph: SelectionSubgraph,
+	options: VisibilityOptions = {},
+): RouteConnector[] {
+	const { show_ambient = true } = options;
+	const has_selection = selection_subgraph.highlighted_node_ids.size > 0;
+
+	// Build node lookup for filtering
+	const node_map = new Map<string, GraphNode>();
+	for (const node of graph.nodes) {
+		node_map.set(node.id, node);
+	}
+
+	const connectors: RouteConnector[] = [];
+
+	for (const edge of graph.edges) {
+		const source = node_map.get(edge.source_id);
+		const target = node_map.get(edge.target_id);
+		if (!source || !target) continue;
+
+		// Exclude session node edges from connectors
+		if (source.kind === "session" || target.kind === "session") continue;
+
+		// Respect ambient visibility
+		if (!show_ambient) {
+			if (
+				source.availability === "available_ambient" ||
+				target.availability === "available_ambient"
+			) continue;
+			if (edge.availability === "available_ambient") continue;
+		}
+
+		const edge_key = `${edge.source_id}->${edge.target_id}:${edge.kind}`;
+		const emphasis: ConnectorEmphasis =
+			has_selection && selection_subgraph.highlighted_edge_keys.has(edge_key)
+				? "primary"
+				: "secondary";
+
+		connectors.push({
+			source_id: edge.source_id,
+			target_id: edge.target_id,
+			kind: edge.kind,
+			emphasis,
+			styling: compute_styling_state(edge.availability),
+		});
+	}
+
+	return connectors;
 }
 
 // ── Graph summary ───────────────────────────────────────────────────────────
