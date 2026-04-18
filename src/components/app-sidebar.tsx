@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { BarChart3, LayoutDashboard, LibraryBig, List } from "lucide-react";
+import { BarChart3, GitFork, LayoutDashboard, LibraryBig, List } from "lucide-react";
 import { ProviderLimitsSidebarCard } from "@/components/provider-limits-sidebar-card";
 import {
 	Sidebar,
@@ -17,6 +17,7 @@ const nav_items = [
 	{ to: "/", label: "Overview", icon: LayoutDashboard, exact: true },
 	{ to: "/sessions", label: "Sessions", icon: List, exact: false },
 	{ to: "/usage", label: "Usage", icon: BarChart3, exact: false },
+	{ to: "/explore", label: "Explore", icon: GitFork, exact: false },
 	{ to: "/qmd", label: "QMD", icon: LibraryBig, exact: false },
 ] as const;
 

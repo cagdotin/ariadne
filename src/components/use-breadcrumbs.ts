@@ -27,6 +27,8 @@ export function use_breadcrumbs(): Breadcrumb[] {
 		}
 		if (parts[0] === "sessions") return [{ label: "Sessions" }];
 
+		if (parts[0] === "explore") return [{ label: "Explore" }];
+
 		if (parts[0] === "usage") {
 			const tab_labels: Record<string, string> = {
 				cost: "Cost",

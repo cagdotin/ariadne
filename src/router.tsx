@@ -89,6 +89,10 @@ const LazyQmdLogs = lazy(() =>
 	import("./pages/qmd-logs").then((m) => ({ default: m.QmdLogs })),
 );
 
+const LazyExploreLayout = lazy(() =>
+	import("./pages/explore").then((m) => ({ default: m.ExploreLayout })),
+);
+
 // ---------------------------------------------------------------------------
 // Suspense wrapper — provides a loading fallback for lazy components
 // ---------------------------------------------------------------------------
@@ -202,6 +206,19 @@ const usage_files_route = createRoute({
 	component: with_suspense(LazyFilesPage),
 });
 
+const explore_route = createRoute({
+	getParentRoute: () => root_route,
+	path: "/explore",
+	component: with_suspense(LazyExploreLayout),
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { path?: string } => ({
+		...(typeof search.path === "string" && search.path
+			? { path: search.path }
+			: {}),
+	}),
+});
+
 const qmd_redirect_route = createRoute({
 	getParentRoute: () => root_route,
 	path: "/qmd",
@@ -229,6 +246,7 @@ const qmd_collection_route = createRoute({
 const route_tree = root_route.addChildren([
 	index_route,
 	sessions_route,
+	explore_route,
 	session_detail_layout_route.addChildren([
 		session_detail_index_route,
 		session_detail_conversation_route,
