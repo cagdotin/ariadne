@@ -1,5 +1,12 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { BarChart3, GitFork, LayoutDashboard, LibraryBig, List } from "lucide-react";
+import {
+	BarChart3,
+	GitFork,
+	LayoutDashboard,
+	LibraryBig,
+	List,
+} from "lucide-react";
+import { use_qmd_enabled } from "@/components/app-settings-provider";
 import { ProviderLimitsSidebarCard } from "@/components/provider-limits-sidebar-card";
 import {
 	Sidebar,
@@ -23,6 +30,10 @@ const nav_items = [
 
 export function AppSidebar() {
 	const { pathname } = useLocation();
+	const is_qmd_enabled = use_qmd_enabled();
+	const visible_nav_items = nav_items.filter(
+		(item) => item.to !== "/qmd" || is_qmd_enabled,
+	);
 
 	const is_active = (to: string, exact?: boolean) => {
 		if (exact) return pathname === to;
@@ -35,7 +46,7 @@ export function AppSidebar() {
 				<SidebarGroup>
 					<SidebarGroupContent>
 						<SidebarMenu>
-							{nav_items.map(({ to, label, icon: Icon, exact }) => (
+							{visible_nav_items.map(({ to, label, icon: Icon, exact }) => (
 								<SidebarMenuItem key={to}>
 									<SidebarMenuButton
 										render={<Link to={to} />}

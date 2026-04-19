@@ -93,6 +93,10 @@ const LazyExploreLayout = lazy(() =>
 	import("./pages/explore").then((m) => ({ default: m.ExploreLayout })),
 );
 
+const LazySettings = lazy(() =>
+	import("./pages/settings").then((m) => ({ default: m.Settings })),
+);
+
 // ---------------------------------------------------------------------------
 // Suspense wrapper — provides a loading fallback for lazy components
 // ---------------------------------------------------------------------------
@@ -210,13 +214,17 @@ const explore_route = createRoute({
 	getParentRoute: () => root_route,
 	path: "/explore",
 	component: with_suspense(LazyExploreLayout),
-	validateSearch: (
-		search: Record<string, unknown>,
-	): { path?: string } => ({
+	validateSearch: (search: Record<string, unknown>): { path?: string } => ({
 		...(typeof search.path === "string" && search.path
 			? { path: search.path }
 			: {}),
 	}),
+});
+
+const settings_route = createRoute({
+	getParentRoute: () => root_route,
+	path: "/settings",
+	component: with_suspense(LazySettings),
 });
 
 const qmd_redirect_route = createRoute({
@@ -247,6 +255,7 @@ const route_tree = root_route.addChildren([
 	index_route,
 	sessions_route,
 	explore_route,
+	settings_route,
 	session_detail_layout_route.addChildren([
 		session_detail_index_route,
 		session_detail_conversation_route,
