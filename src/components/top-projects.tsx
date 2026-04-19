@@ -24,7 +24,7 @@ export function TopProjects({ projects }: TopProjectsProps) {
 			<h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
 				Most Active Projects
 			</h2>
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
 				{top.map((project) => (
 					<Card
 						key={project.path}

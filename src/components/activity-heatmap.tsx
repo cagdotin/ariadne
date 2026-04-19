@@ -91,7 +91,7 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
 	}
 
 	return (
-		<Card className="w-full xl:max-w-2/3 2xl:w-1/2">
+		<Card className="min-w-0 w-full overflow-hidden">
 			<CardHeader>
 				<CardTitle className="text-base">Activity</CardTitle>
 			</CardHeader>
