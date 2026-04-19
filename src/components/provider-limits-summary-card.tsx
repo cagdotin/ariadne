@@ -3,6 +3,7 @@ import type {
 	ProviderLimitWindow,
 } from "@contracts/provider-limits";
 import { AlertCircle, Clock, Gauge, RefreshCw } from "lucide-react";
+import { use_provider_limits_enabled } from "@/components/app-settings-provider";
 import { use_provider_limits } from "@/components/provider-limits-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -123,7 +124,12 @@ function ProviderSummary({ snapshot }: { snapshot: ProviderLimitSnapshot }) {
 }
 
 export function ProviderLimitsSummaryCard() {
+	const is_provider_limits_enabled = use_provider_limits_enabled();
 	const { snapshots, loading, refreshing, refresh } = use_provider_limits();
+
+	if (!is_provider_limits_enabled) {
+		return null;
+	}
 
 	if (loading && snapshots.length === 0) {
 		return <Skeleton className="h-[140px]" />;

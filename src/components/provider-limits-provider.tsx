@@ -11,6 +11,7 @@ import {
 	get_provider_limits,
 	refresh_provider_limits,
 } from "@/api/provider-limits";
+import { use_provider_limits_enabled } from "@/components/app-settings-provider";
 
 /** Polling interval: 10 minutes. */
 const POLL_INTERVAL_MS = 10 * 60 * 1000;
@@ -23,82 +24,110 @@ interface ProviderLimitsState {
 	refresh: () => Promise<void>;
 }
 
-const initial_state: ProviderLimitsState = {
-	snapshots: [],
-	loading: true,
-	refreshing: false,
-	error: null,
-	refresh: async () => {},
-};
-
-const ProviderLimitsContext = createContext<ProviderLimitsState>(initial_state);
+const ProviderLimitsContext = createContext<ProviderLimitsState | null>(null);
 
 export function ProviderLimitsProvider({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	const is_provider_limits_enabled = use_provider_limits_enabled();
 	const [snapshots, set_snapshots] = useState<ProviderLimitSnapshot[]>([]);
-	const [loading, set_loading] = useState(true);
+	const [loading, set_loading] = useState(is_provider_limits_enabled);
 	const [refreshing, set_refreshing] = useState(false);
 	const [error, set_error] = useState<string | null>(null);
-	const interval_ref = useRef<ReturnType<typeof setInterval> | null>(null);
+	const request_id_ref = useRef(0);
 
-	// Fetch (cache-first) on mount
+	const clear_state = useCallback(() => {
+		request_id_ref.current += 1;
+		set_snapshots([]);
+		set_error(null);
+		set_loading(false);
+		set_refreshing(false);
+	}, []);
+
 	const fetch_limits = useCallback(async () => {
+		if (!is_provider_limits_enabled) {
+			clear_state();
+			return;
+		}
+
+		const request_id = ++request_id_ref.current;
+		set_loading(true);
+
 		try {
 			const resp = await get_provider_limits();
+			if (request_id !== request_id_ref.current) return;
 			set_snapshots(resp.providers);
 			set_error(null);
 		} catch (err) {
+			if (request_id !== request_id_ref.current) return;
 			console.error("[ProviderLimits] fetch failed:", err);
 			set_error(err instanceof Error ? err.message : String(err));
 		} finally {
-			set_loading(false);
+			if (request_id === request_id_ref.current) {
+				set_loading(false);
+			}
 		}
-	}, []);
+	}, [clear_state, is_provider_limits_enabled]);
 
-	// Manual / polled refresh (force-fetches from providers)
 	const do_refresh = useCallback(async () => {
+		if (!is_provider_limits_enabled) {
+			clear_state();
+			return;
+		}
+
+		const request_id = ++request_id_ref.current;
 		set_refreshing(true);
+
 		try {
 			const resp = await refresh_provider_limits();
+			if (request_id !== request_id_ref.current) return;
 			set_snapshots(resp.providers);
 			set_error(null);
 		} catch (err) {
+			if (request_id !== request_id_ref.current) return;
 			console.error("[ProviderLimits] refresh failed:", err);
 			set_error(err instanceof Error ? err.message : String(err));
 		} finally {
-			set_refreshing(false);
+			if (request_id === request_id_ref.current) {
+				set_loading(false);
+				set_refreshing(false);
+			}
 		}
-	}, []);
+	}, [clear_state, is_provider_limits_enabled]);
 
-	// Initial fetch
 	useEffect(() => {
-		fetch_limits();
-	}, [fetch_limits]);
+		if (!is_provider_limits_enabled) {
+			clear_state();
+			return;
+		}
 
-	// Poll every 10 minutes
+		void fetch_limits();
+	}, [clear_state, fetch_limits, is_provider_limits_enabled]);
+
 	useEffect(() => {
-		interval_ref.current = setInterval(() => {
-			do_refresh();
+		if (!is_provider_limits_enabled) return;
+
+		const interval_id = window.setInterval(() => {
+			void do_refresh();
 		}, POLL_INTERVAL_MS);
 
 		return () => {
-			if (interval_ref.current) {
-				clearInterval(interval_ref.current);
-			}
+			window.clearInterval(interval_id);
 		};
-	}, [do_refresh]);
+	}, [do_refresh, is_provider_limits_enabled]);
 
-	// Refresh on window focus
 	useEffect(() => {
+		if (!is_provider_limits_enabled) return;
+
 		const handle_focus = () => {
-			do_refresh();
+			void do_refresh();
 		};
+
 		window.addEventListener("focus", handle_focus);
 		return () => window.removeEventListener("focus", handle_focus);
-	}, [do_refresh]);
+	}, [do_refresh, is_provider_limits_enabled]);
 
 	return (
 		<ProviderLimitsContext.Provider
@@ -109,12 +138,12 @@ export function ProviderLimitsProvider({
 	);
 }
 
-export function use_provider_limits() {
-	const ctx = useContext(ProviderLimitsContext);
-	if (ctx === undefined) {
+export function use_provider_limits(): ProviderLimitsState {
+	const context = useContext(ProviderLimitsContext);
+	if (!context) {
 		throw new Error(
 			"use_provider_limits must be used within a ProviderLimitsProvider",
 		);
 	}
-	return ctx;
+	return context;
 }
