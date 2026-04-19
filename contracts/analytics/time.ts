@@ -25,6 +25,16 @@ export const hour_count_schema = z.object({
 });
 export type HourCount = z.infer<typeof hour_count_schema>;
 
+export const daily_model_usage_schema = z.object({
+	date: z.string(),
+	model_id: z.string(),
+	provider: z.string(),
+	message_count: z.number(),
+	session_equivalent_count: z.number(),
+	total_cost: z.number(),
+});
+export type DailyModelUsage = z.infer<typeof daily_model_usage_schema>;
+
 export const time_breakdown_schema = z.object({
 	range_days: z.number(),
 	total_sessions: z.number(),
@@ -36,5 +46,6 @@ export const time_breakdown_schema = z.object({
 	daily_sessions: z.array(day_count_schema),
 	daily_cost: z.array(day_cost_schema),
 	hourly_sessions: z.array(hour_count_schema),
+	daily_model_usage: z.array(daily_model_usage_schema).default([]),
 });
 export type TimeBreakdown = z.infer<typeof time_breakdown_schema>;

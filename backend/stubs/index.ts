@@ -111,6 +111,7 @@ stub("get_time_breakdown", {
 	daily_sessions: [],
 	daily_cost: [],
 	hourly_sessions: [],
+	daily_model_usage: [],
 });
 
 stub("get_session_entries", {

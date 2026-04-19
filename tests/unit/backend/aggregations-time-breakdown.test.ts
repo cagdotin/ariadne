@@ -59,6 +59,7 @@ describe("get_time_breakdown", () => {
 		expect(result.avg_cost_per_session).toBe(0);
 		expect(result.by_weekday).toHaveLength(7);
 		expect(result.by_time_of_day).toHaveLength(5);
+		expect(result.daily_model_usage).toEqual([]);
 	});
 
 	it("has 7 weekday entries Mon-Sun", async () => {
@@ -142,5 +143,42 @@ describe("get_time_breakdown", () => {
 	it("returns range_days in result", async () => {
 		const result = await get_time_breakdown(30, null);
 		expect(result.range_days).toBe(30);
+	});
+
+	it("builds daily_model_usage with session-weighted model shares", async () => {
+		vi.mocked(session_cache.get_or_init).mockResolvedValue([
+			make_session({
+				started_at: "2025-06-01T12:00:00Z",
+				total_cost: 10,
+				models_used: [
+					{
+						model_id: "claude-sonnet",
+						provider: "anthropic",
+						message_count: 3,
+					},
+					{ model_id: "claude-opus", provider: "anthropic", message_count: 1 },
+				],
+			}),
+		]);
+
+		const result = await get_time_breakdown(0, null);
+		expect(result.daily_model_usage).toEqual([
+			{
+				date: "2025-06-01",
+				model_id: "claude-opus",
+				provider: "anthropic",
+				message_count: 1,
+				session_equivalent_count: 0.25,
+				total_cost: 2.5,
+			},
+			{
+				date: "2025-06-01",
+				model_id: "claude-sonnet",
+				provider: "anthropic",
+				message_count: 3,
+				session_equivalent_count: 0.75,
+				total_cost: 7.5,
+			},
+		]);
 	});
 });

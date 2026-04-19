@@ -43,6 +43,15 @@ export interface HourCount {
 	count: number;
 }
 
+export interface DailyModelUsage {
+	date: string;
+	model_id: string;
+	provider: string;
+	message_count: number;
+	session_equivalent_count: number;
+	total_cost: number;
+}
+
 export interface TimeBreakdown {
 	range_days: number;
 	total_sessions: number;
@@ -54,6 +63,7 @@ export interface TimeBreakdown {
 	daily_sessions: DayCount[];
 	daily_cost: DayCost[];
 	hourly_sessions: HourCount[];
+	daily_model_usage: DailyModelUsage[];
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -97,6 +107,7 @@ export async function get_time_breakdown(
 
 	// Hourly (populated only when range_days == 1)
 	const hourly_sessions_arr = new Array<number>(24).fill(0);
+	const daily_model_usage_map = new Map<string, DailyModelUsage>();
 
 	for (const s of filtered) {
 		const dt = parse_timestamp(s.started_at);
@@ -126,6 +137,56 @@ export async function get_time_breakdown(
 		// hourly — accumulate for "today" view
 		if (range_days === 1) {
 			hourly_sessions_arr[hour] += 1;
+		}
+
+		const model_weights =
+			s.models_used.length > 0
+				? (() => {
+						const total_message_count = s.models_used.reduce(
+							(sum, model_usage) =>
+								sum + Math.max(model_usage.message_count, 0),
+							0,
+						);
+						if (total_message_count > 0) {
+							return s.models_used.map((model_usage) => ({
+								model_id: model_usage.model_id,
+								provider: model_usage.provider,
+								message_count: model_usage.message_count,
+								weight: model_usage.message_count / total_message_count,
+							}));
+						}
+
+						const equal_weight = 1 / s.models_used.length;
+						return s.models_used.map((model_usage) => ({
+							model_id: model_usage.model_id,
+							provider: model_usage.provider,
+							message_count: model_usage.message_count,
+							weight: equal_weight,
+						}));
+					})()
+				: [
+						{
+							model_id: "unknown",
+							provider: "unknown",
+							message_count: 0,
+							weight: 1,
+						},
+					];
+
+		for (const model_weight of model_weights) {
+			const model_key = `${date}\0${model_weight.provider}\0${model_weight.model_id}`;
+			const model_entry = daily_model_usage_map.get(model_key) ?? {
+				date,
+				model_id: model_weight.model_id,
+				provider: model_weight.provider,
+				message_count: 0,
+				session_equivalent_count: 0,
+				total_cost: 0,
+			};
+			model_entry.message_count += model_weight.message_count;
+			model_entry.session_equivalent_count += model_weight.weight;
+			model_entry.total_cost += s.total_cost * model_weight.weight;
+			daily_model_usage_map.set(model_key, model_entry);
 		}
 	}
 
@@ -170,6 +231,13 @@ export async function get_time_breakdown(
 		}));
 	}
 
+	const daily_model_usage = Array.from(daily_model_usage_map.values());
+	daily_model_usage.sort((a, b) => {
+		if (a.date !== b.date) return a.date.localeCompare(b.date);
+		if (a.provider !== b.provider) return a.provider.localeCompare(b.provider);
+		return a.model_id.localeCompare(b.model_id);
+	});
+
 	return {
 		range_days,
 		total_sessions,
@@ -181,5 +249,6 @@ export async function get_time_breakdown(
 		daily_sessions,
 		daily_cost,
 		hourly_sessions,
+		daily_model_usage,
 	};
 }
