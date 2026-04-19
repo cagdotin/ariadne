@@ -4,6 +4,7 @@ import { AlertTriangle, Terminal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { get_qmd_log_stats, get_qmd_logs } from "@/api/qmd-logs";
 import { use_project_scope } from "@/components/project-scope-provider";
+import { QmdFeatureGate } from "@/components/qmd-feature-gate";
 import { QmdLogOutputDialog } from "@/components/qmd-logs/qmd-log-output-dialog";
 import { QmdLogStatsDisplay } from "@/components/qmd-logs/qmd-log-stats";
 import { QmdLogsTable } from "@/components/qmd-logs/qmd-logs-table";
@@ -13,6 +14,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { error_message } from "@/lib/utils";
 
 export function QmdLogs() {
+	return (
+		<QmdFeatureGate
+			disabled_icon={Terminal}
+			disabled_title="QMD logs"
+			disabled_description="QMD CLI observability is behind the same local experimental flag as QMD itself."
+			unavailable_title="QMD logs require qmd"
+			unavailable_description="Install qmd on this machine before using Ariadne's QMD log views."
+		>
+			<QmdLogsEnabled />
+		</QmdFeatureGate>
+	);
+}
+
+function QmdLogsEnabled() {
 	const { scope } = use_project_scope();
 
 	const [logs, set_logs] = useState<QmdLogEntry[]>([]);
