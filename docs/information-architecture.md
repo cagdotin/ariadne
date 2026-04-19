@@ -178,6 +178,7 @@ It is a **global analytics scope**, persisted in local storage.
 ### What lives here
 - top-level metric cards
 - daily trend
+- compact recent sessions preview (last 5 for current scope)
 - Top Projects cards when no project is scoped
 - activity heatmap
 
@@ -188,7 +189,7 @@ It is a **global analytics scope**, persisted in local storage.
 ### Important rules
 - this page is summary-first
 - it should stay scannable
-- deep drill-down tables do not belong here
+- only compact preview tables belong here; full session browsing still belongs on the Sessions page
 - Top Projects is an affordance for setting global scope, not a navigation card grid to project routes
 
 ---
