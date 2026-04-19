@@ -2,6 +2,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { AnalyticsTimeRangeProvider } from "./components/analytics-time-range-provider";
+import { AppSettingsProvider } from "./components/app-settings-provider";
 import { ProjectScopeProvider } from "./components/project-scope-provider";
 import { ProviderLimitsProvider } from "./components/provider-limits-provider";
 import { router } from "./router";
@@ -21,12 +22,14 @@ document.addEventListener("keydown", (e) => {
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 	<React.StrictMode>
-		<ProjectScopeProvider>
-			<AnalyticsTimeRangeProvider>
-				<ProviderLimitsProvider>
-					<RouterProvider router={router} />
-				</ProviderLimitsProvider>
-			</AnalyticsTimeRangeProvider>
-		</ProjectScopeProvider>
+		<AppSettingsProvider>
+			<ProjectScopeProvider>
+				<AnalyticsTimeRangeProvider>
+					<ProviderLimitsProvider>
+						<RouterProvider router={router} />
+					</ProviderLimitsProvider>
+				</AnalyticsTimeRangeProvider>
+			</ProjectScopeProvider>
+		</AppSettingsProvider>
 	</React.StrictMode>,
 );
