@@ -80,6 +80,7 @@ type ContributionGraphContextType = {
 	labelHeight: number;
 	maxLevel: number;
 	totalCount: number;
+	title: string;
 	weekStart: WeekDay;
 	year: number;
 	width: number;
@@ -233,6 +234,7 @@ export type ContributionGraphProps = HTMLAttributes<HTMLDivElement> & {
 	maxLevel?: number;
 	style?: CSSProperties;
 	totalCount?: number;
+	title?: string;
 	weekStart?: WeekDay;
 	children: ReactNode;
 	className?: string;
@@ -248,6 +250,7 @@ export const ContributionGraph = ({
 	maxLevel: max_level_prop = 4,
 	style = {},
 	totalCount: total_count_prop = undefined,
+	title = "Session activity over the last year",
 	weekStart: week_start = 0,
 	className,
 	...props
@@ -292,6 +295,7 @@ export const ContributionGraph = ({
 				labelHeight: label_height,
 				maxLevel: max_level,
 				totalCount: total_count,
+				title,
 				weekStart: week_start,
 				year,
 				width,
@@ -390,7 +394,7 @@ export const ContributionGraphCalendar = ({
 	children,
 	...props
 }: ContributionGraphCalendarProps) => {
-	const { weeks, width, height, blockSize, blockMargin, labels } =
+	const { weeks, width, height, blockSize, blockMargin, labels, title } =
 		useContributionGraph();
 
 	const month_labels = useMemo(
@@ -413,7 +417,7 @@ export const ContributionGraphCalendar = ({
 					? { width: "100%", style: { aspectRatio: `${width} / ${height}` } }
 					: { width, height })}
 			>
-				<title>Session activity over the last year</title>
+				<title>{title}</title>
 				{!hideMonthLabels && (
 					<g className="fill-current">
 						{month_labels.map(({ label, weekIndex }) => (

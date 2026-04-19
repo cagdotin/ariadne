@@ -1,5 +1,5 @@
 import type { DayCount } from "@contracts/shared";
-import { formatISO, subWeeks } from "date-fns";
+import { formatISO, startOfMonth, subMonths } from "date-fns";
 import { useMemo } from "react";
 import {
 	type Activity,
@@ -16,7 +16,9 @@ interface ActivityHeatmapProps {
 	data: DayCount[];
 }
 
-/** Convert DayCount[] into Activity[] with computed levels, spanning the last 52 weeks. */
+const visible_months = 6;
+
+/** Convert DayCount[] into Activity[] with computed levels, spanning the last 6 months. */
 function to_activities(data: DayCount[]): Activity[] {
 	const lookup = new Map<string, number>();
 	let max_count = 0;
@@ -35,13 +37,13 @@ function to_activities(data: DayCount[]): Activity[] {
 		return 4;
 	};
 
-	// Build date range: ~52 weeks back from today
+	// Build date range: current month plus the previous 5 months.
 	const today = new Date();
-	const start = subWeeks(today, 52);
+	const start = startOfMonth(subMonths(today, visible_months - 1));
 	const start_str = formatISO(start, { representation: "date" });
 	const end_str = formatISO(today, { representation: "date" });
 
-	// Ensure the range bookends exist so the component fills the full 52 weeks
+	// Ensure the range bookends exist so the component fills the full 6-month window
 	const activities: Activity[] = [];
 	const seen = new Set<string>();
 
@@ -103,16 +105,23 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
 					blockRadius={2}
 					fontSize={10}
 					labels={{
-						totalCount: "{{count}} sessions in {{year}}",
 						legend: { less: "Less", more: "More" },
 					}}
+					title={`Session activity over the last ${visible_months} months`}
 					weekStart={1}
 				>
 					<ContributionGraphCalendar responsive>
 						{(props) => <ContributionGraphBlock {...props} />}
 					</ContributionGraphCalendar>
 					<ContributionGraphFooter>
-						<ContributionGraphTotalCount />
+						<ContributionGraphTotalCount>
+							{({ totalCount }) => (
+								<div className="text-muted-foreground">
+									{totalCount} {totalCount === 1 ? "session" : "sessions"} in
+									the last {visible_months} months
+								</div>
+							)}
+						</ContributionGraphTotalCount>
 						<ContributionGraphLegend />
 					</ContributionGraphFooter>
 				</ContributionGraph>

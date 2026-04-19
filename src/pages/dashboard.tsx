@@ -1,5 +1,6 @@
 import type { AnalyticsOverview } from "@contracts/analytics/overview";
 import type { TimeBreakdown } from "@contracts/analytics/time";
+import type { DayCount } from "@contracts/shared";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { get_analytics_overview, get_time_breakdown } from "@/api/analytics";
@@ -9,6 +10,7 @@ import { DailyTrend } from "@/components/daily-trend";
 import { OverviewStatsCard } from "@/components/overview-stats-card";
 import { use_project_scope } from "@/components/project-scope-provider";
 import { ProviderLimitsSummaryCard } from "@/components/provider-limits-summary-card";
+import { RecentSessionsCard } from "@/components/recent-sessions-card";
 import { TopProjects } from "@/components/top-projects";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,12 +29,14 @@ export function Dashboard() {
 
 	const [overview, set_overview] = useState<AnalyticsOverview | null>(null);
 	const [time_data, set_time_data] = useState<TimeBreakdown | null>(null);
+	const [heatmap_data, set_heatmap_data] = useState<DayCount[] | null>(null);
 	const [loading, set_loading] = useState(true);
 	const [error, set_error] = useState<string | null>(null);
 
 	// Track previous scope to distinguish scope changes from range changes.
 	// Scope change → show loading skeleton; range change → silent update.
 	const prev_project_path = useRef(project_path);
+	const has_loaded_data = useRef(false);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -41,17 +45,31 @@ export function Dashboard() {
 
 		const fetch_data = async () => {
 			try {
-				// Show loading skeleton on scope change or initial mount (overview is null).
+				// Show loading skeleton on scope change or initial mount.
 				// Range-only changes keep the current data visible while refreshing.
-				if (scope_changed || !overview) set_loading(true);
+				if (scope_changed || !has_loaded_data.current) set_loading(true);
 				set_error(null);
-				const [next_overview, next_time_data] = await Promise.all([
-					get_analytics_overview(project_path),
-					get_time_breakdown(range_days, project_path),
-				]);
+
+				const overview_promise = get_analytics_overview(
+					project_path,
+					range_days,
+				);
+				const heatmap_overview_promise =
+					range_days === 0
+						? overview_promise
+						: get_analytics_overview(project_path, 0);
+
+				const [next_overview, next_time_data, heatmap_overview] =
+					await Promise.all([
+						overview_promise,
+						get_time_breakdown(range_days, project_path),
+						heatmap_overview_promise,
+					]);
 				if (cancelled) return;
 				set_overview(next_overview);
 				set_time_data(next_time_data);
+				set_heatmap_data(heatmap_overview.sessions_by_date);
+				has_loaded_data.current = true;
 			} catch (err) {
 				if (cancelled) return;
 				set_error(error_message(err, "Failed to load analytics"));
@@ -65,18 +83,19 @@ export function Dashboard() {
 		return () => {
 			cancelled = true;
 		};
-	}, [project_path, range_days, overview]);
+	}, [project_path, range_days]);
 
 	if (loading) {
 		return (
 			<div className="grid gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(18rem,3fr)] xl:items-start">
 				<div className="order-2 space-y-4 xl:order-1">
-					<Skeleton className="h-52 w-full" />
+					<Skeleton className="h-64 w-full" />
+					<Skeleton className="h-72 w-full" />
 					<Skeleton className="h-44 w-full" />
-					<Skeleton className="h-56 w-full" />
 				</div>
 				<div className="order-1 space-y-4 xl:order-2">
 					<Skeleton className="h-[360px] w-full" />
+					<Skeleton className="h-[240px] w-full" />
 					<Skeleton className="h-[220px] w-full" />
 				</div>
 			</div>
@@ -93,7 +112,7 @@ export function Dashboard() {
 		);
 	}
 
-	if (!overview || !time_data) {
+	if (!overview || !time_data || !heatmap_data) {
 		return <div className="text-muted-foreground">No data available</div>;
 	}
 
@@ -141,11 +160,12 @@ export function Dashboard() {
 		<div className="grid gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(18rem,3fr)] xl:items-start">
 			<div className="order-2 min-w-0 space-y-4 xl:order-1">
 				<DailyTrend data={time_data} range_days={range_days} />
+				<RecentSessionsCard sessions={overview.recent_sessions} />
 				{!scope && <TopProjects projects={overview.projects} />}
-				<ActivityHeatmap data={overview.sessions_by_date} />
 			</div>
 			<div className="order-1 min-w-0 space-y-4 xl:order-2">
 				<OverviewStatsCard rows={overview_rows} />
+				<ActivityHeatmap data={heatmap_data} />
 				<ProviderLimitsSummaryCard />
 			</div>
 		</div>
