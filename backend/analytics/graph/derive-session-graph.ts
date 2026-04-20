@@ -6,7 +6,10 @@
  */
 
 import * as path from "node:path";
-
+import {
+	is_discovery_tool,
+	is_doc_path,
+} from "../../../contracts/graph/tool-classification.js";
 import type {
 	AvailabilityState,
 	Confidence,
@@ -21,15 +24,17 @@ import type {
 	SessionEntry,
 	SessionHeader,
 } from "../../../contracts/sessions/replay.js";
-import {
-	is_discovery_tool,
-	is_doc_path,
-} from "../../../contracts/graph/tool-classification.js";
 import { make_file_node_id, normalize_graph_path } from "./graph-ids.js";
 
 // ── Replay type helpers ─────────────────────────────────────────────────────
 
 type MessageEntry = Extract<SessionEntry, { type: "message" }>;
+type ModelChangeEntry = Extract<SessionEntry, { type: "model_change" }>;
+type ThinkingLevelChangeEntry = Extract<
+	SessionEntry,
+	{ type: "thinking_level_change" }
+>;
+type CustomMessageEntry = Extract<SessionEntry, { type: "custom_message" }>;
 type MessageData = MessageEntry["message"];
 type ToolCallBlock = Extract<
 	Extract<MessageData, { role: "assistant" }>["content"][number],
@@ -756,18 +761,25 @@ export function derive_session_graph(
 	// ── Framing: model/thinking/custom from entries ──────────────────────
 	for (const entry of entries) {
 		if (entry.type === "model_change") {
-			const mc_id = `framing_model_${entry.id}`;
+			const model_change_entry = entry as ModelChangeEntry;
+			const mc_id = `framing_model_${model_change_entry.id}`;
 			add_node(
 				make_node(
 					mc_id,
 					"runtime_context",
-					`Model: ${(entry as any).modelId ?? "unknown"} (${(entry as any).provider ?? "unknown"})`,
+					`Model: ${model_change_entry.modelId} (${model_change_entry.provider})`,
 					"available_observed",
 					"high",
-					[make_evidence("observed_replay", entry.id, "model_change entry")],
+					[
+						make_evidence(
+							"observed_replay",
+							model_change_entry.id,
+							"model_change entry",
+						),
+					],
 					{
-						provider: (entry as any).provider,
-						model_id: (entry as any).modelId,
+						provider: model_change_entry.provider,
+						model_id: model_change_entry.modelId,
 					},
 				),
 			);
@@ -778,28 +790,29 @@ export function derive_session_graph(
 					"framed_by",
 					"available_observed",
 					"high",
-					[make_evidence("observed_replay", entry.id)],
+					[make_evidence("observed_replay", model_change_entry.id)],
 				),
 			);
 		}
 
 		if (entry.type === "thinking_level_change") {
-			const tl_id = `framing_thinking_${entry.id}`;
+			const thinking_level_change_entry = entry as ThinkingLevelChangeEntry;
+			const tl_id = `framing_thinking_${thinking_level_change_entry.id}`;
 			add_node(
 				make_node(
 					tl_id,
 					"runtime_context",
-					`Thinking: ${(entry as any).thinkingLevel ?? "unknown"}`,
+					`Thinking: ${thinking_level_change_entry.thinkingLevel}`,
 					"available_observed",
 					"high",
 					[
 						make_evidence(
 							"observed_replay",
-							entry.id,
+							thinking_level_change_entry.id,
 							"thinking_level_change entry",
 						),
 					],
-					{ thinking_level: (entry as any).thinkingLevel },
+					{ thinking_level: thinking_level_change_entry.thinkingLevel },
 				),
 			);
 			edges.push(
@@ -809,15 +822,16 @@ export function derive_session_graph(
 					"framed_by",
 					"available_observed",
 					"high",
-					[make_evidence("observed_replay", entry.id)],
+					[make_evidence("observed_replay", thinking_level_change_entry.id)],
 				),
 			);
 		}
 
 		if (entry.type === "custom_message") {
-			const custom_type = (entry as any).customType as string;
+			const custom_message_entry = entry as CustomMessageEntry;
+			const custom_type = custom_message_entry.customType;
 			if (NOTABLE_CUSTOM_MESSAGES.has(custom_type)) {
-				const cm_id = `framing_custom_${entry.id}`;
+				const cm_id = `framing_custom_${custom_message_entry.id}`;
 				add_node(
 					make_node(
 						cm_id,
@@ -828,7 +842,7 @@ export function derive_session_graph(
 						[
 							make_evidence(
 								"observed_custom_message",
-								entry.id,
+								custom_message_entry.id,
 								`custom_message: ${custom_type}`,
 							),
 						],
@@ -842,7 +856,7 @@ export function derive_session_graph(
 						"framed_by",
 						"available_observed",
 						"high",
-						[make_evidence("observed_custom_message", entry.id)],
+						[make_evidence("observed_custom_message", custom_message_entry.id)],
 					),
 				);
 			}
