@@ -46,6 +46,7 @@ import {
 } from "@/lib/exploration-session-graph-grouped-layout";
 import {
 	project_session_graph_grouped,
+	resolve_grouped_selection_member_id,
 	type SessionGraphGroupedEdgeRole as SessionGraphTreeEdgeRole,
 } from "@/lib/exploration-session-graph-grouped-view-model";
 import { cn } from "@/lib/utils";
@@ -391,6 +392,18 @@ export function ExplorationGraph({
 		() => graph.nodes.find((node) => node.id === selected_node_id) ?? null,
 		[graph, selected_node_id],
 	);
+	const handle_select_projection_node = useCallback(
+		(projection_node_id: string) => {
+			on_select_node(
+				resolve_grouped_selection_member_id(
+					projection,
+					projection_node_id,
+					selected_node_id,
+				),
+			);
+		},
+		[on_select_node, projection, selected_node_id],
+	);
 
 	const selected_layout_node = useMemo(
 		() =>
@@ -614,13 +627,18 @@ export function ExplorationGraph({
 				);
 				const hit_node = get_node_at_world_point(layout.nodes, world_point);
 				if (hit_node) {
-					on_select_node(hit_node.id);
+					handle_select_projection_node(hit_node.id);
 				}
 			}
 
 			clear_pointer_interaction(event);
 		},
-		[clear_pointer_interaction, layout.nodes, on_select_node, viewport],
+		[
+			clear_pointer_interaction,
+			handle_select_projection_node,
+			layout.nodes,
+			viewport,
+		],
 	);
 	const selected_overlay = useMemo(() => {
 		if (!selected_layout_node || !viewport) return null;
