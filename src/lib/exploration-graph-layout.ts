@@ -20,6 +20,15 @@ import type {
 	InsightSubgraph,
 } from "./exploration-insight-graph-view-model";
 
+const turn_focal_kinds = new Set(["user_prompt", "assistant_turn"]);
+const tool_kinds = new Set(["tool_call", "search_query"]);
+const artifact_kinds = new Set([
+	"source_file",
+	"doc_file",
+	"doc_section",
+	"directory",
+]);
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface LayoutNode {
@@ -78,8 +87,15 @@ export function compute_graph_layout(insight: InsightSubgraph): GraphLayout {
 	const node_map = new Map<string, InsightNode>();
 	for (const n of insight.nodes) node_map.set(n.id, n);
 
-	// Assign topological depth (column) via longest-path from roots
+	// Assign topological depth (column) via longest-path from roots,
+	// then normalize turn-centric layouts so the selected turn stays leftmost.
 	const depth = assign_depth(insight.nodes, insight.edges, children);
+	const focal_node = insight.focal_node_id
+		? (node_map.get(insight.focal_node_id) ?? null)
+		: null;
+	if (focal_node && turn_focal_kinds.has(focal_node.node.kind)) {
+		normalize_turn_focal_depth(depth, insight.nodes, focal_node.id);
+	}
 
 	// Assign rows: walk depth-first from roots, allocating rows sequentially
 	// so that parent→child chains stay visually together
@@ -93,15 +109,7 @@ export function compute_graph_layout(insight: InsightSubgraph): GraphLayout {
 	roots.sort((a, b) => a.id.localeCompare(b.id));
 
 	for (const root of roots) {
-		place_subtree(
-			root.id,
-			depth,
-			children,
-			node_row,
-			placed,
-			row_counter,
-			node_map,
-		);
+		place_subtree(root.id, depth, children, node_row, placed, row_counter);
 	}
 	// Place any remaining unconnected nodes
 	for (const n of insight.nodes) {
@@ -208,6 +216,35 @@ function assign_depth(
 	return depth;
 }
 
+function normalize_turn_focal_depth(
+	depth: Map<string, number>,
+	nodes: InsightNode[],
+	focal_node_id: string,
+): void {
+	const focal_column = depth.get(focal_node_id) ?? 0;
+	for (const node of nodes) {
+		const current_column = depth.get(node.id) ?? 0;
+		const normalized_column = Math.max(0, current_column - focal_column);
+
+		if (turn_focal_kinds.has(node.node.kind)) {
+			depth.set(node.id, 0);
+			continue;
+		}
+
+		if (tool_kinds.has(node.node.kind)) {
+			depth.set(node.id, Math.max(1, normalized_column));
+			continue;
+		}
+
+		if (artifact_kinds.has(node.node.kind)) {
+			depth.set(node.id, Math.max(2, normalized_column));
+			continue;
+		}
+
+		depth.set(node.id, normalized_column);
+	}
+}
+
 // ── Row assignment (DFS subtree placement) ──────────────────────────────────
 
 function place_subtree(
@@ -217,7 +254,6 @@ function place_subtree(
 	node_row: Map<string, number>,
 	placed: Set<string>,
 	row_counter: { value: number },
-	node_map: Map<string, InsightNode>,
 ): void {
 	if (placed.has(id)) return;
 	placed.add(id);
@@ -234,15 +270,7 @@ function place_subtree(
 	});
 
 	for (const e of sorted_children) {
-		place_subtree(
-			e.target_id,
-			depth,
-			children,
-			node_row,
-			placed,
-			row_counter,
-			node_map,
-		);
+		place_subtree(e.target_id, depth, children, node_row, placed, row_counter);
 	}
 }
 
