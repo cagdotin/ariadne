@@ -13,38 +13,23 @@ import {
 	PanelRightClose,
 	PanelRightOpen,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import type { SessionEntry } from "@/components/session-viewer/types";
-import { Button } from "@/components/ui/button";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import {
-	compute_route_connectors,
-	compute_selection_subgraph,
-	type FocusMode,
-	type VisibilityOptions,
-} from "@/lib/exploration-graph-view-model";
-import {
-	compute_insight_subgraph,
-	type InsightOptions,
-} from "@/lib/exploration-insight-graph-view-model";
-import {
-	compute_arrival_contributors,
-	compute_temporally_visible_nodes,
-	derive_temporal_lens,
-	type TemporalLens,
-} from "@/lib/exploration-temporal-view-model";
+import type { FocusMode } from "@/lib/exploration-graph-view-model";
 import { ExplorationControls } from "./exploration-controls";
 import { ExplorationGraph } from "./exploration-graph";
 import { ExplorationInspectorV2 } from "./exploration-inspector-v2";
 import { ExplorationMap } from "./exploration-map";
+import type { MiddlePaneMode } from "./exploration-middle-pane-mode";
+import { ExplorationPanelToggleHandle } from "./exploration-panel-toggle-handle";
 import { ExplorationPath } from "./exploration-path";
-
-export type MiddlePaneMode = "map" | "graph";
+import { use_exploration_view_state } from "./use-exploration-view-state";
 
 interface ExplorationViewProps {
 	graph?: SessionGraphPayload | null;
@@ -106,86 +91,20 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 		}
 	}, [graph, show_ambient, selected_node_id]);
 
-	// Derive highlighted subgraph from selection + focus mode
-	const selection_subgraph = useMemo(
-		() =>
-			graph
-				? compute_selection_subgraph(selected_node_id, graph, focus_mode)
-				: {
-						highlighted_node_ids: new Set<string>(),
-						highlighted_edge_keys: new Set<string>(),
-					},
-		[selected_node_id, graph, focus_mode],
-	);
-
-	// Derive temporal lens from selection
-	const temporal_lens: TemporalLens = useMemo(
-		() =>
-			graph
-				? derive_temporal_lens(selected_node_id, graph)
-				: { kind: "full_session" },
-		[selected_node_id, graph],
-	);
-
-	// Compute temporally visible nodes based on the active lens
-	const temporally_visible_node_ids: Set<string> | undefined = useMemo(() => {
-		if (!graph) return undefined;
-
-		if (temporal_lens.kind === "built_so_far") {
-			return compute_temporally_visible_nodes(graph, temporal_lens.cutoff);
-		}
-
-		if (temporal_lens.kind === "arrival_path") {
-			return compute_arrival_contributors(temporal_lens.target_node_id, graph);
-		}
-
-		return undefined;
-	}, [graph, temporal_lens]);
-
-	// Visibility options bundle — artifact-first map with selection scaffolding + temporal filtering
-	const visibility: VisibilityOptions = useMemo(
-		() => ({
-			show_ambient,
-			show_inferred,
-			show_unexplored,
-			artifact_first: true,
-			scaffolding_node_ids:
-				selected_node_id && selection_subgraph.highlighted_node_ids.size > 0
-					? selection_subgraph.highlighted_node_ids
-					: undefined,
-			temporally_visible_node_ids,
-		}),
-		[
-			show_ambient,
-			show_inferred,
-			show_unexplored,
-			selected_node_id,
-			selection_subgraph,
-			temporally_visible_node_ids,
-		],
-	);
-
-	// Derive route connectors
-	const route_connectors = useMemo(
-		() =>
-			graph
-				? compute_route_connectors(graph, selection_subgraph, visibility)
-				: [],
-		[graph, selection_subgraph, visibility],
-	);
-
-	// Derive insight subgraph for the inspector and question actions
-	const insight_options: InsightOptions = useMemo(
-		() => ({ temporally_visible_node_ids }),
-		[temporally_visible_node_ids],
-	);
-	const insight_subgraph = useMemo(
-		() =>
-			graph
-				? compute_insight_subgraph(selected_node_id, graph, insight_options)
-				: { focal_node_id: null, nodes: [], edges: [] },
-		[selected_node_id, graph, insight_options],
-	);
+	const {
+		selection_subgraph,
+		temporal_lens,
+		visibility,
+		route_connectors,
+		insight_subgraph,
+	} = use_exploration_view_state({
+		graph,
+		selected_node_id,
+		focus_mode,
+		show_ambient,
+		show_inferred,
+		show_unexplored,
+	});
 
 	// If no graph, fall back to a simple message
 	if (!graph) {
@@ -240,19 +159,13 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 				</ResizablePanel>
 
 				{/* Left handle with collapse toggle */}
-				<ResizableHandle className="relative group/handle">
-					<Button
-						variant="ghost"
-						size="icon"
-						className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-20 size-5 rounded-sm opacity-0 group-hover/handle:opacity-100 transition-opacity bg-background border border-border shadow-sm hover:bg-accent"
-						onClick={toggle_left_panel}
-					>
-						{left_collapsed ? (
-							<PanelLeftOpen className="size-3" />
-						) : (
-							<PanelLeftClose className="size-3" />
-						)}
-					</Button>
+				<ResizableHandle className="group/handle relative">
+					<ExplorationPanelToggleHandle
+						collapsed={left_collapsed}
+						collapsed_icon={PanelLeftOpen}
+						expanded_icon={PanelLeftClose}
+						on_toggle={toggle_left_panel}
+					/>
 				</ResizableHandle>
 
 				{/* Center + Right: Context Map + Inspector */}
@@ -287,19 +200,13 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 						</ResizablePanel>
 
 						{/* Right handle with collapse toggle */}
-						<ResizableHandle className="relative group/handle">
-							<Button
-								variant="ghost"
-								size="icon"
-								className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-20 size-5 rounded-sm opacity-0 group-hover/handle:opacity-100 transition-opacity bg-background border border-border shadow-sm hover:bg-accent"
-								onClick={toggle_right_panel}
-							>
-								{right_collapsed ? (
-									<PanelRightOpen className="size-3" />
-								) : (
-									<PanelRightClose className="size-3" />
-								)}
-							</Button>
+						<ResizableHandle className="group/handle relative">
+							<ExplorationPanelToggleHandle
+								collapsed={right_collapsed}
+								collapsed_icon={PanelRightOpen}
+								expanded_icon={PanelRightClose}
+								on_toggle={toggle_right_panel}
+							/>
 						</ResizableHandle>
 
 						{/* Right: Inspector (collapsible, always mounted) */}
