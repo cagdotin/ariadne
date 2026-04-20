@@ -4,7 +4,10 @@ import type {
 	GraphNode,
 	SessionGraphPayload,
 } from "../../../contracts/graph/types";
-import { project_session_graph_grouped } from "../../../src/lib/exploration-session-graph-grouped-view-model";
+import {
+	project_session_graph_grouped,
+	resolve_grouped_selection_member_id,
+} from "../../../src/lib/exploration-session-graph-grouped-view-model";
 
 function make_node(
 	id: string,
@@ -79,11 +82,9 @@ function make_repeated_touch_graph(): SessionGraphPayload {
 				tool_name: "write",
 				relative_path: "backend/analytics/aggregations/file-session-bridge.ts",
 			}),
-			make_node(
-				"file_bridge",
-				"source_file",
-				{ path: "backend/analytics/aggregations/file-session-bridge.ts" },
-			),
+			make_node("file_bridge", "source_file", {
+				path: "backend/analytics/aggregations/file-session-bridge.ts",
+			}),
 		],
 		[
 			make_edge("user_0", "turn_0", "prompted"),
@@ -101,10 +102,18 @@ function make_repeated_touch_graph(): SessionGraphPayload {
 
 describe("project_session_graph_grouped", () => {
 	it("collapses repeated file-touch actions by semantic signature", () => {
-		const projection = project_session_graph_grouped(make_repeated_touch_graph());
-		const write_group = projection.nodes.find((node) => node.id === "tool_write_0");
-		const edit_group = projection.nodes.find((node) => node.id === "tool_edit_1");
-		const file_group = projection.nodes.find((node) => node.id === "file_bridge");
+		const projection = project_session_graph_grouped(
+			make_repeated_touch_graph(),
+		);
+		const write_group = projection.nodes.find(
+			(node) => node.id === "tool_write_0",
+		);
+		const edit_group = projection.nodes.find(
+			(node) => node.id === "tool_edit_1",
+		);
+		const file_group = projection.nodes.find(
+			(node) => node.id === "file_bridge",
+		);
 
 		expect(write_group?.member_ids).toEqual(["tool_write_0", "tool_write_2"]);
 		expect(edit_group?.member_ids).toEqual(["tool_edit_1"]);
@@ -113,9 +122,15 @@ describe("project_session_graph_grouped", () => {
 	});
 
 	it("keeps repeated turns separate while converging on grouped actions and files", () => {
-		const projection = project_session_graph_grouped(make_repeated_touch_graph());
-		const prompted_edges = projection.edges.filter((edge) => edge.kind === "prompted");
-		const invoked_edges = projection.edges.filter((edge) => edge.kind === "invoked_tool");
+		const projection = project_session_graph_grouped(
+			make_repeated_touch_graph(),
+		);
+		const prompted_edges = projection.edges.filter(
+			(edge) => edge.kind === "prompted",
+		);
+		const invoked_edges = projection.edges.filter(
+			(edge) => edge.kind === "invoked_tool",
+		);
 		const artifact_edges = projection.edges.filter(
 			(edge) => edge.kind === "wrote" || edge.kind === "edited",
 		);
@@ -124,9 +139,32 @@ describe("project_session_graph_grouped", () => {
 		expect(invoked_edges).toHaveLength(3);
 		expect(artifact_edges).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ source_id: "tool_write_0", target_id: "file_bridge" }),
-				expect.objectContaining({ source_id: "tool_edit_1", target_id: "file_bridge" }),
+				expect.objectContaining({
+					source_id: "tool_write_0",
+					target_id: "file_bridge",
+				}),
+				expect.objectContaining({
+					source_id: "tool_edit_1",
+					target_id: "file_bridge",
+				}),
 			]),
 		);
+	});
+
+	it("prefers the latest grouped member when selecting a collapsed repeated action", () => {
+		const projection = project_session_graph_grouped(
+			make_repeated_touch_graph(),
+		);
+
+		expect(
+			resolve_grouped_selection_member_id(projection, "tool_write_0", null),
+		).toBe("tool_write_2");
+		expect(
+			resolve_grouped_selection_member_id(
+				projection,
+				"tool_write_0",
+				"tool_write_0",
+			),
+		).toBe("tool_write_0");
 	});
 });

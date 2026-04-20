@@ -182,7 +182,10 @@ export function project_session_graph_grouped(
 
 	const nodes = [...groups_by_signature.values()].sort((left, right) => {
 		if (left.column !== right.column) return left.column - right.column;
-		const order_cmp = compare_temporal_orders(left.first_seen, right.first_seen);
+		const order_cmp = compare_temporal_orders(
+			left.first_seen,
+			right.first_seen,
+		);
 		if (order_cmp !== 0) return order_cmp;
 		const label_cmp = left.node.label.localeCompare(right.node.label);
 		if (label_cmp !== 0) return label_cmp;
@@ -194,7 +197,11 @@ export function project_session_graph_grouped(
 	}
 
 	const edges = [...grouped_edges.values()].sort((left, right) => {
-		const source_cmp = compare_group_order(left.source_id, right.source_id, group_by_id);
+		const source_cmp = compare_group_order(
+			left.source_id,
+			right.source_id,
+			group_by_id,
+		);
 		if (source_cmp !== 0) return source_cmp;
 		return compare_group_order(left.target_id, right.target_id, group_by_id);
 	});
@@ -204,6 +211,33 @@ export function project_session_graph_grouped(
 		edges,
 		raw_to_group_id,
 	};
+}
+
+export function resolve_grouped_selection_member_id(
+	projection: SessionGraphGroupedProjection,
+	projection_node_id: string,
+	current_raw_node_id: string | null,
+): string {
+	const projection_node = projection.nodes.find(
+		(node) => node.id === projection_node_id,
+	);
+	if (!projection_node) {
+		return projection_node_id;
+	}
+
+	if (
+		current_raw_node_id &&
+		projection.raw_to_group_id.get(current_raw_node_id) ===
+			projection_node_id &&
+		projection_node.member_ids.includes(current_raw_node_id)
+	) {
+		return current_raw_node_id;
+	}
+
+	return (
+		projection_node.member_ids[projection_node.member_ids.length - 1] ??
+		projection_node_id
+	);
 }
 
 function build_edge_index(graph: SessionGraphPayload): EdgeIndex {
