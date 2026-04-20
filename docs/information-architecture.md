@@ -18,13 +18,14 @@ For code structure, see `docs/ARCHITECTURE.md`.
 
 ## Product questions Ariadne answers
 
-Ariadne currently answers six kinds of questions:
+Ariadne currently answers seven kinds of questions:
 
 | Question | Surface | Route family |
 |---|---|---|
 | "What's the pulse?" | **Overview** | `/` |
 | "What did specific sessions do?" | **Sessions** | `/sessions` |
 | "How are tools/cost/patterns/files distributed?" | **Usage** | `/usage/*` |
+| "Which sessions touched this path, and where should I drill in next?" | **Explore** | `/explore` |
 | "What is in my QMD knowledge base?" | **QMD** | `/qmd/:index`, `/qmd/:index/:collection` |
 | "How are agents actually using QMD?" | **QMD Logs** | `/qmd/logs` |
 | "How is this install configured?" | **Settings** | `/settings` |
@@ -37,16 +38,19 @@ These are intentionally different surfaces. QMD logs is not just a table inside 
 
 ### Sidebar
 
-The sidebar has four core top-level destinations:
+The sidebar has five core top-level destinations:
 
 ```text
 Overview   -> /
 Sessions   -> /sessions
 Usage      -> /usage
+Explore    -> /explore
 QMD        -> /qmd
 ```
 
 `/settings` is a global app-control page reached from the header actions rather than a primary sidebar destination.
+
+`/explore` is a first-class drill-in workspace for path-scoped file ↔ session navigation. It is intentionally separate from `/usage/files`, which stays focused on aggregate file analytics.
 
 There is **no Projects top-level route** anymore. Project selection is a global scope control, not a destination.
 
@@ -68,6 +72,7 @@ Current breadcrumb patterns:
 /usage/tools/:tool     -> Usage / Tools / {tool}
 /usage/patterns        -> Usage / Patterns
 /usage/files           -> Usage / Files
+/explore               -> Explore
 /settings              -> Settings
 /qmd/logs              -> QMD / Logs
 /qmd/:index            -> QMD / {index}
@@ -120,6 +125,7 @@ The analytics time-range selector is shown only on routes where it matters:
 - `/`
 - `/sessions`
 - `/usage/*`
+- `/explore`
 
 It is hidden on:
 - `/sessions/:id`
@@ -138,6 +144,7 @@ It is a **global analytics scope**, persisted in local storage.
 /sessions                  Sessions list
 /sessions/:id              Session detail layout (redirects to conversation)
 /usage                     Usage redirect
+/explore                   File ↔ session drill-in workspace
 /settings                  Local app settings and experimental flags
 /qmd                       Redirect to last/default index
 /qmd/logs                  QMD logs observability
@@ -314,6 +321,26 @@ Lives here:
 - session breadth chart
 - size-vs-activity scatter chart
 - file activity grid
+
+This page stays aggregate-first. It should not own session drill-in tables or path-scoped investigation state.
+
+#### Explore (`/explore`)
+Answers: **which sessions touched this path, and which session should I inspect next?**
+
+This surface appears when a project scope is active and shares the global time range.
+
+Lives here:
+- project-scoped file treemap with URL-backed path selection
+- operation lens (`All / Read / Edit / Write`)
+- exclude-path filter
+- scope summary for the active path
+- session list for the selected path or subtree
+- row actions into session conversation and session exploration
+
+Important rules:
+- keep the URL `?path=` search param as the source of truth for path scope
+- root scope means all sessions for the current project; scoped-empty results must stay empty rather than widening back to root
+- keep this page focused on path → session drill-in, not on aggregate chart galleries
 
 ### Important rules for Usage
 
