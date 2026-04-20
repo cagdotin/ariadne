@@ -1,8 +1,8 @@
-import { RefreshCw } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { RefreshCw, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { resync_sessions } from "@/api/analytics";
 import { AnalyticsTimeRangeSelector } from "@/components/analytics-time-range-selector";
-import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 
 export function AppHeaderActions({
@@ -39,7 +39,15 @@ export function AppHeaderActions({
 				<RefreshCw className={`size-3 ${is_syncing ? "animate-spin" : ""}`} />
 				<span className="ml-1 text-xs">Sync</span>
 			</Button>
-			<ModeToggle />
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				render={<Link to="/settings" />}
+				title="Settings"
+			>
+				<Settings2 className="size-3.5" />
+				<span className="sr-only">Settings</span>
+			</Button>
 		</div>
 	);
 }

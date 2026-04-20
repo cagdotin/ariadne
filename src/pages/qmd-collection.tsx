@@ -26,6 +26,7 @@ import { CollectionFileTree } from "@/components/collection-file-tree";
 import { ContextEditor } from "@/components/context-editor";
 import { IndexSelector } from "@/components/index-selector";
 import { InfoTip } from "@/components/info-tip";
+import { QmdFeatureGate } from "@/components/qmd-feature-gate";
 import { QmdProgress } from "@/components/qmd-progress";
 import { StatCard } from "@/components/stat-card";
 import {
@@ -47,6 +48,20 @@ import { error_message } from "@/lib/utils";
 const LAST_INDEX_KEY = "ariadne:qmd:last-index";
 
 export function QmdCollection() {
+	return (
+		<QmdFeatureGate
+			disabled_icon={Settings}
+			disabled_title="QMD collection"
+			disabled_description="Collection-level QMD controls are disabled until the QMD experimental setting is turned back on."
+			unavailable_title="QMD collections require qmd"
+			unavailable_description="Install qmd on this machine before opening collection-level QMD controls."
+		>
+			<QmdCollectionEnabled />
+		</QmdFeatureGate>
+	);
+}
+
+function QmdCollectionEnabled() {
 	const { index: index_name, collection: collection_name } = useParams({
 		strict: false,
 	}) as {

@@ -1,14 +1,16 @@
 import type { AnalyticsOverview } from "@contracts/analytics/overview";
 import type { TimeBreakdown } from "@contracts/analytics/time";
+import type { DayCount } from "@contracts/shared";
 import { AlertTriangle } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { get_analytics_overview, get_time_breakdown } from "@/api/analytics";
 import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { use_analytics_time_range } from "@/components/analytics-time-range-provider";
 import { DailyTrend } from "@/components/daily-trend";
+import { OverviewStatsCard } from "@/components/overview-stats-card";
 import { use_project_scope } from "@/components/project-scope-provider";
 import { ProviderLimitsSummaryCard } from "@/components/provider-limits-summary-card";
-import { StatCard } from "@/components/stat-card";
+import { RecentSessionsCard } from "@/components/recent-sessions-card";
 import { TopProjects } from "@/components/top-projects";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,12 +29,14 @@ export function Dashboard() {
 
 	const [overview, set_overview] = useState<AnalyticsOverview | null>(null);
 	const [time_data, set_time_data] = useState<TimeBreakdown | null>(null);
+	const [heatmap_data, set_heatmap_data] = useState<DayCount[] | null>(null);
 	const [loading, set_loading] = useState(true);
 	const [error, set_error] = useState<string | null>(null);
 
 	// Track previous scope to distinguish scope changes from range changes.
 	// Scope change → show loading skeleton; range change → silent update.
 	const prev_project_path = useRef(project_path);
+	const has_loaded_data = useRef(false);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -41,17 +45,31 @@ export function Dashboard() {
 
 		const fetch_data = async () => {
 			try {
-				// Show loading skeleton on scope change or initial mount (overview is null).
+				// Show loading skeleton on scope change or initial mount.
 				// Range-only changes keep the current data visible while refreshing.
-				if (scope_changed || !overview) set_loading(true);
+				if (scope_changed || !has_loaded_data.current) set_loading(true);
 				set_error(null);
-				const [next_overview, next_time_data] = await Promise.all([
-					get_analytics_overview(project_path),
-					get_time_breakdown(range_days, project_path),
-				]);
+
+				const overview_promise = get_analytics_overview(
+					project_path,
+					range_days,
+				);
+				const heatmap_overview_promise =
+					range_days === 0
+						? overview_promise
+						: get_analytics_overview(project_path, 0);
+
+				const [next_overview, next_time_data, heatmap_overview] =
+					await Promise.all([
+						overview_promise,
+						get_time_breakdown(range_days, project_path),
+						heatmap_overview_promise,
+					]);
 				if (cancelled) return;
 				set_overview(next_overview);
 				set_time_data(next_time_data);
+				set_heatmap_data(heatmap_overview.sessions_by_date);
+				has_loaded_data.current = true;
 			} catch (err) {
 				if (cancelled) return;
 				set_error(error_message(err, "Failed to load analytics"));
@@ -65,45 +83,23 @@ export function Dashboard() {
 		return () => {
 			cancelled = true;
 		};
-	}, [project_path, range_days, overview]);
-
-	const total_tool_calls = useMemo(() => {
-		if (!overview) return 0;
-		return overview.tools.reduce((sum, tool) => sum + tool.total_calls, 0);
-	}, [overview]);
-
-	const stats = useMemo(() => {
-		if (!overview || !time_data) return null;
-		const is_all = range_days === 0;
-
-		return {
-			sessions: is_all ? overview.total_sessions : time_data.total_sessions,
-			cost: is_all ? overview.total_cost : time_data.total_cost,
-			tokens: is_all ? overview.total_tokens : time_data.total_tokens,
-			avg_cost: time_data.avg_cost_per_session,
-			projects: overview.total_projects,
-			tool_calls: total_tool_calls,
-		};
-	}, [overview, time_data, range_days, total_tool_calls]);
+	}, [project_path, range_days]);
 
 	if (loading) {
 		return (
-			<div className="max-w-6xl mx-auto space-y-6">
-				<div className="flex items-center justify-between">
-					<Skeleton className="h-7 w-32" />
-					<Skeleton className="h-7 w-56" />
+			<div className="grid gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(18rem,3fr)] xl:items-start">
+				<div className="order-2 space-y-4 xl:order-1">
+					<Skeleton className="h-64 w-full" />
+					<Skeleton className="h-72 w-full" />
+					<Skeleton className="h-44 w-full" />
 				</div>
-				<div className="flex flex-wrap gap-3">
-					{[...Array(7)].map((_, index) => (
-						<Skeleton
-							// biome-ignore lint/suspicious/noArrayIndexKey: static list, index is stable
-							key={index}
-							className="h-[88px] min-w-[140px] flex-1 basis-[calc(50%-0.375rem)] sm:basis-[calc(33.333%-0.5rem)] xl:basis-0"
-						/>
-					))}
+				<div className="order-1 grid gap-4 md:grid-cols-2 xl:order-2 xl:grid-cols-1">
+					<Skeleton className="h-[360px] w-full" />
+					<Skeleton className="h-[240px] w-full" />
+					<div className="hidden lg:block md:col-span-2 xl:col-span-1">
+						<Skeleton className="h-[220px] w-full" />
+					</div>
 				</div>
-				<Skeleton className="h-48" />
-				<Skeleton className="h-52" />
 			</div>
 		);
 	}
@@ -118,72 +114,64 @@ export function Dashboard() {
 		);
 	}
 
-	if (!overview || !stats) {
+	if (!overview || !time_data || !heatmap_data) {
 		return <div className="text-muted-foreground">No data available</div>;
 	}
 
-	const range_label =
-		range_days === 0
-			? ""
-			: range_days === 1
-				? " today"
-				: ` last ${range_days}d`;
+	const is_all = range_days === 0;
+	const overview_rows = [
+		{
+			label: "Sessions",
+			value: format_number(
+				is_all ? overview.total_sessions : time_data.total_sessions,
+			),
+			href: "/sessions",
+		},
+		{
+			label: "Total Cost",
+			value: format_cost(is_all ? overview.total_cost : time_data.total_cost),
+			href: "/usage",
+		},
+		{
+			label: "Total Tokens",
+			value: format_tokens(
+				is_all ? overview.total_tokens : time_data.total_tokens,
+			),
+			href: "/usage",
+		},
+		{
+			label: "Avg / Session",
+			value: format_cost(time_data.avg_cost_per_session),
+		},
+		{
+			label: "Projects",
+			value: format_number(overview.total_projects),
+		},
+		{
+			label: "Tool Calls",
+			value: format_number(overview.total_tool_calls),
+			href: "/usage",
+		},
+		{
+			label: "Disk Usage",
+			value: format_file_size(overview.total_file_size_bytes),
+		},
+	];
 
 	return (
-		<div className="flex flex-col gap-4 min-w-0">
-			<div className="flex flex-wrap gap-3">
-				<StatCard
-					label="Sessions"
-					value={format_number(stats.sessions)}
-					href="/sessions"
-					sub_label={
-						range_days !== 0
-							? `${format_number(overview.total_sessions)} all time`
-							: undefined
-					}
-				/>
-				<StatCard
-					label="Total Cost"
-					value={format_cost(stats.cost)}
-					href="/usage"
-					sub_label={
-						range_days !== 0
-							? `${format_cost(overview.total_cost)} all time`
-							: undefined
-					}
-				/>
-				<StatCard
-					label="Total Tokens"
-					value={format_tokens(stats.tokens)}
-					href="/usage"
-					sub_label={
-						range_days !== 0
-							? `${format_tokens(overview.total_tokens)} all time`
-							: undefined
-					}
-				/>
-				<StatCard
-					label="Avg / Session"
-					value={format_cost(stats.avg_cost)}
-					sub_label={range_label ? `avg${range_label}` : undefined}
-				/>
-				<StatCard label="Projects" value={format_number(stats.projects)} />
-				<StatCard
-					label="Tool Calls"
-					value={format_number(stats.tool_calls)}
-					href="/usage"
-				/>
-				<StatCard
-					label="Disk Usage"
-					value={format_file_size(overview.total_file_size_bytes)}
-					sub_label={`${format_number(overview.total_sessions)} session files`}
-				/>
+		<div className="grid gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(18rem,3fr)] xl:items-start">
+			<div className="order-2 min-w-0 space-y-4 xl:order-1">
+				<DailyTrend data={time_data} range_days={range_days} />
+				<RecentSessionsCard sessions={overview.recent_sessions} />
+				{!scope && <TopProjects projects={overview.projects} />}
 			</div>
-
-			<ProviderLimitsSummaryCard />
-			<DailyTrend data={time_data} range_days={range_days} />
-			{!scope && <TopProjects projects={overview.projects} />}
-			<ActivityHeatmap data={overview.sessions_by_date} />
+			<div className="order-1 min-w-0 grid gap-4 md:grid-cols-2 xl:order-2 xl:grid-cols-1">
+				<OverviewStatsCard rows={overview_rows} />
+				<ActivityHeatmap data={heatmap_data} />
+				<div className="hidden lg:block md:col-span-2 xl:col-span-1">
+					<ProviderLimitsSummaryCard />
+				</div>
+			</div>
 		</div>
 	);
 }

@@ -9,12 +9,14 @@ import {
 	compute_graph_summary,
 	compute_map_edges,
 	compute_map_nodes,
+	compute_route_connectors,
 	compute_selection_subgraph,
 	compute_styling_state,
 	type FocusMode,
 	type LaneId,
 	type MapEdge,
 	type MapNode,
+	type RouteConnector,
 } from "../../../src/lib/exploration-graph-view-model";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -300,6 +302,70 @@ describe("compute_map_edges", () => {
 	});
 });
 
+// ── Filtering / noise reduction ──────────────────────────────────────────────
+
+describe("filtering via VisibilityOptions", () => {
+	it("hides inferred nodes when show_inferred is false", () => {
+		const graph = make_typical_graph();
+		// Add an inferred node
+		graph.nodes.push(
+			make_node("file_inferred", "source_file", "derived_inferred", { path: "src/inferred.ts" }),
+		);
+		graph.edges.push(make_edge("tool_read_0", "file_inferred", "read"));
+
+		const lanes = assign_lanes(graph);
+		const all_nodes = compute_map_nodes(graph, lanes, { show_inferred: true });
+		const filtered = compute_map_nodes(graph, lanes, { show_inferred: false });
+
+		expect(all_nodes.find((n) => n.node.id === "file_inferred")).toBeDefined();
+		expect(filtered.find((n) => n.node.id === "file_inferred")).toBeUndefined();
+	});
+
+	it("hides unexplored neighbor nodes when show_unexplored is false", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+
+		// file_adjacent is an ambient adjacent node — it should be hidden when unexplored is off
+		const all_nodes = compute_map_nodes(graph, lanes, { show_ambient: true, show_unexplored: true });
+		const filtered = compute_map_nodes(graph, lanes, { show_ambient: true, show_unexplored: false });
+
+		expect(all_nodes.find((n) => n.node.id === "file_adjacent")).toBeDefined();
+		expect(filtered.find((n) => n.node.id === "file_adjacent")).toBeUndefined();
+	});
+
+	it("only_selected_subgraph limits nodes to highlighted set", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+		const subgraph = compute_selection_subgraph("file_auth", graph, "path");
+
+		const all_nodes = compute_map_nodes(graph, lanes);
+		const filtered = compute_map_nodes(graph, lanes, {
+			only_selected_subgraph: true,
+			highlighted_node_ids: subgraph.highlighted_node_ids,
+		});
+
+		expect(filtered.length).toBeLessThan(all_nodes.length);
+		for (const n of filtered) {
+			expect(subgraph.highlighted_node_ids.has(n.node.id)).toBe(true);
+		}
+	});
+
+	it("only_edited_path limits to nodes on an edited file's path", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+
+		const filtered = compute_map_nodes(graph, lanes, { only_edited_path: true });
+
+		// Should include the edited file and nodes on its path
+		expect(filtered.find((n) => n.node.id === "file_auth")).toBeDefined();
+		// Should exclude search queries and docs not on the edit path
+		// (depending on graph structure, docs may or may not be included)
+		expect(filtered.length).toBeLessThan(
+			compute_map_nodes(graph, lanes).length,
+		);
+	});
+});
+
 // ── Styling state ───────────────────────────────────────────────────────────
 
 describe("compute_styling_state", () => {
@@ -416,6 +482,78 @@ describe("compute_selection_subgraph", () => {
 		});
 	});
 
+	describe("neighborhood mode", () => {
+		it("highlights only one-hop neighbors from selected node", () => {
+			const graph = make_typical_graph();
+			const result = compute_selection_subgraph("file_auth", graph, "neighborhood");
+
+			// Selected node is always included
+			expect(result.highlighted_node_ids.has("file_auth")).toBe(true);
+
+			// One-hop neighbors via any edge kind
+			// tool_read_0 → file_auth (read), tool_edit_0 → file_auth (edited)
+			expect(result.highlighted_node_ids.has("tool_read_0")).toBe(true);
+			expect(result.highlighted_node_ids.has("tool_edit_0")).toBe(true);
+
+			// file_auth → file_adjacent (adjacent_unexplored) — one hop out
+			expect(result.highlighted_node_ids.has("file_adjacent")).toBe(true);
+		});
+
+		it("does NOT traverse beyond one hop", () => {
+			const graph = make_typical_graph();
+			const result = compute_selection_subgraph("file_auth", graph, "neighborhood");
+
+			// turn_0 is two hops away (turn_0 → tool_read_0 → file_auth)
+			expect(result.highlighted_node_ids.has("turn_0")).toBe(false);
+			// search_0 is two hops away
+			expect(result.highlighted_node_ids.has("search_0")).toBe(false);
+			// session is far away
+			expect(result.highlighted_node_ids.has("session")).toBe(false);
+		});
+
+		it("uses all edge kinds (not limited to a mode-specific set)", () => {
+			// Build a graph where a node has both path and influence edges
+			const nodes: GraphNode[] = [
+				make_node("doc_a", "doc_file"),
+				make_node("file_b", "source_file"),
+				make_node("instruction_c", "instruction_source", "available_ambient"),
+				make_node("file_d", "source_file"),
+			];
+			const edges: GraphEdge[] = [
+				make_edge("doc_a", "file_b", "linked_to"),          // influence-only edge
+				make_edge("doc_a", "instruction_c", "constrained_by"), // influence-only edge
+				make_edge("doc_a", "file_d", "read"),                // shared edge
+			];
+			const graph = make_graph(nodes, edges);
+
+			const result = compute_selection_subgraph("doc_a", graph, "neighborhood");
+
+			// All one-hop neighbors via any edge kind
+			expect(result.highlighted_node_ids.has("file_b")).toBe(true);
+			expect(result.highlighted_node_ids.has("instruction_c")).toBe(true);
+			expect(result.highlighted_node_ids.has("file_d")).toBe(true);
+		});
+
+		it("is distinct from path and influence for the same selection", () => {
+			const graph = make_typical_graph();
+			const path_result = compute_selection_subgraph("file_auth", graph, "path");
+			const influence_result = compute_selection_subgraph("file_auth", graph, "influence");
+			const neighborhood_result = compute_selection_subgraph("file_auth", graph, "neighborhood");
+
+			// Neighborhood should include adjacent (like influence) but NOT turn_0 (unlike both)
+			expect(neighborhood_result.highlighted_node_ids.has("file_adjacent")).toBe(true);
+			expect(neighborhood_result.highlighted_node_ids.has("turn_0")).toBe(false);
+
+			// Path includes turn_0 but not adjacent
+			expect(path_result.highlighted_node_ids.has("turn_0")).toBe(true);
+			expect(path_result.highlighted_node_ids.has("file_adjacent")).toBe(false);
+
+			// Influence includes both turn_0 and adjacent
+			expect(influence_result.highlighted_node_ids.has("turn_0")).toBe(true);
+			expect(influence_result.highlighted_node_ids.has("file_adjacent")).toBe(true);
+		});
+	});
+
 	describe("mode distinction", () => {
 		it("same file selection produces different subgraphs in path vs influence", () => {
 			const graph = make_typical_graph();
@@ -466,6 +604,68 @@ describe("compute_selection_subgraph", () => {
 			expect(influence_result.highlighted_node_ids.has("framing")).toBe(true);
 			expect(influence_result.highlighted_node_ids.size).toBeGreaterThan(1);
 		});
+	});
+});
+
+// ── Route connectors ────────────────────────────────────────────────────────
+
+describe("compute_route_connectors", () => {
+	it("marks edges in the selection subgraph as primary emphasis", () => {
+		const graph = make_typical_graph();
+		const subgraph = compute_selection_subgraph("file_auth", graph, "path");
+		const connectors = compute_route_connectors(graph, subgraph, { show_ambient: true });
+
+		const primary = connectors.filter((c) => c.emphasis === "primary");
+		expect(primary.length).toBeGreaterThan(0);
+
+		// The read and edited edges to file_auth should be primary
+		const to_file = primary.filter((c) => c.target_id === "file_auth");
+		expect(to_file.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("marks edges outside selection subgraph as secondary", () => {
+		const graph = make_typical_graph();
+		const subgraph = compute_selection_subgraph("file_auth", graph, "path");
+		const connectors = compute_route_connectors(graph, subgraph, { show_ambient: true });
+
+		const secondary = connectors.filter((c) => c.emphasis === "secondary");
+		// framing edges are not in path subgraph so should be secondary
+		const framing_edge = secondary.find(
+			(c) => c.source_id === "framing" && c.target_id === "cwd",
+		);
+		expect(framing_edge).toBeDefined();
+	});
+
+	it("returns all edges as muted when no selection", () => {
+		const graph = make_typical_graph();
+		const subgraph = compute_selection_subgraph(null, graph);
+		const connectors = compute_route_connectors(graph, subgraph, { show_ambient: true });
+
+		// With no selection, all should be secondary
+		expect(connectors.every((c) => c.emphasis === "secondary")).toBe(true);
+	});
+
+	it("respects ambient visibility", () => {
+		const graph = make_typical_graph();
+		const subgraph = compute_selection_subgraph("file_auth", graph, "path");
+		const connectors = compute_route_connectors(graph, subgraph, { show_ambient: false });
+
+		// No edges involving ambient nodes
+		const ambient_connectors = connectors.filter(
+			(c) => c.source_id === "claude_md" || c.target_id === "claude_md" ||
+				c.source_id === "file_adjacent" || c.target_id === "file_adjacent",
+		);
+		expect(ambient_connectors.length).toBe(0);
+	});
+
+	it("carries styling state from edge availability", () => {
+		const graph = make_typical_graph();
+		const subgraph = compute_selection_subgraph("file_auth", graph, "path");
+		const connectors = compute_route_connectors(graph, subgraph, { show_ambient: true });
+
+		for (const c of connectors) {
+			expect(["observed", "ambient", "inferred", "unavailable"]).toContain(c.styling);
+		}
 	});
 });
 
@@ -522,5 +722,133 @@ describe("compute_graph_summary", () => {
 
 		// system_prompt is unavailable
 		expect(summary.unavailable_framing).toBe(1);
+	});
+});
+
+// ── Artifact-first map visibility ───────────────────────────────────────────
+
+describe("artifact_first visibility", () => {
+	it("hides narrative lanes (framing, prompts, discovery) by default", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+		const map_nodes = compute_map_nodes(graph, lanes, { artifact_first: true });
+
+		const lane_set = new Set(map_nodes.map((n) => n.lane));
+		expect(lane_set.has("framing")).toBe(false);
+		expect(lane_set.has("prompts")).toBe(false);
+		expect(lane_set.has("discovery")).toBe(false);
+	});
+
+	it("preserves artifact lanes (docs, files, outputs, context)", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+		const map_nodes = compute_map_nodes(graph, lanes, { artifact_first: true });
+
+		// Should still have artifact nodes
+		expect(map_nodes.find((n) => n.node.id === "doc_auth")).toBeDefined();
+		expect(map_nodes.find((n) => n.node.id === "file_auth")).toBeDefined();
+	});
+
+	it("reintroduces scaffolding nodes from narrative lanes when specified", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+
+		// Simulate selection-driven scaffolding: turn_0 and tool_edit_0 are
+		// on the path to file_auth
+		const scaffolding = new Set(["turn_0", "tool_edit_0"]);
+		const map_nodes = compute_map_nodes(graph, lanes, {
+			artifact_first: true,
+			scaffolding_node_ids: scaffolding,
+		});
+
+		expect(map_nodes.find((n) => n.node.id === "turn_0")).toBeDefined();
+		expect(map_nodes.find((n) => n.node.id === "tool_edit_0")).toBeDefined();
+		// Other narrative nodes not in scaffolding remain hidden
+		expect(map_nodes.find((n) => n.node.id === "search_0")).toBeUndefined();
+		expect(map_nodes.find((n) => n.node.id === "framing")).toBeUndefined();
+	});
+
+	it("returns to artifact-only baseline when scaffolding is cleared", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+
+		// With scaffolding
+		const with_scaffolding = compute_map_nodes(graph, lanes, {
+			artifact_first: true,
+			scaffolding_node_ids: new Set(["turn_0"]),
+		});
+		expect(with_scaffolding.find((n) => n.node.id === "turn_0")).toBeDefined();
+
+		// Without scaffolding (selection cleared)
+		const without = compute_map_nodes(graph, lanes, { artifact_first: true });
+		expect(without.find((n) => n.node.id === "turn_0")).toBeUndefined();
+	});
+
+	it("still respects ambient/inferred/unexplored toggles in artifact-first mode", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+
+		const with_ambient = compute_map_nodes(graph, lanes, {
+			artifact_first: true,
+			show_ambient: true,
+		});
+		const without_ambient = compute_map_nodes(graph, lanes, {
+			artifact_first: true,
+			show_ambient: false,
+		});
+
+		// file_adjacent is ambient + context lane — hidden when ambient off
+		expect(with_ambient.find((n) => n.node.id === "file_adjacent")).toBeDefined();
+		expect(without_ambient.find((n) => n.node.id === "file_adjacent")).toBeUndefined();
+	});
+});
+
+// ── Temporal visibility filtering ───────────────────────────────────────────
+
+describe("temporal visibility filtering via temporally_visible_node_ids", () => {
+	it("filters map nodes to only temporally visible set", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+
+		const temporally_visible_node_ids = new Set(["file_auth", "doc_auth", "framing", "cwd", "session"]);
+		const map_nodes = compute_map_nodes(graph, lanes, { temporally_visible_node_ids });
+
+		// Should only include nodes in the temporal set (minus session which is always excluded)
+		expect(map_nodes.find((n) => n.node.id === "file_auth")).toBeDefined();
+		expect(map_nodes.find((n) => n.node.id === "doc_auth")).toBeDefined();
+		expect(map_nodes.find((n) => n.node.id === "framing")).toBeDefined();
+		expect(map_nodes.find((n) => n.node.id === "cwd")).toBeDefined();
+
+		// Nodes not in temporal set should be excluded
+		expect(map_nodes.find((n) => n.node.id === "turn_0")).toBeUndefined();
+		expect(map_nodes.find((n) => n.node.id === "search_0")).toBeUndefined();
+		expect(map_nodes.find((n) => n.node.id === "file_adjacent")).toBeUndefined();
+	});
+
+	it("composes with artifact_first filtering", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+
+		// All nodes are temporally visible, but artifact_first hides narrative lanes
+		const temporally_visible_node_ids = new Set(graph.nodes.map((n) => n.id));
+		const map_nodes = compute_map_nodes(graph, lanes, {
+			artifact_first: true,
+			temporally_visible_node_ids,
+		});
+
+		// Narrative lanes hidden by artifact_first
+		expect(map_nodes.find((n) => n.node.id === "turn_0")).toBeUndefined();
+		// Artifact lanes still visible
+		expect(map_nodes.find((n) => n.node.id === "file_auth")).toBeDefined();
+	});
+
+	it("shows full map when temporally_visible_node_ids is undefined", () => {
+		const graph = make_typical_graph();
+		const lanes = assign_lanes(graph);
+
+		const with_temporal = compute_map_nodes(graph, lanes, {});
+		const without_temporal = compute_map_nodes(graph, lanes);
+
+		expect(with_temporal.length).toBe(without_temporal.length);
 	});
 });

@@ -16,6 +16,7 @@ export function AppLayout() {
 		if (pathname === "/") return true;
 		if (pathname === "/sessions") return true;
 		if (pathname.startsWith("/usage")) return true;
+		if (pathname.startsWith("/explore")) return true;
 		return false;
 	}, [pathname]);
 

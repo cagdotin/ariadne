@@ -1,6 +1,13 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 
-type Theme = "dark" | "light" | "system";
+export type Theme = "dark" | "light" | "system";
 
 type ThemeProviderProps = {
 	children: React.ReactNode;
@@ -13,12 +20,16 @@ type ThemeProviderState = {
 	set_theme: (theme: Theme) => void;
 };
 
-const initial_state: ThemeProviderState = {
-	theme: "system",
-	set_theme: () => null,
-};
+const ThemeProviderContext = createContext<ThemeProviderState | null>(null);
 
-const ThemeProviderContext = createContext<ThemeProviderState>(initial_state);
+function is_theme(value: string | null): value is Theme {
+	return value === "dark" || value === "light" || value === "system";
+}
+
+function read_theme(storage_key: string, default_theme: Theme): Theme {
+	const stored_theme = localStorage.getItem(storage_key);
+	return is_theme(stored_theme) ? stored_theme : default_theme;
+}
 
 export function ThemeProvider({
 	children,
@@ -26,8 +37,8 @@ export function ThemeProvider({
 	storage_key = "ariadne-ui-theme",
 	...props
 }: ThemeProviderProps) {
-	const [theme, set_theme_state] = useState<Theme>(
-		() => (localStorage.getItem(storage_key) as Theme) || default_theme,
+	const [theme, set_theme_state] = useState<Theme>(() =>
+		read_theme(storage_key, default_theme),
 	);
 
 	useEffect(() => {
@@ -48,13 +59,15 @@ export function ThemeProvider({
 		root.classList.add(theme);
 	}, [theme]);
 
-	const value = {
-		theme,
-		set_theme: (theme: Theme) => {
-			localStorage.setItem(storage_key, theme);
-			set_theme_state(theme);
+	const set_theme = useCallback(
+		(next_theme: Theme) => {
+			localStorage.setItem(storage_key, next_theme);
+			set_theme_state(next_theme);
 		},
-	};
+		[storage_key],
+	);
+
+	const value = useMemo(() => ({ theme, set_theme }), [set_theme, theme]);
 
 	return (
 		<ThemeProviderContext.Provider {...props} value={value}>
@@ -63,11 +76,10 @@ export function ThemeProvider({
 	);
 }
 
-export const use_theme = () => {
+export function use_theme(): ThemeProviderState {
 	const context = useContext(ThemeProviderContext);
-
-	if (context === undefined)
+	if (!context) {
 		throw new Error("use_theme must be used within a ThemeProvider");
-
+	}
 	return context;
-};
+}

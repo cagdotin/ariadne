@@ -4,6 +4,7 @@
  */
 
 import { register_handler } from "../runtime/request-router.js";
+import { get_sessions_for_files } from "./aggregations/file-session-bridge.js";
 import { get_project_file_stats } from "./aggregations/file-stats.js";
 import { get_analytics_overview } from "./aggregations/overview.js";
 import { get_time_breakdown } from "./aggregations/time-breakdown.js";
@@ -120,4 +121,20 @@ register_handler("get_file_sizes", async (payload) => {
 		throw new Error("paths must be an array");
 	}
 	return get_file_sizes(paths);
+});
+
+// ---- get_sessions_for_files -------------------------------------------------
+
+register_handler("get_sessions_for_files", async (payload) => {
+	const project_path = payload.projectPath as string;
+	if (typeof project_path !== "string") {
+		throw new Error("projectPath is required");
+	}
+	const file_paths = payload.filePaths as string[];
+	if (!Array.isArray(file_paths)) {
+		throw new Error("filePaths must be an array");
+	}
+	const range_days =
+		typeof payload.rangeDays === "number" ? payload.rangeDays : 0;
+	return get_sessions_for_files(project_path, file_paths, range_days);
 });

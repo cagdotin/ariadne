@@ -22,7 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.pi/
+.pi/*
+
 
 # Electron build output
 electron/main/dist/

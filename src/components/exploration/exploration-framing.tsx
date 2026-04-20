@@ -17,12 +17,13 @@ import {
 	Sparkles,
 	Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface ExplorationFramingProps {
 	graph: SessionGraphPayload;
+	selected_node_id?: string | null;
 	show_ambient?: boolean;
 	on_select_node?: (node: GraphNode) => void;
 }
@@ -74,10 +75,14 @@ function get_framing_icon_color(node: GraphNode): string {
 
 export function ExplorationFraming({
 	graph,
+	selected_node_id = null,
 	show_ambient = true,
 	on_select_node,
 }: ExplorationFramingProps) {
 	const [expanded, set_expanded] = useState(true);
+	const header_ref = useRef<HTMLButtonElement | null>(null);
+	const item_refs = useRef(new Map<string, HTMLButtonElement>());
+	const last_scrolled_target_ref = useRef<string | null>(null);
 
 	// Find framing-related nodes
 	const framing_node = graph.nodes.find((n) => n.kind === "session_framing");
@@ -107,16 +112,65 @@ export function ExplorationFraming({
 
 	const total =
 		runtime_nodes.length + prompt_nodes.length + instruction_nodes.length;
-	const unavailable_count = [...runtime_nodes, ...prompt_nodes, ...instruction_nodes].filter(
+	const unavailable_count = [
+		...runtime_nodes,
+		...prompt_nodes,
+		...instruction_nodes,
+	].filter(
 		(n) => n.availability === "unavailable" || n.availability === "unknown",
 	).length;
+	const framing_child_ids = new Set(framing_children.map((node) => node.id));
+	const has_selected_child =
+		selected_node_id !== null && framing_child_ids.has(selected_node_id);
+	const is_framing_selected = selected_node_id === framing_node.id;
+
+	useEffect(() => {
+		if (is_framing_selected || has_selected_child) {
+			set_expanded(true);
+		}
+	}, [has_selected_child, is_framing_selected]);
+
+	useEffect(() => {
+		if (!selected_node_id) {
+			last_scrolled_target_ref.current = null;
+			return;
+		}
+
+		const target_key = is_framing_selected
+			? framing_node.id
+			: has_selected_child
+				? selected_node_id
+				: null;
+		if (!target_key || last_scrolled_target_ref.current === target_key) return;
+
+		const target_element = is_framing_selected
+			? header_ref.current
+			: (item_refs.current.get(target_key) ?? null);
+		if (!target_element) return;
+
+		const frame = requestAnimationFrame(() => {
+			target_element.scrollIntoView({ block: "nearest" });
+			last_scrolled_target_ref.current = target_key;
+		});
+
+		return () => cancelAnimationFrame(frame);
+	}, [
+		framing_node.id,
+		has_selected_child,
+		is_framing_selected,
+		selected_node_id,
+	]);
 
 	return (
 		<div className="border-b border-border bg-muted/20">
 			{/* Header */}
 			<button
+				ref={header_ref}
 				type="button"
-				className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-accent/30 transition-colors"
+				className={cn(
+					"w-full flex items-center gap-2 px-3 py-1.5 hover:bg-accent/30 transition-colors",
+					is_framing_selected && "bg-accent",
+				)}
 				onClick={() => set_expanded(!expanded)}
 			>
 				{expanded ? (
@@ -151,6 +205,11 @@ export function ExplorationFraming({
 								<FramingItem
 									key={node.id}
 									node={node}
+									is_selected={selected_node_id === node.id}
+									item_ref={(element) => {
+										if (element) item_refs.current.set(node.id, element);
+										else item_refs.current.delete(node.id);
+									}}
 									on_click={on_select_node}
 								/>
 							))}
@@ -167,6 +226,11 @@ export function ExplorationFraming({
 								<FramingItem
 									key={node.id}
 									node={node}
+									is_selected={selected_node_id === node.id}
+									item_ref={(element) => {
+										if (element) item_refs.current.set(node.id, element);
+										else item_refs.current.delete(node.id);
+									}}
 									on_click={on_select_node}
 								/>
 							))}
@@ -183,6 +247,11 @@ export function ExplorationFraming({
 								<FramingItem
 									key={node.id}
 									node={node}
+									is_selected={selected_node_id === node.id}
+									item_ref={(element) => {
+										if (element) item_refs.current.set(node.id, element);
+										else item_refs.current.delete(node.id);
+									}}
 									on_click={on_select_node}
 								/>
 							))}
@@ -198,9 +267,13 @@ export function ExplorationFraming({
 
 function FramingItem({
 	node,
+	is_selected,
+	item_ref,
 	on_click,
 }: {
 	node: GraphNode;
+	is_selected: boolean;
+	item_ref: (element: HTMLButtonElement | null) => void;
 	on_click?: (node: GraphNode) => void;
 }) {
 	const Icon = get_framing_icon(node);
@@ -210,10 +283,12 @@ function FramingItem({
 
 	return (
 		<button
+			ref={item_ref}
 			type="button"
 			className={cn(
 				"w-full flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-left",
 				"hover:bg-accent/50 transition-colors",
+				is_selected && "bg-accent ring-1 ring-primary/20",
 				is_unavailable && "opacity-50",
 			)}
 			onClick={() => on_click?.(node)}

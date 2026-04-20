@@ -1,7 +1,7 @@
 # ARCHITECTURE
 
 Status: active
-Last updated: 2026-04-10
+Last updated: 2026-04-19
 
 This document explains Ariadne's current system shape.
 
@@ -35,6 +35,7 @@ Ariadne currently exposes:
 - **QMD** — index / collection management and hybrid search
 - **QMD Logs** — observability over agent QMD CLI usage
 - **Provider limits** — sidebar and page-level quota snapshots
+- **Settings** — machine-local preferences and experimental feature gates
 
 ### Core data sources
 
@@ -83,6 +84,7 @@ It owns:
 - breadcrumbs
 - global project scope
 - global analytics time range
+- machine-local app settings / experimental flags
 - sync action
 - provider limits sidebar card
 
@@ -291,6 +293,7 @@ Normal analytics pages should not pay the cost of QMD-log parsing.
 Global selections live near the app root:
 - `ProjectScopeProvider`
 - `AnalyticsTimeRangeProvider`
+- `AppSettingsProvider`
 
 Route-local shared data lives inside the route that owns it:
 - `UsageProvider` inside the Usage layout route
@@ -310,7 +313,8 @@ Route-local shared data lives inside the route that owns it:
 9. **Project identity is path-based, not display-name-based.** `project_name` is presentation only.
 10. **Analytics time range is global across analytics routes.** Overview, Sessions, Usage, and Tool Detail must agree on the selected range.
 11. **QMD logs are global observability, not index-scoped content.** `/qmd/logs` is not tied to one selected index.
-12. **Current docs must describe the live Electron runtime.** Historical material should be clearly separated or removed.
+12. **Local app settings are machine-local.** Experimental flags currently persist in renderer local storage until a dedicated config layer exists.
+13. **Current docs must describe the live Electron runtime.** Historical material should be clearly separated or removed.
 
 ---
 

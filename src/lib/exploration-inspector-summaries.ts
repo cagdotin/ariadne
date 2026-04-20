@@ -8,14 +8,17 @@
  * scanning all edges per query.
  */
 
-import type { GraphEdge, GraphNode, SessionGraphPayload } from "@contracts/graph";
+import type {
+	GraphEdge,
+	GraphNode,
+	SessionGraphPayload,
+} from "@contracts/graph";
+import type { InsightSubgraph } from "@/lib/exploration-insight-graph-view-model";
+import type { TemporalLens } from "@/lib/exploration-temporal-view-model";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-export type NodeSummary =
-	| TurnSummary
-	| FileSummary
-	| InstructionSummary;
+export type NodeSummary = TurnSummary | FileSummary | InstructionSummary;
 
 export interface ArrivalPath {
 	action: string; // "read" | "edited" | "wrote"
@@ -45,6 +48,7 @@ export interface FileSummary {
 	upstream_instructions: number;
 	first_seen_turn: number | null;
 	is_explored: boolean;
+	nearby_unexplored_count: number;
 }
 
 export interface InstructionSummary {
@@ -132,10 +136,7 @@ export function compute_node_summary(
 
 // ── Turn summary ────────────────────────────────────────────────────────────
 
-function compute_turn_summary(
-	turn_id: string,
-	idx: EdgeIndex,
-): TurnSummary {
+function compute_turn_summary(turn_id: string, idx: EdgeIndex): TurnSummary {
 	let searches = 0;
 	let edits = 0;
 	let writes = 0;
@@ -186,10 +187,7 @@ function compute_turn_summary(
 
 // ── File summary ────────────────────────────────────────────────────────────
 
-function compute_file_summary(
-	file_id: string,
-	idx: EdgeIndex,
-): FileSummary {
+function compute_file_summary(file_id: string, idx: EdgeIndex): FileSummary {
 	let reads = 0;
 	let edits = 0;
 	let writes = 0;
@@ -211,7 +209,10 @@ function compute_file_summary(
 			if (source.kind === "doc_file" || source.kind === "doc_section") {
 				upstream_docs++;
 			}
-			if (source.kind === "instruction_source" || source.kind === "agents_doc") {
+			if (
+				source.kind === "instruction_source" ||
+				source.kind === "agents_doc"
+			) {
 				upstream_instructions++;
 			}
 		}
@@ -241,6 +242,15 @@ function compute_file_summary(
 		}
 	}
 
+	// Count nearby unexplored neighbors
+	let nearby_unexplored_count = 0;
+	const outgoing = idx.by_source.get(file_id) ?? [];
+	for (const edge of outgoing) {
+		if (edge.kind === "adjacent_unexplored") {
+			nearby_unexplored_count++;
+		}
+	}
+
 	return {
 		kind: "file",
 		reads,
@@ -250,6 +260,7 @@ function compute_file_summary(
 		upstream_instructions,
 		first_seen_turn,
 		is_explored,
+		nearby_unexplored_count,
 	};
 }
 
@@ -369,4 +380,303 @@ export function compute_arrival_paths(
 	paths.sort((a, b) => (a.turn_index ?? 0) - (b.turn_index ?? 0));
 
 	return paths;
+}
+
+// ── Narrative summaries ─────────────────────────────────────────────────────
+
+function pluralize(n: number, singular: string, plural?: string): string {
+	return `${n} ${n === 1 ? singular : (plural ?? `${singular}s`)}`;
+}
+
+/**
+ * Compute a short narrative sentence summarizing a selected node.
+ * Returns null for unsupported node kinds.
+ *
+ * Examples:
+ * - "This prompt led to 1 search, 2 files explored, and 1 edit."
+ * - "Edited after 1 read. 1 upstream doc."
+ * - "Ambient instruction source influencing 2 downstream files, 1 edited."
+ */
+export function compute_narrative_summary(
+	node_id: string,
+	graph: SessionGraphPayload,
+): string | null {
+	const idx = build_edge_index(graph);
+	const node = idx.node_map.get(node_id);
+	if (!node) return null;
+
+	if (node.kind === "assistant_turn") {
+		const summary = compute_turn_summary(node_id, idx);
+		const parts: string[] = [];
+		if (summary.searches > 0)
+			parts.push(pluralize(summary.searches, "search", "searches"));
+		if (summary.files_explored > 0)
+			parts.push(`${pluralize(summary.files_explored, "file")} explored`);
+		if (summary.docs_explored > 0)
+			parts.push(`${pluralize(summary.docs_explored, "doc")} read`);
+		if (summary.edits > 0) parts.push(pluralize(summary.edits, "edit"));
+		if (summary.writes > 0) parts.push(pluralize(summary.writes, "write"));
+
+		if (parts.length === 0) return "This prompt led to no observable actions.";
+		return `This prompt led to ${join_parts(parts)}.`;
+	}
+
+	if (
+		node.kind === "source_file" ||
+		node.kind === "doc_file" ||
+		node.kind === "doc_section"
+	) {
+		const summary = compute_file_summary(node_id, idx);
+		const parts: string[] = [];
+
+		if (summary.edits > 0 && summary.writes > 0) {
+			parts.push(`Edited and written`);
+		} else if (summary.edits > 0) {
+			parts.push(`Edited`);
+		} else if (summary.writes > 0) {
+			parts.push(`Written`);
+		} else if (summary.reads > 0) {
+			parts.push(`Read ${pluralize(summary.reads, "time")}`);
+		} else {
+			parts.push("Not directly accessed");
+		}
+
+		if (summary.upstream_docs > 0) {
+			parts.push(`${pluralize(summary.upstream_docs, "upstream doc")}`);
+		}
+		if (summary.upstream_instructions > 0) {
+			parts.push(
+				`${pluralize(summary.upstream_instructions, "upstream instruction")}`,
+			);
+		}
+		if (summary.nearby_unexplored_count > 0) {
+			parts.push(
+				`${pluralize(summary.nearby_unexplored_count, "unexplored neighbor")}`,
+			);
+		}
+
+		return `${parts.join(". ")}.`;
+	}
+
+	if (
+		node.kind === "instruction_source" ||
+		node.kind === "agents_doc" ||
+		node.kind === "system_prompt" ||
+		node.kind === "developer_prompt"
+	) {
+		const summary = compute_instruction_summary(node_id, idx);
+		const availability_label =
+			summary.availability === "available_observed"
+				? "Observed"
+				: summary.availability === "available_ambient"
+					? "Ambient"
+					: summary.availability === "derived_inferred"
+						? "Inferred"
+						: "Unknown";
+
+		const parts: string[] = [`${availability_label} instruction source`];
+
+		if (summary.downstream_files > 0) {
+			parts.push(
+				`influencing ${pluralize(summary.downstream_files, "downstream file")}`,
+			);
+			if (summary.downstream_edits > 0) {
+				parts.push(
+					`${pluralize(summary.downstream_edits, "")} edited`
+						.replace("0 ", "")
+						.replace("1 ", "1 "),
+				);
+			}
+		} else {
+			parts.push("no downstream file influence detected");
+		}
+
+		return `${parts.join(", ")}.`;
+	}
+
+	return null;
+}
+
+function join_parts(parts: string[]): string {
+	if (parts.length <= 1) return parts[0] ?? "";
+	if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+	return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+// ── Temporal narrative ──────────────────────────────────────────────────────
+
+/**
+ * Compute a temporal context sentence based on the active temporal lens.
+ *
+ * Returns null for full_session or when the lens doesn't add useful context.
+ */
+export function compute_temporal_narrative(
+	node_id: string,
+	graph: SessionGraphPayload,
+	lens: TemporalLens,
+): string | null {
+	if (lens.kind === "full_session") return null;
+
+	const idx = build_edge_index(graph);
+	const node = idx.node_map.get(node_id);
+	if (!node) return null;
+
+	if (lens.kind === "built_so_far") {
+		if (node.kind === "assistant_turn" || node.kind === "user_prompt") {
+			const turn_index = (node.metadata?.turn_index as number) ?? null;
+			if (turn_index !== null) {
+				return `Showing cumulative explored state through Turn ${turn_index + 1}.`;
+			}
+		}
+		return `Showing state built so far by end of Turn ${lens.selected_turn_index + 1}.`;
+	}
+
+	if (lens.kind === "arrival_path") {
+		const summary = compute_file_summary_internal(node_id, idx);
+		if (!summary) return null;
+
+		const parts: string[] = [];
+		if (summary.first_seen_turn !== null) {
+			parts.push(`First seen in Turn ${summary.first_seen_turn + 1}`);
+		}
+
+		const arrival_count = compute_arrival_paths(node_id, graph).length;
+		if (arrival_count > 0) {
+			parts.push(`reached via ${pluralize(arrival_count, "interaction")}`);
+		}
+
+		if (parts.length === 0) return null;
+		return `${parts.join(", ")}.`;
+	}
+
+	return null;
+}
+
+function compute_file_summary_internal(
+	file_id: string,
+	idx: EdgeIndex,
+): FileSummary | null {
+	const node = idx.node_map.get(file_id);
+	if (!node) return null;
+
+	if (
+		node.kind !== "source_file" &&
+		node.kind !== "doc_file" &&
+		node.kind !== "doc_section"
+	)
+		return null;
+
+	return compute_file_summary(file_id, idx);
+}
+
+// ── Insight summary (graph-mode) ────────────────────────────────────────────
+
+export interface InsightSummary {
+	/** Readable route string, e.g. "turn_0 → tool_read → file_a" */
+	primary_path_label: string;
+	/** Labels of supporting contributor nodes */
+	supporting_labels: string[];
+	/** Labels of structural reference nodes */
+	structural_ref_labels: string[];
+	/** Labels of downstream effect nodes */
+	downstream_labels: string[];
+}
+
+/**
+ * Derive a structured summary from an insight subgraph.
+ *
+ * Used by the inspector when Graph mode is active to provide
+ * structured explanation text alongside the visual graph.
+ */
+export function compute_insight_summary(
+	insight: InsightSubgraph,
+): InsightSummary | null {
+	if (!insight.focal_node_id || insight.nodes.length === 0) return null;
+
+	// Build primary path label by tracing edges
+	const primary_nodes = insight.nodes.filter((n) => n.role === "primary_path");
+	const primary_edges = insight.edges.filter((e) => e.role === "primary_path");
+
+	// Build adjacency for primary path to create an ordered chain
+	const primary_path_label = build_path_chain(
+		primary_nodes.map((n) => ({ id: n.id, label: n.node.label })),
+		primary_edges,
+		insight.focal_node_id,
+	);
+
+	const supporting_labels = insight.nodes
+		.filter((n) => n.role === "supporting")
+		.map((n) => n.node.label);
+
+	const structural_ref_labels = insight.nodes
+		.filter((n) => n.role === "structural_ref")
+		.map((n) => n.node.label);
+
+	const downstream_labels = insight.nodes
+		.filter((n) => n.role === "downstream")
+		.map((n) => n.node.label);
+
+	return {
+		primary_path_label,
+		supporting_labels,
+		structural_ref_labels,
+		downstream_labels,
+	};
+}
+
+/**
+ * Build a readable chain string from path nodes and edges.
+ * Attempts topological ordering; falls back to label join.
+ */
+function build_path_chain(
+	nodes: Array<{ id: string; label: string }>,
+	edges: Array<{ source_id: string; target_id: string }>,
+	_focal_id: string,
+): string {
+	if (nodes.length === 0) return "";
+	if (nodes.length === 1) return nodes[0].label;
+
+	// Build adjacency: source → targets
+	const outgoing = new Map<string, string[]>();
+	const incoming_count = new Map<string, number>();
+
+	for (const n of nodes) {
+		outgoing.set(n.id, []);
+		incoming_count.set(n.id, 0);
+	}
+
+	const node_ids = new Set(nodes.map((n) => n.id));
+	for (const e of edges) {
+		if (node_ids.has(e.source_id) && node_ids.has(e.target_id)) {
+			outgoing.get(e.source_id)?.push(e.target_id);
+			incoming_count.set(
+				e.target_id,
+				(incoming_count.get(e.target_id) ?? 0) + 1,
+			);
+		}
+	}
+
+	// Find roots (no incoming edges within primary path)
+	const roots = nodes.filter((n) => (incoming_count.get(n.id) ?? 0) === 0);
+
+	if (roots.length === 0) {
+		// Cycle or no clear root — just join labels
+		return nodes.map((n) => n.label).join(" → ");
+	}
+
+	// Walk from first root to build chain
+	const chain: string[] = [];
+	const visited = new Set<string>();
+	let current = roots[0].id;
+
+	while (current && !visited.has(current)) {
+		visited.add(current);
+		const node = nodes.find((n) => n.id === current);
+		if (node) chain.push(node.label);
+
+		const targets = outgoing.get(current) ?? [];
+		current = targets[0]; // follow first child
+	}
+
+	return chain.join(" → ");
 }

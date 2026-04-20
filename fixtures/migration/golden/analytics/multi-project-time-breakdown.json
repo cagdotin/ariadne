@@ -1,114 +1,116 @@
 {
-	"avg_cost_per_session": 0.02708,
-	"by_time_of_day": [
-		{
-			"cost": 0.0,
-			"hour_end": 5,
-			"hour_start": 0,
-			"label": "After midnight",
-			"sessions": 0,
-			"share": 0.0
-		},
-		{
-			"cost": 0.0271,
-			"hour_end": 11,
-			"hour_start": 6,
-			"label": "Morning",
-			"sessions": 1,
-			"share": 50.0
-		},
-		{
-			"cost": 0.02706,
-			"hour_end": 16,
-			"hour_start": 12,
-			"label": "Afternoon",
-			"sessions": 1,
-			"share": 50.0
-		},
-		{
-			"cost": 0.0,
-			"hour_end": 21,
-			"hour_start": 17,
-			"label": "Evening",
-			"sessions": 0,
-			"share": 0.0
-		},
-		{
-			"cost": 0.0,
-			"hour_end": 23,
-			"hour_start": 22,
-			"label": "Night",
-			"sessions": 0,
-			"share": 0.0
-		}
-	],
+	"range_days": 30,
+	"total_sessions": 1,
+	"total_cost": 0.02706,
+	"avg_cost_per_session": 0.02706,
+	"total_tokens": 4770,
 	"by_weekday": [
 		{
-			"cost": 0.0,
 			"day": "Mon",
 			"sessions": 0,
-			"share": 0.0
+			"cost": 0,
+			"share": 0
 		},
 		{
-			"cost": 0.0,
 			"day": "Tue",
 			"sessions": 0,
-			"share": 0.0
+			"cost": 0,
+			"share": 0
 		},
 		{
-			"cost": 0.0,
 			"day": "Wed",
 			"sessions": 0,
-			"share": 0.0
+			"cost": 0,
+			"share": 0
 		},
 		{
-			"cost": 0.0,
 			"day": "Thu",
 			"sessions": 0,
-			"share": 0.0
+			"cost": 0,
+			"share": 0
 		},
 		{
-			"cost": 0.02706,
 			"day": "Fri",
 			"sessions": 1,
-			"share": 50.0
+			"cost": 0.02706,
+			"share": 100
 		},
 		{
-			"cost": 0.0,
 			"day": "Sat",
 			"sessions": 0,
-			"share": 0.0
+			"cost": 0,
+			"share": 0
 		},
 		{
-			"cost": 0.0271,
 			"day": "Sun",
-			"sessions": 1,
-			"share": 50.0
+			"sessions": 0,
+			"cost": 0,
+			"share": 0
 		}
 	],
-	"daily_cost": [
+	"by_time_of_day": [
 		{
-			"cost": 0.0271,
-			"date": "2026-03-15"
+			"label": "After midnight",
+			"hour_start": 0,
+			"hour_end": 5,
+			"sessions": 0,
+			"cost": 0,
+			"share": 0
 		},
 		{
+			"label": "Morning",
+			"hour_start": 6,
+			"hour_end": 11,
+			"sessions": 0,
+			"cost": 0,
+			"share": 0
+		},
+		{
+			"label": "Afternoon",
+			"hour_start": 12,
+			"hour_end": 16,
+			"sessions": 1,
 			"cost": 0.02706,
-			"date": "2026-03-20"
+			"share": 100
+		},
+		{
+			"label": "Evening",
+			"hour_start": 17,
+			"hour_end": 21,
+			"sessions": 0,
+			"cost": 0,
+			"share": 0
+		},
+		{
+			"label": "Night",
+			"hour_start": 22,
+			"hour_end": 23,
+			"sessions": 0,
+			"cost": 0,
+			"share": 0
 		}
 	],
 	"daily_sessions": [
 		{
-			"count": 1,
-			"date": "2026-03-15"
-		},
+			"date": "2026-03-20",
+			"count": 1
+		}
+	],
+	"daily_cost": [
 		{
-			"count": 1,
-			"date": "2026-03-20"
+			"date": "2026-03-20",
+			"cost": 0.02706
 		}
 	],
 	"hourly_sessions": [],
-	"range_days": 30,
-	"total_cost": 0.05416,
-	"total_sessions": 2,
-	"total_tokens": 9320
+	"daily_model_usage": [
+		{
+			"date": "2026-03-20",
+			"model_id": "claude-sonnet-4-20250514",
+			"provider": "anthropic",
+			"message_count": 2,
+			"session_equivalent_count": 1,
+			"total_cost": 0.02706
+		}
+	]
 }

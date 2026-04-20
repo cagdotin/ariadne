@@ -17,6 +17,7 @@ import { use_session_detail_context } from "./session-detail-context";
 export function SessionDetailExploration() {
 	const {
 		header,
+		entries,
 		loading: ctx_loading,
 		error: ctx_error,
 	} = use_session_detail_context();
@@ -88,5 +89,5 @@ export function SessionDetailExploration() {
 		);
 	}
 
-	return <ExplorationView graph={graph} />;
+	return <ExplorationView graph={graph} entries={entries} />;
 }

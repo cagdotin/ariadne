@@ -1,9 +1,4 @@
-import type {
-	QmdAvailability,
-	QmdCollection,
-	QmdIndex,
-	QmdStatus,
-} from "@contracts/qmd";
+import type { QmdCollection, QmdIndex, QmdStatus } from "@contracts/qmd";
 import type { QmdLogStats } from "@contracts/qmd-logs";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -18,7 +13,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	qmd_add_collection,
-	qmd_check_availability,
 	qmd_cleanup,
 	qmd_create_index,
 	qmd_delete_index,
@@ -40,6 +34,7 @@ import { GlobalContextEditor } from "@/components/global-context-editor";
 import { IndexSelector } from "@/components/index-selector";
 import { InfoTip } from "@/components/info-tip";
 import { use_project_scope } from "@/components/project-scope-provider";
+import { QmdFeatureGate } from "@/components/qmd-feature-gate";
 import { QmdHealthBanner } from "@/components/qmd-health-banner";
 import { QmdProgress } from "@/components/qmd-progress";
 import { QmdSearchModal } from "@/components/qmd-search-modal";
@@ -60,14 +55,25 @@ import { error_message } from "@/lib/utils";
 const LAST_INDEX_KEY = "ariadne:qmd:last-index";
 
 export function Qmd() {
+	return (
+		<QmdFeatureGate
+			disabled_icon={ScrollText}
+			disabled_title="QMD"
+			disabled_description="QMD management and observability are behind a local experimental flag."
+			unavailable_title="QMD requires qmd"
+			unavailable_description="Install qmd on this machine before using Ariadne's QMD indexes and collections."
+		>
+			<QmdEnabled />
+		</QmdFeatureGate>
+	);
+}
+
+function QmdEnabled() {
 	const { index: index_name } = useParams({ strict: false }) as {
 		index: string;
 	};
 	const navigate = useNavigate();
 
-	const [availability, set_availability] = useState<QmdAvailability | null>(
-		null,
-	);
 	const [indexes, set_indexes] = useState<QmdIndex[]>([]);
 	const [status, set_status] = useState<QmdStatus | null>(null);
 	const [collections, set_collections] = useState<QmdCollection[]>([]);
@@ -114,9 +120,6 @@ export function Qmd() {
 			try {
 				if (show_loading) set_loading(true);
 				set_error(null);
-				const avail = await qmd_check_availability();
-				set_availability(avail);
-				if (!avail.installed) return;
 
 				const idxs = await fetch_indexes();
 
@@ -289,31 +292,13 @@ export function Qmd() {
 		);
 	}
 
-	if (error && !availability) {
+	if (error) {
 		return (
 			<Alert variant="destructive">
 				<AlertTriangle className="size-4" />
 				<AlertTitle>Error</AlertTitle>
 				<AlertDescription>{error}</AlertDescription>
 			</Alert>
-		);
-	}
-
-	// Not installed
-	if (availability && !availability.installed) {
-		return (
-			<div className="space-y-4">
-				<QmdHealthBanner state={{ kind: "not_installed" }} />
-				<div className="rounded-none border border-border p-6 text-center space-y-2">
-					<p className="text-muted-foreground text-sm">
-						QMD is a hybrid search engine for markdown files. Install it to get
-						started.
-					</p>
-					<code className="text-xs font-mono bg-muted px-2 py-1 rounded">
-						npm install -g @tobilu/qmd
-					</code>
-				</div>
-			</div>
 		);
 	}
 

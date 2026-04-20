@@ -5,7 +5,11 @@
  * bypassing the exploration adapter. Pure functions, no DOM/React.
  */
 
-import type { GraphEdge, GraphNode, SessionGraphPayload } from "@contracts/graph";
+import type {
+	GraphEdge,
+	GraphNode,
+	SessionGraphPayload,
+} from "@contracts/graph";
 import { classify_tool_action } from "@contracts/graph";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -46,6 +50,12 @@ export interface PathTurn {
 	summary: TurnSummary;
 }
 
+export interface PathSelectionTarget {
+	turn_index: number;
+	row_kind: "turn" | "action";
+	action_tool_node_id: string | null;
+}
+
 // ── Classification ──────────────────────────────────────────────────────────
 
 /** Map shared ToolCategory → path-specific ActionKind. */
@@ -82,9 +92,7 @@ function get_tool_index(tool_node: GraphNode | undefined): number {
 /**
  * Derive the path turn sequence from a SessionGraphPayload.
  */
-export function compute_path_turns(
-	graph: SessionGraphPayload,
-): PathTurn[] {
+export function compute_path_turns(graph: SessionGraphPayload): PathTurn[] {
 	const node_map = new Map<string, GraphNode>();
 	for (const n of graph.nodes) node_map.set(n.id, n);
 
@@ -129,7 +137,9 @@ export function compute_path_turns(
 		if (turn_node) {
 			// Get tool edges in explicit invocation order
 			const tool_edges = graph.edges
-				.filter((e) => e.source_id === turn_node.id && e.kind === "invoked_tool")
+				.filter(
+					(e) => e.source_id === turn_node.id && e.kind === "invoked_tool",
+				)
 				.sort((left, right) => {
 					const left_tool = node_map.get(left.target_id);
 					const right_tool = node_map.get(right.target_id);
@@ -159,10 +169,7 @@ export function compute_path_turns(
 			const edited_in_turn = new Set<string>();
 			for (const { tool_node, file_edge } of action_entries) {
 				const kind = classify_tool(tool_node);
-				if (
-					(kind === "file_edit" || kind === "file_write") &&
-					file_edge
-				) {
+				if ((kind === "file_edit" || kind === "file_write") && file_edge) {
 					edited_in_turn.add(file_edge.target_id);
 				}
 			}
@@ -217,4 +224,56 @@ export function compute_path_turns(
 	}
 
 	return result;
+}
+
+/**
+ * Resolve which left-pane row should represent the current shared selection.
+ *
+ * The path pane is organized by turns and action rows rather than by arbitrary
+ * graph nodes, so some selected graph nodes map to their nearest owning row.
+ */
+export function resolve_path_selection_target(
+	selected_node_id: string | null,
+	path_turns: PathTurn[],
+): PathSelectionTarget | null {
+	if (!selected_node_id) return null;
+
+	for (const turn of path_turns) {
+		if (
+			selected_node_id === turn.user_prompt_node_id ||
+			selected_node_id === turn.turn_node_id
+		) {
+			return {
+				turn_index: turn.turn_index,
+				row_kind: "turn",
+				action_tool_node_id: null,
+			};
+		}
+	}
+
+	for (const turn of path_turns) {
+		for (const action of turn.actions) {
+			if (selected_node_id === action.tool_node_id) {
+				return {
+					turn_index: turn.turn_index,
+					row_kind: "action",
+					action_tool_node_id: action.tool_node_id,
+				};
+			}
+		}
+	}
+
+	for (const turn of path_turns) {
+		for (const action of turn.actions) {
+			if (selected_node_id === action.target_node_id) {
+				return {
+					turn_index: turn.turn_index,
+					row_kind: "action",
+					action_tool_node_id: action.tool_node_id,
+				};
+			}
+		}
+	}
+
+	return null;
 }

@@ -4,6 +4,7 @@ import type {
 } from "@contracts/provider-limits";
 import { AlertCircle, Clock, Gauge, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
+import { use_provider_limits_enabled } from "@/components/app-settings-provider";
 import { use_provider_limits } from "@/components/provider-limits-provider";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -150,7 +151,12 @@ function CollapsedIndicator({
 }
 
 export function ProviderLimitsSidebarCard() {
+	const is_provider_limits_enabled = use_provider_limits_enabled();
 	const { snapshots, loading, refreshing, refresh } = use_provider_limits();
+
+	if (!is_provider_limits_enabled) {
+		return null;
+	}
 
 	if (loading && snapshots.length === 0) {
 		return null; // Don't render skeleton in sidebar — too noisy

@@ -1,4 +1,8 @@
 import {
+	type FileSessionsResponse,
+	file_sessions_response_schema,
+} from "@contracts/analytics/file-sessions";
+import {
 	type FileSizeResult,
 	file_size_result_schema,
 	type ProjectFileStats,
@@ -121,4 +125,17 @@ export async function get_file_sizes(
 ): Promise<FileSizeResult[]> {
 	const raw = await commands.analytics.get_file_sizes({ paths });
 	return z.array(file_size_result_schema).parse(raw);
+}
+
+export async function get_sessions_for_files(
+	project_path: string,
+	file_paths: string[],
+	range_days?: number,
+): Promise<FileSessionsResponse> {
+	const raw = await commands.analytics.get_sessions_for_files({
+		projectPath: project_path,
+		filePaths: file_paths,
+		rangeDays: range_days ?? null,
+	});
+	return file_sessions_response_schema.parse(raw);
 }

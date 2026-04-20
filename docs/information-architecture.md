@@ -1,7 +1,7 @@
 # Information Architecture
 
 Status: active  
-Last updated: 2026-03-28
+Last updated: 2026-04-19
 
 This document is the source-of-truth map for Ariadne's **pages, navigation, and route-level responsibilities**.
 
@@ -18,15 +18,17 @@ For code structure, see `docs/ARCHITECTURE.md`.
 
 ## Product questions Ariadne answers
 
-Ariadne currently answers five kinds of questions:
+Ariadne currently answers seven kinds of questions:
 
 | Question | Surface | Route family |
 |---|---|---|
 | "What's the pulse?" | **Overview** | `/` |
 | "What did specific sessions do?" | **Sessions** | `/sessions` |
 | "How are tools/cost/patterns/files distributed?" | **Usage** | `/usage/*` |
+| "Which sessions touched this path, and where should I drill in next?" | **Explore** | `/explore` |
 | "What is in my QMD knowledge base?" | **QMD** | `/qmd/:index`, `/qmd/:index/:collection` |
 | "How are agents actually using QMD?" | **QMD Logs** | `/qmd/logs` |
+| "How is this install configured?" | **Settings** | `/settings` |
 
 These are intentionally different surfaces. QMD logs is not just a table inside the QMD index page; it is an observability page about agent behavior.
 
@@ -36,14 +38,19 @@ These are intentionally different surfaces. QMD logs is not just a table inside 
 
 ### Sidebar
 
-The sidebar has four top-level destinations:
+The sidebar has five core top-level destinations:
 
 ```text
 Overview   -> /
 Sessions   -> /sessions
 Usage      -> /usage
+Explore    -> /explore
 QMD        -> /qmd
 ```
+
+`/settings` is a global app-control page reached from the header actions rather than a primary sidebar destination.
+
+`/explore` is a first-class drill-in workspace for path-scoped file ↔ session navigation. It is intentionally separate from `/usage/files`, which stays focused on aggregate file analytics.
 
 There is **no Projects top-level route** anymore. Project selection is a global scope control, not a destination.
 
@@ -65,6 +72,8 @@ Current breadcrumb patterns:
 /usage/tools/:tool     -> Usage / Tools / {tool}
 /usage/patterns        -> Usage / Patterns
 /usage/files           -> Usage / Files
+/explore               -> Explore
+/settings              -> Settings
 /qmd/logs              -> QMD / Logs
 /qmd/:index            -> QMD / {index}
 /qmd/:index/:collection -> QMD / {index} / {collection}
@@ -87,7 +96,7 @@ Sidebar trigger -> Project scope selector -> Breadcrumbs
 ### Right side
 
 ```text
-Analytics time range selector (when relevant) -> Sync -> Theme toggle
+Analytics time range selector (when relevant) -> Sync -> Settings
 ```
 
 ### Important scope behavior
@@ -116,6 +125,7 @@ The analytics time-range selector is shown only on routes where it matters:
 - `/`
 - `/sessions`
 - `/usage/*`
+- `/explore`
 
 It is hidden on:
 - `/sessions/:id`
@@ -134,6 +144,8 @@ It is a **global analytics scope**, persisted in local storage.
 /sessions                  Sessions list
 /sessions/:id              Session detail layout (redirects to conversation)
 /usage                     Usage redirect
+/explore                   File ↔ session drill-in workspace
+/settings                  Local app settings and experimental flags
 /qmd                       Redirect to last/default index
 /qmd/logs                  QMD logs observability
 /qmd/:index                QMD index overview
@@ -173,6 +185,7 @@ It is a **global analytics scope**, persisted in local storage.
 ### What lives here
 - top-level metric cards
 - daily trend
+- compact recent sessions preview (last 5 for current scope)
 - Top Projects cards when no project is scoped
 - activity heatmap
 
@@ -183,7 +196,7 @@ It is a **global analytics scope**, persisted in local storage.
 ### Important rules
 - this page is summary-first
 - it should stay scannable
-- deep drill-down tables do not belong here
+- only compact preview tables belong here; full session browsing still belongs on the Sessions page
 - Top Projects is an affordance for setting global scope, not a navigation card grid to project routes
 
 ---
@@ -213,7 +226,7 @@ Session detail is a **layout route** with shared data context (`SessionDetailPro
 
 - **Conversation** (`/sessions/:id/conversation`) — branch-aware conversation replay via `SessionViewer`
 - **Traces** (`/sessions/:id/traces`) — horizontal swim-lane timeline showing all session events on a time axis, with an inspector panel for selected events
-- **Exploration** (`/sessions/:id/exploration`) — split view showing how the agent explored the codebase: chronological timeline grouped by turn (left), session-scoped artifact graph with one-hop unexplored neighbors (right), and a selection-driven inspector
+- **Exploration** (`/sessions/:id/exploration`) — split view with three panes, each owning a distinct job: left narrative pane (session framing + collapsed-by-default turns), artifact-first context map (docs, files, outputs, adjacent context; narrative scaffolding appears only when a selection needs it), and a selection-driven inspector
 
 Navigation from Conversation exposes both Traces and Exploration quick actions. From Traces or Exploration, a Conversation back action is shown.
 
@@ -309,6 +322,26 @@ Lives here:
 - size-vs-activity scatter chart
 - file activity grid
 
+This page stays aggregate-first. It should not own session drill-in tables or path-scoped investigation state.
+
+#### Explore (`/explore`)
+Answers: **which sessions touched this path, and which session should I inspect next?**
+
+This surface appears when a project scope is active and shares the global time range.
+
+Lives here:
+- project-scoped file treemap with URL-backed path selection
+- operation lens (`All / Read / Edit / Write`)
+- exclude-path filter
+- scope summary for the active path
+- session list for the selected path or subtree
+- row actions into session conversation and session exploration
+
+Important rules:
+- keep the URL `?path=` search param as the source of truth for path scope
+- root scope means all sessions for the current project; scoped-empty results must stay empty rather than widening back to root
+- keep this page focused on path → session drill-in, not on aggregate chart galleries
+
 ### Important rules for Usage
 
 - keep shared fetch/state in the Usage layout
@@ -386,7 +419,29 @@ This route is a navigation helper, not a content surface.
 
 ---
 
-## 7. QMD Logs (`/qmd/logs`)
+## 7. Settings (`/settings`)
+
+**Purpose:** configure machine-local app behavior and experimental feature gates.
+
+### What lives here
+- local-settings explanation
+- appearance / theme controls
+- experimental feature toggles
+- reset-to-defaults action
+- notes about what gets loaded when a feature is enabled or disabled
+
+### What the page loads
+- no backend data
+- local persisted settings only
+
+### Important rules
+- settings are local to this install until a real config sync layer exists
+- disabling an experimental feature should remove or short-circuit its related UI/data loading paths
+- `/settings` is a control surface, not an analytics destination
+
+---
+
+## 8. QMD Logs (`/qmd/logs`)
 
 **Purpose:** inspect how agents used the QMD CLI during sessions.
 
@@ -425,7 +480,7 @@ The shell owns breadcrumbs so detail pages do not each invent their own navigati
 
 ### Global selectors
 
-The project scope selector and analytics time-range selector belong in the header because they affect multiple pages and should remain visible while navigating.
+The project scope selector, analytics time-range selector, and settings entry point belong in the header because they affect multiple pages and should remain visible while navigating.
 
 ---
 
@@ -476,4 +531,5 @@ The project scope selector and analytics time-range selector belong in the heade
 3. **Session replay stays on session detail.** The Sessions index remains a browsing surface.
 4. **QMD management and QMD logs are related but distinct.** Index/collection management is index-scoped; QMD logs is global observability.
 5. **Header controls must remain meaningful.** Project scope can stay visible globally; time range should only appear where it actually affects data.
-6. **Route order matters under `/qmd`.** Static `/qmd/logs` must remain unambiguous relative to dynamic `/qmd/:index`.
+6. **Settings are machine-local for now.** They should be safe to persist without introducing backend or cloud dependencies.
+7. **Route order matters under `/qmd`.** Static `/qmd/logs` must remain unambiguous relative to dynamic `/qmd/:index`.

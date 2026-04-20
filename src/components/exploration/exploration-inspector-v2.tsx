@@ -5,26 +5,57 @@
  * Works directly with SessionGraphPayload rather than ExplorationPayload.
  */
 
-import type { GraphEdge, GraphNode, SessionGraphPayload } from "@contracts/graph";
-import { ArrowDown, ArrowRight, ArrowUp, Info, X } from "lucide-react";
+import type {
+	GraphEdge,
+	GraphNode,
+	SessionGraphPayload,
+} from "@contracts/graph";
+import { ArrowDown, ArrowUp, Clock, Info, X } from "lucide-react";
 import { useMemo } from "react";
+import type { SessionEntry } from "@/components/session-viewer/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { InsightSubgraph } from "@/lib/exploration-insight-graph-view-model";
 import {
 	compute_arrival_paths,
+	compute_insight_summary,
+	compute_narrative_summary,
 	compute_node_summary,
-	type ArrivalPath,
-	type FileSummary,
-	type InstructionSummary,
-	type TurnSummary,
+	compute_temporal_narrative,
 } from "@/lib/exploration-inspector-summaries";
+import {
+	compute_question_actions,
+	type QuestionAction,
+} from "@/lib/exploration-question-actions";
+import type { TemporalLens } from "@/lib/exploration-temporal-view-model";
 import { cn } from "@/lib/utils";
+import { build_node_replay_details } from "./exploration-inspector-replay";
+import {
+	ArrivalPathRow,
+	FileActivityCard,
+	FileSummarySection,
+	InsightSummarySection,
+	InstructionSummarySection,
+	JsonPreview,
+	PropertyRow,
+	RelationshipButton,
+	SectionLabel,
+	SummaryTextItem,
+	TextPreview,
+	TurnSummarySection,
+} from "./exploration-inspector-sections";
+import type { MiddlePaneMode } from "./exploration-middle-pane-mode";
 
 interface ExplorationInspectorV2Props {
 	selected_node_id: string;
 	graph: SessionGraphPayload;
+	entries?: SessionEntry[];
+	temporal_lens?: TemporalLens;
+	middle_pane_mode?: MiddlePaneMode;
+	insight_subgraph?: InsightSubgraph;
 	on_select_node: (node_id: string) => void;
 	on_close: () => void;
+	on_apply_action?: (action: QuestionAction) => void;
 }
 
 const evidence_labels: Record<string, string> = {
@@ -68,23 +99,54 @@ const availability_badge_colors: Record<string, string> = {
 export function ExplorationInspectorV2({
 	selected_node_id,
 	graph,
+	entries = [],
+	temporal_lens,
+	middle_pane_mode,
+	insight_subgraph,
 	on_select_node,
 	on_close,
+	on_apply_action,
 }: ExplorationInspectorV2Props) {
 	const node = useMemo(
-		() => graph.nodes.find((n) => n.id === selected_node_id) ?? null,
+		() =>
+			graph.nodes.find((candidate) => candidate.id === selected_node_id) ??
+			null,
 		[graph.nodes, selected_node_id],
+	);
+	const node_by_id = useMemo(
+		() => new Map(graph.nodes.map((candidate) => [candidate.id, candidate])),
+		[graph.nodes],
 	);
 
 	const summary = useMemo(
 		() => compute_node_summary(selected_node_id, graph),
 		[selected_node_id, graph],
 	);
-
-	// Full arrival paths: traces tool → turn → user_prompt for files/docs
 	const arrival_paths = useMemo(
 		() => compute_arrival_paths(selected_node_id, graph),
 		[selected_node_id, graph],
+	);
+	const question_actions = useMemo(
+		() => compute_question_actions(selected_node_id, graph),
+		[selected_node_id, graph],
+	);
+	const narrative = useMemo(
+		() => compute_narrative_summary(selected_node_id, graph),
+		[selected_node_id, graph],
+	);
+	const temporal_narrative = useMemo(
+		() =>
+			temporal_lens
+				? compute_temporal_narrative(selected_node_id, graph, temporal_lens)
+				: null,
+		[selected_node_id, graph, temporal_lens],
+	);
+	const insight_summary = useMemo(
+		() =>
+			middle_pane_mode === "graph" && insight_subgraph
+				? compute_insight_summary(insight_subgraph)
+				: null,
+		[middle_pane_mode, insight_subgraph],
 	);
 
 	const connected_edges = useMemo(() => {
@@ -93,35 +155,49 @@ export function ExplorationInspectorV2({
 
 		for (const edge of graph.edges) {
 			if (edge.source_id === selected_node_id) {
-				const target = graph.nodes.find((n) => n.id === edge.target_id);
+				const target = node_by_id.get(edge.target_id);
 				if (target) outgoing.push({ edge, node: target });
 			}
 			if (edge.target_id === selected_node_id) {
-				const source = graph.nodes.find((n) => n.id === edge.source_id);
+				const source = node_by_id.get(edge.source_id);
 				if (source) incoming.push({ edge, node: source });
 			}
 		}
 
 		return { incoming, outgoing };
-	}, [selected_node_id, graph]);
+	}, [selected_node_id, graph.edges, node_by_id]);
+
+	const replay_details = useMemo(
+		() => (node ? build_node_replay_details(node, graph, entries) : null),
+		[node, graph, entries],
+	);
 
 	if (!node) return null;
 
 	return (
 		<aside className="flex h-full min-w-0 flex-col overflow-hidden bg-card">
-			{/* Header */}
-			<div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border flex-none">
-				<div className="flex items-center gap-2 min-w-0">
-					<Info className="size-3.5 text-muted-foreground shrink-0" />
-					<span className="text-xs font-medium truncate">{node.label}</span>
+			<div className="flex flex-none items-center justify-between gap-2 border-b border-border px-3 py-2">
+				<div className="flex min-w-0 items-center gap-2">
+					<Info className="size-3.5 shrink-0 text-muted-foreground" />
+					<span className="truncate text-xs font-medium">{node.label}</span>
 				</div>
 				<Button variant="ghost" size="xs" onClick={on_close}>
 					<X className="size-3.5" />
 				</Button>
 			</div>
 
-			<div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
-				{/* Properties */}
+			<div className="flex-1 space-y-4 overflow-y-auto p-3">
+				{temporal_lens && temporal_lens.kind !== "full_session" && (
+					<div className="flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1.5">
+						<Clock className="size-3 shrink-0 text-primary" />
+						<span className="text-[10px] font-medium text-primary">
+							{temporal_lens.kind === "built_so_far"
+								? `Built so far by end of Turn ${temporal_lens.selected_turn_index + 1}`
+								: `Arrival path to ${temporal_lens.target_label}`}
+						</span>
+					</div>
+				)}
+
 				<div>
 					<SectionLabel>Properties</SectionLabel>
 					<div className="mt-1 space-y-1">
@@ -146,70 +222,44 @@ export function ExplorationInspectorV2({
 					</div>
 				</div>
 
-				{/* Summary section — context-dependent */}
-				{summary?.kind === "turn" && (
-					<TurnSummarySection summary={summary} />
-				)}
-				{summary?.kind === "file" && (
-					<FileSummarySection summary={summary} />
-				)}
+				{summary?.kind === "turn" && <TurnSummarySection summary={summary} />}
+				{summary?.kind === "file" && <FileSummarySection summary={summary} />}
 				{summary?.kind === "instruction" && (
 					<InstructionSummarySection summary={summary} />
 				)}
 
-				{/* Evidence */}
-				{node.evidence.length > 0 && (
+				{replay_details && replay_details.stats.length > 0 && (
 					<div>
-						<SectionLabel>Evidence</SectionLabel>
-						<div className="mt-1 space-y-1.5">
-							{node.evidence.map((ev, idx) => (
-								<div
-									key={`${ev.kind}-${ev.source_ref ?? idx}`}
-									className="px-2 py-1 rounded-sm"
-								>
-									<Badge
-										className={cn("text-[9px]", evidence_colors[ev.kind])}
-									>
-										{evidence_labels[ev.kind] ?? ev.kind}
-									</Badge>
-									{ev.detail && (
-										<p className="text-[10px] text-muted-foreground mt-0.5">
-											{ev.detail}
-										</p>
-									)}
-									{ev.source_ref && (
-										<p className="text-[9px] text-muted-foreground/70 mt-0.5 font-mono truncate">
-											ref: {ev.source_ref}
-										</p>
-									)}
-								</div>
+						<SectionLabel>Node stats</SectionLabel>
+						<div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
+							{replay_details.stats.map((stat) => (
+								<SummaryTextItem
+									key={`${stat.label}-${stat.value}`}
+									label={stat.label}
+									value={stat.value}
+								/>
 							))}
 						</div>
 					</div>
 				)}
 
-				{node.evidence.length === 0 && (
-					<div>
-						<SectionLabel>Evidence</SectionLabel>
-						<p className="text-[10px] text-muted-foreground mt-1 italic">
-							No evidence available — this context is not captured in session
-							logs.
-						</p>
+				{replay_details?.text_sections.map((section) => (
+					<div key={`${section.title}-${section.text}`}>
+						<SectionLabel>{section.title}</SectionLabel>
+						<div className="mt-1">
+							<TextPreview text={section.text} max_lines={24} />
+						</div>
 					</div>
-				)}
+				))}
 
-				{/* How it was reached — full arrival paths for files/docs */}
-				{arrival_paths.length > 0 && (
+				{replay_details && replay_details.file_activity.length > 0 && (
 					<div>
-						<SectionLabel>
-							<ArrowDown className="size-2.5 inline mr-1" />
-							How it was reached
-						</SectionLabel>
-						<div className="mt-1 space-y-1.5">
-							{arrival_paths.map((ap, idx) => (
-								<ArrivalPathRow
-									key={`${ap.tool_node_id}-${ap.action}-${idx}`}
-									path={ap}
+						<SectionLabel>Observed activity</SectionLabel>
+						<div className="mt-1 space-y-2">
+							{replay_details.file_activity.map((activity) => (
+								<FileActivityCard
+									key={`${activity.tool_node_id}-${activity.action}`}
+									activity={activity}
 									on_select_node={on_select_node}
 								/>
 							))}
@@ -217,58 +267,168 @@ export function ExplorationInspectorV2({
 					</div>
 				)}
 
-				{/* Fallback: raw incoming edges for non-file nodes */}
-				{arrival_paths.length === 0 && connected_edges.incoming.length > 0 && (
+				{replay_details?.json_sections.map((section) => (
+					<div key={`${section.title}-${JSON.stringify(section.data)}`}>
+						<SectionLabel>{section.title}</SectionLabel>
+						<div className="mt-1">
+							<JsonPreview data={section.data} />
+						</div>
+					</div>
+				))}
+
+				{replay_details && replay_details.raw_entries.length > 0 && (
+					<div>
+						<SectionLabel>Replay entries</SectionLabel>
+						<div className="mt-1 space-y-2">
+							{replay_details.raw_entries.map((entry) => (
+								<div
+									key={entry.id}
+									className="space-y-1 rounded-sm border border-border/50 p-2"
+								>
+									<div className="flex items-center justify-between gap-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+										<span>{entry.type}</span>
+										<span className="font-mono normal-case">{entry.id}</span>
+									</div>
+									<JsonPreview data={entry} />
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+
+				{narrative && (
+					<div className="rounded-md bg-muted/40 px-2.5 py-2">
+						<p className="text-[11px] leading-relaxed text-foreground">
+							{narrative}
+						</p>
+					</div>
+				)}
+
+				{temporal_narrative && (
+					<div className="rounded-md border border-primary/10 bg-primary/5 px-2.5 py-2">
+						<p className="text-[10px] leading-relaxed text-primary/80">
+							{temporal_narrative}
+						</p>
+					</div>
+				)}
+
+				{insight_summary && <InsightSummarySection summary={insight_summary} />}
+
+				{question_actions.length > 0 && on_apply_action && (
+					<div>
+						<SectionLabel>Quick actions</SectionLabel>
+						<div className="mt-1 flex flex-wrap gap-1">
+							{question_actions.map((action) => (
+								<button
+									key={action.id}
+									type="button"
+									className="rounded-md border border-border bg-background px-2 py-0.5 text-left text-[10px] transition-colors hover:bg-accent/50"
+									onClick={() => on_apply_action(action)}
+								>
+									{action.label}
+								</button>
+							))}
+						</div>
+					</div>
+				)}
+
+				<div>
+					<SectionLabel>Evidence</SectionLabel>
+					{node.evidence.length > 0 ? (
+						<div className="mt-1 space-y-1.5">
+							{node.evidence.map((evidence, index) => (
+								<div
+									key={`${evidence.kind}-${evidence.source_ref ?? index}`}
+									className="rounded-sm px-2 py-1"
+								>
+									<Badge
+										className={cn("text-[9px]", evidence_colors[evidence.kind])}
+									>
+										{evidence_labels[evidence.kind] ?? evidence.kind}
+									</Badge>
+									{evidence.detail && (
+										<p className="mt-0.5 text-[10px] text-muted-foreground">
+											{evidence.detail}
+										</p>
+									)}
+									{evidence.source_ref && (
+										<p className="mt-0.5 truncate font-mono text-[9px] text-muted-foreground/70">
+											ref: {evidence.source_ref}
+										</p>
+									)}
+								</div>
+							))}
+						</div>
+					) : (
+						<p className="mt-1 text-[10px] italic text-muted-foreground">
+							No evidence available — this context is not captured in session
+							logs.
+						</p>
+					)}
+				</div>
+
+				{arrival_paths.length > 0 ? (
 					<div>
 						<SectionLabel>
-							<ArrowDown className="size-2.5 inline mr-1" />
+							<ArrowDown className="mr-1 inline size-2.5" />
+							How it was reached
+						</SectionLabel>
+						<div className="mt-1 space-y-1.5">
+							{arrival_paths.map((path) => (
+								<ArrivalPathRow
+									key={`${path.tool_node_id}-${path.action}-${path.turn_index}-${path.user_prompt_node_id ?? "none"}`}
+									path={path}
+									on_select_node={on_select_node}
+								/>
+							))}
+						</div>
+					</div>
+				) : connected_edges.incoming.length > 0 ? (
+					<div>
+						<SectionLabel>
+							<ArrowDown className="mr-1 inline size-2.5" />
 							How it was reached
 						</SectionLabel>
 						<div className="mt-1 space-y-1">
-							{connected_edges.incoming.map(({ edge, node: other }) => (
+							{connected_edges.incoming.map(({ edge, node: other_node }) => (
 								<RelationshipButton
 									key={`${edge.source_id}-${edge.kind}`}
 									direction="incoming"
 									edge={edge}
-									other_node={other}
-									on_click={() => on_select_node(other.id)}
+									other_node={other_node}
+									on_click={() => on_select_node(other_node.id)}
 								/>
 							))}
 						</div>
 					</div>
-				)}
+				) : null}
 
-				{/* Outgoing relationships (What followed) */}
 				{connected_edges.outgoing.length > 0 && (
 					<div>
 						<SectionLabel>
-							<ArrowUp className="size-2.5 inline mr-1" />
+							<ArrowUp className="mr-1 inline size-2.5" />
 							What followed from this
 						</SectionLabel>
 						<div className="mt-1 space-y-1">
-							{connected_edges.outgoing.map(({ edge, node: other }) => (
+							{connected_edges.outgoing.map(({ edge, node: other_node }) => (
 								<RelationshipButton
 									key={`${edge.target_id}-${edge.kind}`}
 									direction="outgoing"
 									edge={edge}
-									other_node={other}
-									on_click={() => on_select_node(other.id)}
+									other_node={other_node}
+									on_click={() => on_select_node(other_node.id)}
 								/>
 							))}
 						</div>
 					</div>
 				)}
 
-				{/* Metadata */}
 				{node.metadata && Object.keys(node.metadata).length > 0 && (
 					<div>
 						<SectionLabel>Metadata</SectionLabel>
 						<div className="mt-1 space-y-0.5">
 							{Object.entries(node.metadata).map(([key, value]) => (
-								<div
-									key={key}
-									className="flex items-center gap-2 text-[10px]"
-								>
+								<div key={key} className="flex items-center gap-2 text-[10px]">
 									<span className="text-muted-foreground">{key}:</span>
 									<span className="truncate">{String(value)}</span>
 								</div>
@@ -278,216 +438,5 @@ export function ExplorationInspectorV2({
 				)}
 			</div>
 		</aside>
-	);
-}
-
-// ── Reusable components ─────────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-	return (
-		<span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-			{children}
-		</span>
-	);
-}
-
-function PropertyRow({
-	label,
-	children,
-}: {
-	label: string;
-	children: React.ReactNode;
-}) {
-	return (
-		<div className="flex items-center gap-2">
-			<span className="text-[10px] text-muted-foreground">{label}:</span>
-			{children}
-		</div>
-	);
-}
-
-function RelationshipButton({
-	direction,
-	edge,
-	other_node,
-	on_click,
-}: {
-	direction: "incoming" | "outgoing";
-	edge: GraphEdge;
-	other_node: GraphNode;
-	on_click: () => void;
-}) {
-	return (
-		<button
-			type="button"
-			className="w-full flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-sm hover:bg-accent/50 transition-colors text-left"
-			onClick={on_click}
-		>
-			<ArrowRight
-				className={cn(
-					"size-2.5 text-muted-foreground shrink-0",
-					direction === "incoming" && "rotate-180",
-				)}
-			/>
-			<span className="truncate flex-1">{other_node.label}</span>
-			<Badge
-				className={cn(
-					"text-[9px] ml-auto shrink-0",
-					availability_badge_colors[edge.availability],
-				)}
-			>
-				{edge.kind.replace(/_/g, " ")}
-			</Badge>
-		</button>
-	);
-}
-
-// ── Summary sections ────────────────────────────────────────────────────────
-
-function TurnSummarySection({ summary }: { summary: TurnSummary }) {
-	return (
-		<div>
-			<SectionLabel>Turn Summary</SectionLabel>
-			<div className="mt-1 grid grid-cols-2 gap-1">
-				<SummaryItem label="Searches" value={summary.searches} />
-				<SummaryItem label="Files explored" value={summary.files_explored} />
-				<SummaryItem label="Docs explored" value={summary.docs_explored} />
-				<SummaryItem label="Edits" value={summary.edits} />
-				<SummaryItem label="Writes" value={summary.writes} />
-			</div>
-		</div>
-	);
-}
-
-function FileSummarySection({ summary }: { summary: FileSummary }) {
-	return (
-		<div>
-			<SectionLabel>File Summary</SectionLabel>
-			<div className="mt-1 space-y-1">
-				<div className="grid grid-cols-2 gap-1">
-					<SummaryItem label="Reads" value={summary.reads} />
-					<SummaryItem label="Edits" value={summary.edits} />
-					<SummaryItem label="Writes" value={summary.writes} />
-					<SummaryItem label="Upstream docs" value={summary.upstream_docs} />
-					<SummaryItem
-						label="Upstream instructions"
-						value={summary.upstream_instructions}
-					/>
-				</div>
-				{summary.first_seen_turn !== null && (
-					<div className="text-[10px] text-muted-foreground">
-						First seen: Turn {summary.first_seen_turn + 1}
-					</div>
-				)}
-				<Badge
-					variant={summary.is_explored ? "default" : "secondary"}
-					className="text-[10px]"
-				>
-					{summary.is_explored ? "Explored" : "Unexplored neighbor"}
-				</Badge>
-			</div>
-		</div>
-	);
-}
-
-function InstructionSummarySection({
-	summary,
-}: {
-	summary: InstructionSummary;
-}) {
-	return (
-		<div>
-			<SectionLabel>Influence Summary</SectionLabel>
-			<div className="mt-1 grid grid-cols-2 gap-1">
-				<SummaryItem label="Downstream files" value={summary.downstream_files} />
-				<SummaryItem label="Downstream edits" value={summary.downstream_edits} />
-			</div>
-			<Badge
-				className={cn(
-					"text-[10px] mt-1",
-					availability_badge_colors[summary.availability],
-				)}
-			>
-				{availability_labels[summary.availability] ?? summary.availability}
-			</Badge>
-		</div>
-	);
-}
-
-function SummaryItem({ label, value }: { label: string; value: number }) {
-	return (
-		<div className="text-[10px]">
-			<span className="text-muted-foreground">{label}: </span>
-			<span className="tabular-nums">{value}</span>
-		</div>
-	);
-}
-
-// ── Arrival path row ────────────────────────────────────────────────────────
-
-const action_labels: Record<string, string> = {
-	read: "Read",
-	edited: "Edited",
-	wrote: "Written",
-};
-
-const action_colors: Record<string, string> = {
-	read: "text-green-600 bg-green-500/10",
-	edited: "text-orange-600 bg-orange-500/10",
-	wrote: "text-purple-600 bg-purple-500/10",
-};
-
-function ArrivalPathRow({
-	path,
-	on_select_node,
-}: {
-	path: ArrivalPath;
-	on_select_node: (node_id: string) => void;
-}) {
-	return (
-		<div className="rounded-sm border border-border/50 px-2 py-1.5 space-y-1">
-			{/* Action badge */}
-			<div className="flex items-center gap-1.5">
-				<Badge
-					className={cn(
-						"text-[9px]",
-						action_colors[path.action] ?? "text-muted-foreground bg-muted",
-					)}
-				>
-					{action_labels[path.action] ?? path.action}
-				</Badge>
-				{path.turn_index !== null && (
-					<span className="text-[9px] text-muted-foreground tabular-nums">
-						Turn {path.turn_index + 1}
-					</span>
-				)}
-			</div>
-
-			{/* User prompt that triggered this */}
-			{path.user_message && path.user_prompt_node_id && (
-				<button
-					type="button"
-					className="w-full flex items-start gap-1.5 text-left hover:bg-accent/50 rounded-sm px-1 py-0.5 transition-colors"
-					onClick={() => on_select_node(path.turn_node_id ?? path.user_prompt_node_id!)}
-				>
-					<ArrowRight className="size-2.5 text-blue-500 mt-0.5 shrink-0" />
-					<span className="text-[10px] text-foreground line-clamp-2">
-						{path.user_message}
-					</span>
-				</button>
-			)}
-
-			{/* Tool that performed the action */}
-			<button
-				type="button"
-				className="w-full flex items-center gap-1.5 text-left hover:bg-accent/50 rounded-sm px-1 py-0.5 transition-colors"
-				onClick={() => on_select_node(path.tool_node_id)}
-			>
-				<ArrowRight className="size-2.5 text-muted-foreground shrink-0" />
-				<span className="text-[10px] text-muted-foreground truncate">
-					{path.tool_label}
-				</span>
-			</button>
-		</div>
 	);
 }
