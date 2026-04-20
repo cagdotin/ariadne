@@ -7,10 +7,15 @@
  */
 
 import type { SessionGraphPayload } from "@contracts/graph";
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
-import type { SessionEntry } from "@/components/session-viewer/types";
+import {
+	PanelLeftClose,
+	PanelLeftOpen,
+	PanelRightClose,
+	PanelRightOpen,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
+import type { SessionEntry } from "@/components/session-viewer/types";
 import { Button } from "@/components/ui/button";
 import {
 	ResizableHandle,
@@ -89,7 +94,7 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 		if (selected_node_id && right_collapsed) {
 			right_panel_ref.current?.expand();
 		}
-	}, [selected_node_id]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [selected_node_id, right_collapsed]);
 
 	useEffect(() => {
 		if (!graph || show_ambient || !selected_node_id) return;
@@ -182,80 +187,6 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 		[selected_node_id, graph, insight_options],
 	);
 
-	// ── Debug: dump graph data to console ────────────────────────────────────
-	useEffect(() => {
-		if (!graph) return;
-		console.group("[Exploration] Session graph loaded");
-		console.log("session_id:", graph.session_id);
-		console.log("nodes:", graph.nodes.length, "edges:", graph.edges.length);
-		console.table(
-			graph.nodes.map((n) => ({
-				id: n.id,
-				kind: n.kind,
-				label: n.label,
-				availability: n.availability,
-				turn_index: n.metadata?.turn_index ?? "",
-				tool_index: n.metadata?.tool_index ?? "",
-			})),
-		);
-		console.table(
-			graph.edges.map((e) => ({
-				source: e.source_id,
-				target: e.target_id,
-				kind: e.kind,
-				availability: e.availability,
-			})),
-		);
-		console.groupEnd();
-	}, [graph]);
-
-	useEffect(() => {
-		if (!graph || !selected_node_id) return;
-		const node = graph.nodes.find((n) => n.id === selected_node_id);
-		console.group(
-			`[Exploration] Selected: ${node?.label ?? selected_node_id} (${node?.kind})`,
-		);
-		console.log("temporal_lens:", temporal_lens);
-		console.log(
-			"insight subgraph:",
-			insight_subgraph.nodes.length,
-			"nodes,",
-			insight_subgraph.edges.length,
-			"edges",
-		);
-		if (insight_subgraph.nodes.length > 0) {
-			console.table(
-				insight_subgraph.nodes.map((n) => ({
-					id: n.id,
-					kind: n.node.kind,
-					label: n.node.label,
-					role: n.role,
-				})),
-			);
-			console.table(
-				insight_subgraph.edges.map((e) => ({
-					source: e.source_id,
-					target: e.target_id,
-					kind: e.kind,
-					role: e.role,
-				})),
-			);
-		}
-		if (temporally_visible_node_ids) {
-			console.log(
-				"temporally visible nodes:",
-				temporally_visible_node_ids.size,
-			);
-		}
-		console.groupEnd();
-	}, [
-		graph,
-		selected_node_id,
-		temporal_lens,
-		insight_subgraph,
-		temporally_visible_node_ids,
-	]);
-
 	// If no graph, fall back to a simple message
 	if (!graph) {
 		return (
@@ -316,10 +247,11 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 						className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-20 size-5 rounded-sm opacity-0 group-hover/handle:opacity-100 transition-opacity bg-background border border-border shadow-sm hover:bg-accent"
 						onClick={toggle_left_panel}
 					>
-						{left_collapsed
-							? <PanelLeftOpen className="size-3" />
-							: <PanelLeftClose className="size-3" />
-						}
+						{left_collapsed ? (
+							<PanelLeftOpen className="size-3" />
+						) : (
+							<PanelLeftClose className="size-3" />
+						)}
 					</Button>
 				</ResizableHandle>
 
@@ -327,11 +259,7 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 				<ResizablePanel defaultSize="65%" minSize="35%" className="min-w-0">
 					<ResizablePanelGroup orientation="horizontal" className="min-h-0">
 						{/* Center: Map / Graph */}
-						<ResizablePanel
-							defaultSize="60%"
-							minSize="30%"
-							className="min-w-0"
-						>
+						<ResizablePanel defaultSize="60%" minSize="30%" className="min-w-0">
 							{middle_pane_mode === "map" ? (
 								<ExplorationMap
 									graph={graph}
@@ -366,10 +294,11 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 								className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-20 size-5 rounded-sm opacity-0 group-hover/handle:opacity-100 transition-opacity bg-background border border-border shadow-sm hover:bg-accent"
 								onClick={toggle_right_panel}
 							>
-								{right_collapsed
-									? <PanelRightOpen className="size-3" />
-									: <PanelRightClose className="size-3" />
-								}
+								{right_collapsed ? (
+									<PanelRightOpen className="size-3" />
+								) : (
+									<PanelRightClose className="size-3" />
+								)}
 							</Button>
 						</ResizableHandle>
 
@@ -400,7 +329,9 @@ export function ExplorationView({ graph, entries = [] }: ExplorationViewProps) {
 								/>
 							) : (
 								<div className="flex items-center justify-center h-full p-4">
-									<p className="text-xs text-muted-foreground">Select a node to inspect</p>
+									<p className="text-xs text-muted-foreground">
+										Select a node to inspect
+									</p>
 								</div>
 							)}
 						</ResizablePanel>
