@@ -93,10 +93,12 @@ export function Dashboard() {
 					<Skeleton className="h-72 w-full" />
 					<Skeleton className="h-44 w-full" />
 				</div>
-				<div className="order-1 space-y-4 xl:order-2">
+				<div className="order-1 grid gap-4 md:grid-cols-2 xl:order-2 xl:grid-cols-1">
 					<Skeleton className="h-[360px] w-full" />
 					<Skeleton className="h-[240px] w-full" />
-					<Skeleton className="h-[220px] w-full" />
+					<div className="hidden lg:block md:col-span-2 xl:col-span-1">
+						<Skeleton className="h-[220px] w-full" />
+					</div>
 				</div>
 			</div>
 		);
@@ -163,10 +165,12 @@ export function Dashboard() {
 				<RecentSessionsCard sessions={overview.recent_sessions} />
 				{!scope && <TopProjects projects={overview.projects} />}
 			</div>
-			<div className="order-1 min-w-0 space-y-4 xl:order-2">
+			<div className="order-1 min-w-0 grid gap-4 md:grid-cols-2 xl:order-2 xl:grid-cols-1">
 				<OverviewStatsCard rows={overview_rows} />
 				<ActivityHeatmap data={heatmap_data} />
-				<ProviderLimitsSummaryCard />
+				<div className="hidden lg:block md:col-span-2 xl:col-span-1">
+					<ProviderLimitsSummaryCard />
+				</div>
 			</div>
 		</div>
 	);
