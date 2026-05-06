@@ -104,6 +104,13 @@ const build_targets: BuildTarget[] = [
 		external: ["electron", "better-sqlite3"],
 	},
 	{
+		name: "analytics-worker",
+		entry: "backend/workers/analytics-build.worker.ts",
+		outfile: "backend/dist/analytics-build.worker.js",
+		format: "esm",
+		external: ["electron", "better-sqlite3"],
+	},
+	{
 		name: "preload",
 		entry: "electron/preload/index.ts",
 		outfile: "electron/preload/dist/index.js",
